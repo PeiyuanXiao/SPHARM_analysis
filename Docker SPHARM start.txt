@@ -1,0 +1,33 @@
+# 1. 每次重启电脑后：挂载H盘
+wsl -u root -e sh -c "mkdir -p /mnt/h && mount -t drvfs H: /mnt/h"
+
+# 2. 首次创建容器（只需运行一次）
+docker run -d --name spharm-processor -p 8787:8787 ^
+    -v "/mnt/h/SPHRAM_analysis:/project" ^
+    -e PASSWORD=sphram ^
+    sphram_analysis
+
+# 3. 之后每次启动
+docker start spharm-processor
+
+# 4. 打开RStudio
+# 浏览器访问：http://localhost:8787
+# 用户名：rstudio
+# 密码：sdg
+
+# 5. Terminal已自动激活环境，直接运行分析脚本
+
+# --- 形态球谐分析 ---
+PYTHONPATH=/project/analysis/scripts \
+    python SPHARM_main/SPHARM_main.py
+
+# --- 片疤方向球谐分析（需先在R里运行球面KDE）---
+PYTHONPATH=/project/analysis/scripts \
+    python SPHARM_main/kde_to_spharm.py
+
+# --- R端分析 ---
+# 在RStudio中打开并运行：
+# R/mantel_analysis.R
+
+# 6. 结束工作
+docker stop spharm-processor

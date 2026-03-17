@@ -17,7 +17,8 @@ ENV PATH=/opt/conda/bin:$PATH
 
 # --- RSTUDIO PROJECT AUTO-LOAD CONFIG ---
 RUN mkdir -p /home/rstudio/.local/share/rstudio/projects_settings
-RUN echo "/project/SDG_Lithic_Analysis.Rproj" > /home/rstudio/.local/share/rstudio/projects_settings/last-project-path
+RUN echo "/project/SPHRAM_analysis.Rproj" > /home/rstudio/.local/share/rstudio/projects_settings/last-project-path
+
 RUN mkdir -p /home/rstudio/.config/rstudio
 RUN echo '{"initial_working_directory": "/project"}' > /home/rstudio/.config/rstudio/rstudio-prefs.json
 RUN chown -R rstudio:rstudio /home/rstudio/.local /home/rstudio/.config
@@ -31,7 +32,6 @@ WORKDIR /project
 COPY . /project
 
 # --- 5. RENV RESTORE ---
-
 # A. Set RENV paths to location OUTSIDE /project 
 ENV RENV_PATHS_LIBRARY=/opt/renv/library
 ENV RENV_PATHS_CACHE=/opt/renv/cache
@@ -46,7 +46,6 @@ RUN rm -rf /usr/local/lib/R/site-library/ggplot2
 # D. Install renv and restore
 RUN R -e "install.packages('renv', repos='https://cloud.r-project.org')" && \
     R -e "options(renv.config.cache.symlinks = FALSE); renv::restore(prompt = FALSE)"
-
 
 # --- 6. Build Python Env ---
 RUN conda tos accept --override-channels --channel https://repo.anaconda.com/pkgs/main && \

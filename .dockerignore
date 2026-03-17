@@ -1,27 +1,29 @@
-# 大型3D模型和数据
+# 3Dmodels
 **/*.stl
 **/*.ply
 **/*.obj
 **/*.las
 **/*.laz
 
-# 数据文件
+# data documents
 **/*.csv
 **/*.xlsx
 **/*.xls
 
-# R缓存
+# R cache
 renv/library/
 renv/staging/
 .Rhistory
 .RData
 .Ruserdata
 
-# Python缓存
+# Python cache
 **/__pycache__/
 **/*.pyc
 **/*.pyo
 .ipynb_checkpoints/
 
-# 3D模型文件夹
-analysis/scripts/SPHARM_main/3D_models_cores/
+# 3D model fold
+analysis/data/3D_models_cores/
+
+analysis/data/**/*.tmp
