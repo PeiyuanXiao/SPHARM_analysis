@@ -1,0 +1,108 @@
+---
+title: "Sandinggai data analysis"
+author:
+  - Peiyuan Xiao:
+      correspondence: "no"
+      orcid: 0009-0000-9733-5875
+      institute:
+        - ALPHA
+        - UCAS
+  - Hao Li:
+      correspondence: "no"
+      orcid: 
+      institute:
+        - ALPHA
+        - UCAS
+  - Ben Marwick:
+      correspondence: "yes"
+      email: bmarwick@uw.edu
+      orcid: 0000-0001-7879-4531
+      institute:
+        - uw
+institute:
+  - UCAS: University of Chinese Academy of Sciences, Beijing 100049, China
+  - ALPHA: Group of Alpine Paleoecology and Human Adaptation (ALPHA), Institute of Tibetan Plateau Research, Chinese Academy of Sciences, Beijing 100101; 
+  - TPESRE: State Key Laboratory of Tibetan Plateau Earth System, Resources and Environment (TPESRE), Beijing 100101
+  - uw: Department of Anthropology, University of Washington, Seattle, WA, USA
+title-block-published: "Last updated"  
+date: now
+date-format: long
+format: 
+  docx:
+    reference-doc: "../templates/template.docx" # Insert path for the DOCX file
+crossref:
+  fig-title: "Fig."
+  fig-prefix: "Fig."
+number-sections: true
+execute:
+  echo: true
+  warning: false
+  message: false
+  comment: "#>"
+  fig-dpi: 1000
+filters:
+  - ../templates/scholarly-metadata.lua
+  - ../templates/author-info-blocks.lua
+  - ../templates/pagebreak.lua
+bibliography: references.bib
+csl: "../templates/journal-of-archaeological-science.csl" # Insert path for the bib-style
+abstract: |
+  
+editor_options: 
+  chunk_output_type: console
+---
+
+<!-- This is the format for text comments that will be ignored during renderings. Do not put R code in these comments because it will not be ignored. -->
+
+<!-- With the following code you can access and display values from the yml header above. -->
+
+Keywords: `r rmarkdown::metadata$keywords`
+
+Highlights: `r rmarkdown::metadata$highlights`
+
+<!-- The actual document text starts here: -->
+
+# Introduction
+
+# Methods
+
+# Discussion
+
+# Conclusion
+
+# CRediT authorship contribution statement
+
+# Data availability statement
+
+# Funding
+
+# Declaration of competing interest
+
+The authors declare that they have no known competing financial interests or personal relationships that could have appeared to influence the work reported in this paper.
+
+# Acknowledgements
+
+<!-- The following line inserts a page break  -->
+
+\newpage
+
+# References
+
+<!-- The following line ensures the references appear here for the MS Word or HTML output files, rather than right at the end of the document (this will not work for PDF files):  -->
+
+::: {#refs}
+:::
+
+\newpage
+
+### Colophon
+
+This report was generated on `r Sys.time()` using the following computational environment and dependencies:
+
+```{r}
+#| label: colophon
+#| cache: false
+
+# which R packages and versions?
+if ("devtools" %in% installed.packages()) devtools::session_info()
+```

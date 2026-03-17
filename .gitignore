@@ -1,0 +1,23 @@
+# Ignore 3D model
+*.stl
+*.STL
+**/3D_models_cores/
+*.npz
+*.csv
+
+# Ignore RStudio & R cache
+.Rhistory
+.RData
+.Rproj.user/
+.Rapp.history
+
+# Ignore Python cache
+__pycache__/
+*.pyc
+
+# Ignore HTML result files
+*.html
+.Rproj.user
+.httr-oauth
+.DS_Store
+.quarto

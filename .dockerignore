@@ -1,0 +1,27 @@
+# 大型3D模型和数据
+**/*.stl
+**/*.ply
+**/*.obj
+**/*.las
+**/*.laz
+
+# 数据文件
+**/*.csv
+**/*.xlsx
+**/*.xls
+
+# R缓存
+renv/library/
+renv/staging/
+.Rhistory
+.RData
+.Ruserdata
+
+# Python缓存
+**/__pycache__/
+**/*.pyc
+**/*.pyo
+.ipynb_checkpoints/
+
+# 3D模型文件夹
+analysis/scripts/SPHARM_main/3D_models_cores/
