@@ -17,7 +17,7 @@ ENV PATH=/opt/conda/bin:$PATH
 
 # --- RSTUDIO PROJECT AUTO-LOAD CONFIG ---
 RUN mkdir -p /home/rstudio/.local/share/rstudio/projects_settings
-RUN echo "/project/SPHRAM_analysis.Rproj" > /home/rstudio/.local/share/rstudio/projects_settings/last-project-path
+RUN echo "/project/SPHARM_analysis.Rproj" > /home/rstudio/.local/share/rstudio/projects_settings/last-project-path
 
 RUN mkdir -p /home/rstudio/.config/rstudio
 RUN echo '{"initial_working_directory": "/project"}' > /home/rstudio/.config/rstudio/rstudio-prefs.json
