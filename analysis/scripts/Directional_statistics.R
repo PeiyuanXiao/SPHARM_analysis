@@ -12,7 +12,7 @@ library(ks)
 library(rgl) 
 
 # === Load Data ===
-raw_data <- read_excel("analysis/data/Scar_orientation_data.xlsx")
+raw_data <- read_excel("analysis/data/raw_data/Scar_orientation_data.xlsx")
 # ==============================================================================
 # === Alignment Function (SVD normal vector) ===
 align_svd <- function(df_group) {
