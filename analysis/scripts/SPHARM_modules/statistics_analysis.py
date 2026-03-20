@@ -317,7 +317,7 @@ if __name__ == "__main__":
     base_dir   = os.path.dirname(os.path.abspath(__file__))
     output_dir = os.path.abspath(
         os.path.join(base_dir, "..", "..", "..",
-                     "data", "drived_data"))
+                     "data", "derived_data"))
     output_csv = os.path.join(output_dir, "SPHARM_results.csv")
 
     os.makedirs(output_dir, exist_ok=True)

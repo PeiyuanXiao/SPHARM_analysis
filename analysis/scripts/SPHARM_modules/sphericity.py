@@ -158,6 +158,6 @@ if __name__ == "__main__":
         os.path.join(base_dir, "..", "3D_models_cores"))
     output_csv = os.path.abspath(
         os.path.join(base_dir, "..", "..", "..", "data",
-                     "drived_data", "sphericity_iso.csv"))
+                     "derived_data", "sphericity_iso.csv"))
 
     batch_calculate_sphericity(input_dir, output_csv)

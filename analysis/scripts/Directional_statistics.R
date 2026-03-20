@@ -83,6 +83,28 @@ align_svd <- function(df_group) {
       e_z = e_z - center_rotated[3]
     )
   
+  # === Step 3: XY平面内旋转 — 对齐主轴到 X 轴 ===
+  # 用SVD分解方向向量，不做中心化
+  xy_dirs  <- cbind(df_group$d_x, df_group$d_y)
+  main_dir <- svd(xy_dirs)$v[, 1]
+  mean_dir <- colMeans(xy_dirs)
+  if (sum(main_dir * mean_dir) < 0) main_dir <- -main_dir
+  
+  # 计算主方向与 X 轴的夹角，构造绕 Z 轴的旋转矩阵
+  theta <- atan2(main_dir[2], main_dir[1])
+  R2    <- matrix(c( cos(-theta), -sin(-theta), 0,
+                     sin(-theta),  cos(-theta), 0,
+                     0,            0,           1), 3, 3, byrow = TRUE)
+  
+  # 应用旋转到所有向量
+  S2 <- as.matrix(df_group[, c("s_x", "s_y", "s_z")]) %*% t(R2)
+  E2 <- as.matrix(df_group[, c("e_x", "e_y", "e_z")]) %*% t(R2)
+  D2 <- as.matrix(df_group[, c("d_x", "d_y", "d_z")]) %*% t(R2)
+  
+  df_group$s_x <- S2[,1]; df_group$s_y <- S2[,2]; df_group$s_z <- S2[,3]
+  df_group$e_x <- E2[,1]; df_group$e_y <- E2[,2]; df_group$e_z <- E2[,3]
+  df_group$d_x <- D2[,1]; df_group$d_y <- D2[,2]; df_group$d_z <- D2[,3]
+  
   return(df_group)
 }
 
@@ -277,6 +299,21 @@ build_panel <- function(demo_id) {
   s2 <- sweep(s1, 2, center_r1, "-")
   e2 <- sweep(e1, 2, center_r1, "-")
   
+  # Step 3: XY平面内PCA对齐主轴到X轴
+  d2       <- e2 - s2
+  len2     <- sqrt(rowSums(d2^2))
+  valid2   <- len2 > 1e-10
+  xy_dirs  <- cbind(d2[valid2, 1], d2[valid2, 2])
+  main_dir <- svd(xy_dirs)$v[, 1]
+  mean_dir <- colMeans(xy_dirs)
+  if (sum(main_dir * mean_dir) < 0) main_dir <- -main_dir
+  theta    <- atan2(main_dir[2], main_dir[1])
+  R2       <- matrix(c( cos(-theta), -sin(-theta), 0,
+                        sin(-theta),  cos(-theta), 0,
+                        0,            0,           1), 3, 3, byrow = TRUE)
+  s3 <- s2 %*% t(R2)
+  e3 <- e2 %*% t(R2)
+  
   # --- Panel 0: Raw data with SVD plane and normal ---
   p0 <- plot_ly() %>%
     add_scars_3d(s0[,1],s0[,2],s0[,3],
@@ -301,7 +338,16 @@ build_panel <- function(demo_id) {
     add_plane_3d(0, 0, 0, half_sz) %>%
     layout(panel_layout("<b>Step 2</b>: Translate — center moved to origin"))
   
-  list(p0=p0, p1=p1, p2=p2)
+  # --- Panel 3: XY平面内PCA主轴对齐到X轴 ---
+  p3 <- plot_ly() %>%
+    add_scars_3d(s3[,1],s3[,2],s3[,3],
+                 e3[,1],e3[,2],e3[,3], df$Length, longest_idx) %>%
+    add_arrow_3d(c(0,0,0), c(0,0,1), arr_scale) %>%
+    add_arrow_3d(c(0,0,0), c(1,0,0), arr_scale, color = "orange") %>%
+    add_plane_3d(0, 0, 0, half_sz) %>%
+    layout(panel_layout("<b>Step 3</b>: Rotate XY — PCA main axis aligned to X-axis"))
+  
+  list(p0=p0, p1=p1, p2=p2, p3=p3)
 }
 
 # === Step 4: Combine panels ===
@@ -322,7 +368,8 @@ js_data_lines <- sapply(as.character(all_ids), function(id) {
     'allPanels["', id, '"] = {',
     '"p0":', get_panel_json(ps$p0), ',',
     '"p1":', get_panel_json(ps$p1), ',',
-    '"p2":', get_panel_json(ps$p2),
+    '"p2":', get_panel_json(ps$p2), ',',
+    '"p3":', get_panel_json(ps$p3),
     '};'
   )
 })
@@ -356,15 +403,17 @@ grid <- browsable(
       HTML("&#9642; <b style='color:steelblue'>Blue</b> = Flaking scars &nbsp;|&nbsp;
             <b style='color:pink'>Pink</b> = Longest scar &nbsp;|&nbsp;
             <b style='color:red'>Red arrow</b> = SVD normal &nbsp;|&nbsp;
+            <b style='color:orange'>Orange arrow</b> = PCA main axis (X) &nbsp;|&nbsp;
             <b style='color:lightgray'>Gray plane</b> = SVD best-fit plane")
     ),
     
     tags$div(
-      style = "display:grid; grid-template-columns:1fr 1fr 1fr;
+      style = "display:grid; grid-template-columns:1fr 1fr 1fr 1fr;
                gap:8px; padding:0 12px 12px;",
       tags$div(id="plot0", style="height:480px;"),
       tags$div(id="plot1", style="height:480px;"),
-      tags$div(id="plot2", style="height:480px;")
+      tags$div(id="plot2", style="height:480px;"),
+      tags$div(id="plot3", style="height:480px;")
     ),
     
     tags$script(HTML(paste0(
@@ -374,7 +423,7 @@ grid <- browsable(
       "
       function renderSpecimen(id) {
         var ps = allPanels[id];
-        ['p0','p1','p2'].forEach(function(k, i) {
+        ['p0','p1','p2','p3'].forEach(function(k, i) {
           Plotly.react('plot' + i, ps[k].data, ps[k].layout);
         });
       }
@@ -858,7 +907,7 @@ print(fig)
 
 
 
-output_dir <- "H:/SDG_Lithic_Analysis/analysis/data/drived_data"
+output_dir <- "H:/SDG_Lithic_Analysis/analysis/data/derived_data"
 dir.create(output_dir, recursive = TRUE, showWarnings = FALSE)
 
 write.csv(sphere_grid, 

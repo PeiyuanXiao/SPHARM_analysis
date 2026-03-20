@@ -30,11 +30,16 @@ def process_single_mesh(stl_path):
     # 2. Simplify
     v_igl = np.asfortranarray(vertices.astype(np.float64))
     f_igl = np.asfortranarray(faces.astype(np.int32))
-    result = igl.decimate(v_igl, f_igl, int(TARGET_FACES))
-    decimated_vertices = np.array(result[0])
-    decimated_faces    = np.array(result[1]).reshape(-1, 3)
-    if decimated_vertices.shape[0] == 0:
-        raise ValueError("igl.decimate returned empty mesh")
+    if n_faces <= TARGET_FACES:
+        print(f"  → Skipping decimation (faces {n_faces} <= target {TARGET_FACES})")
+        decimated_vertices = vertices
+        decimated_faces    = faces
+    else:
+        result = igl.decimate(v_igl, f_igl, int(TARGET_FACES))
+        decimated_vertices = np.array(result[0])
+        decimated_faces    = np.array(result[1]).reshape(-1, 3)
+        if decimated_vertices.shape[0] == 0:
+            raise ValueError("igl.decimate returned empty mesh")
 
     # 3. Smooth
     mesh = trimesh.Trimesh(vertices=decimated_vertices,
@@ -203,6 +208,6 @@ def batch_process(input_dir, output_dir):
 
 
 if __name__ == "__main__":
-    input_directory  = "/project/analysis/scripts/SPHARM_main/3D_models_cores"
-    output_directory = "/project/analysis/data/drived_data"
+    input_directory  = "/project/analysis/data/3D_models_cores"
+    output_directory = "/project/analysis/data/derived_data"
     batch_process(input_directory, output_directory)

@@ -7,7 +7,7 @@ library(patchwork)
 # ============================================================
 # 参数配置
 # ============================================================
-DATA_DIR   <- "H:/SDG_Lithic_Analysis/analysis/data/drived_data"
+DATA_DIR   <- "H:/SDG_Lithic_Analysis/analysis/data/derived_data"
 LMAX_MORPH <- 20
 LMAX_SCAR  <- 20
 N_PERM     <- 9999

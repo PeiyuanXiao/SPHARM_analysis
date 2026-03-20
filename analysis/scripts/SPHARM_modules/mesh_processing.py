@@ -2,6 +2,7 @@ import pyvista as pv
 import numpy as np
 import trimesh
 import igl
+import pymeshfix
 from scipy.spatial import KDTree
 
 
@@ -41,6 +42,7 @@ def clean_mesh(filepath):
     # Fix normal consistency
     trimesh.repair.fix_normals(mesh)
     trimesh.repair.fix_winding(mesh)
+    trimesh.repair.fill_holes(mesh)
 
     return mesh.vertices, mesh.faces
 

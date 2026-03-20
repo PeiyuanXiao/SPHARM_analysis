@@ -5,7 +5,7 @@ Convert spherical KDE outputs (CSV) from R into the standard DH grid format used
 and perform spherical harmonic expansion to generate power spectra, spherical harmonic coefficients, and spectral entropy.
 
 Prerequisites: The spherical KDE must first be computed in R and the following files exported:
-    output_dir <- "/project/analysis/data/drived_data"
+    output_dir <- "/project/analysis/data/derived_data"
     write.csv(sphere_grid, file.path(output_dir, "sphere_grid.csv"), row.names = FALSE)
     kde_df <- as.data.frame(kde_matrix)
     kde_df$ID <- rownames(kde_matrix)
@@ -28,7 +28,7 @@ from scipy.stats import entropy as scipy_entropy
 # ============================================================
 # Parameter configuration
 # ============================================================
-DATA_DIR = "/project/analysis/data/drived_data"
+DATA_DIR = "/project/analysis/data/derived_data"
 LMAX     = 20   
 DH_SIZE  = 64  
  

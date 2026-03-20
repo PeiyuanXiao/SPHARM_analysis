@@ -169,7 +169,7 @@ if __name__ == "__main__":
     input_folder  = os.path.abspath(
         os.path.join(base_dir, "..", "3D_models_cores"))
     output_folder = os.path.abspath(
-        os.path.join(base_dir, "..", "..", "..", "data", "drived_data"))
+        os.path.join(base_dir, "..", "..", "..", "data", "derived_data"))
     os.makedirs(output_folder, exist_ok=True)
 
     df = batch_average_curvature(input_folder)
