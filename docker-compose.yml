@@ -1,0 +1,16 @@
+services:
+  spharm-processor:
+    image: spharm_analysis
+    container_name: spharm-processor
+    ports:
+      - "8787:8787"
+    environment:
+      - DISABLE_AUTH=${DISABLE_AUTH:-false}
+      - PASSWORD=${RSTUDIO_PASSWORD:-spharm}
+      - RENV_PATHS_LIBRARY=/opt/renv/library
+      - RENV_PATHS_CACHE=/opt/renv/cache
+    volumes:
+      - /mnt/h/SPHARM_analysis:/project
+    working_dir: /project
+    stop_grace_period: 1s
+    restart: "no"

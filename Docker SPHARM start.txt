@@ -1,29 +1,29 @@
-# 1. 每次重启电脑后：挂载H盘
-wsl -u root -e sh -c "mkdir -p /mnt/h && mount -t drvfs H: /mnt/h"
-
-# 2. 首次创建容器（只需运行一次）
+首次创建容器（只需运行一次）
 docker run -d --name spharm-processor -p 8787:8787 ^
     -v "/mnt/h/SPHRAM_analysis:/project" ^
     -e PASSWORD=sphram ^
     sphram_analysis
 
-# 3. 之后每次启动
-docker start spharm-processor
 
-# 4. 打开RStudio
-# 浏览器访问：http://localhost:8787
-# 用户名：rstudio
-# 密码：sdg
 
-# 5. Terminal已自动激活环境，直接运行分析脚本
+第一步：启动环境
+双击 H:\SPHARM_analysis\Start_SPHARM.bat，等待浏览器自动打开 RStudio。
 
-# --- 形态球谐分析 ---
+第三步：激活 conda 环境
+conda activate spharm
+cd /project
+
+第四步：运行 SPHARM 形态分析
 PYTHONPATH=/project/analysis/scripts \
-    python SPHARM_main/SPHARM_main.py
+    python analysis/scripts/SPHARM_main/SPHARM_main.py
 
-# --- 片疤方向球谐分析（需先在R里运行球面KDE）---
+第五步：运行 KDE 计算
 PYTHONPATH=/project/analysis/scripts \
-    python SPHARM_main/kde_to_spharm.py
+    python analysis/scripts/SPHARM_main/kde_to_spharm_main.py
+
+第六步：运行球谐分析
+PYTHONPATH=/project/analysis/scripts \
+    python analysis/scripts/SPHARM_main/kde_to_spharm.py
 
 # --- R端分析 ---
 # 在RStudio中打开并运行：

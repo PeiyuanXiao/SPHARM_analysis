@@ -53,3 +53,4 @@ RUN conda tos accept --override-channels --channel https://repo.anaconda.com/pkg
     conda env create -f analysis/scripts/environment.yml --solver=libmamba
   
 RUN git config --global --add safe.directory /project
+RUN /opt/conda/envs/spharm/bin/pip install pymeshfix networkx openpyxl

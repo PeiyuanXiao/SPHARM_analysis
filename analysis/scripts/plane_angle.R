@@ -114,7 +114,6 @@ ggplot(deviation_results, aes(y = ID)) +
     plot.caption       = element_text(color = "grey50", size = 9)
   )
 
-ggsave("analysis/data/derived_data/plane_deviation_dumbbell.pdf",
-       width = 8, height = 7)
+
 
 

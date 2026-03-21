@@ -21,3 +21,5 @@ __pycache__/
 .httr-oauth
 .DS_Store
 .quarto
+
+.env

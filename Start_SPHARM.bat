@@ -12,10 +12,10 @@ if errorlevel 1 (
 :: 挂载 H 盘（已挂载则跳过）
 wsl -u root -e sh -c "mountpoint -q /mnt/h || (mkdir -p /mnt/h && mount -t drvfs H: /mnt/h)"
 
-:: 启动容器
-docker start spharm-processor
+:: 用 docker compose 启动容器
+docker compose -f H:\SPHARM_analysis\docker-compose.yml up -d
 if errorlevel 1 (
-    echo [ERROR] Failed to start spharm-processor container.
+    echo [ERROR] Failed to start spharm-processor.
     pause
     exit /b 1
 )

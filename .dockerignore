@@ -27,3 +27,7 @@ renv/staging/
 analysis/data/3D_models_cores/
 
 analysis/data/**/*.tmp
+
+# derived data
+analysis/data/derived_data/
+**/*.npy

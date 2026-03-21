@@ -1,24 +1,4 @@
-"""
-kde_to_spharm.py
-================
-Convert spherical KDE outputs (CSV) from R into the standard DH grid format used by pyshtools,
-and perform spherical harmonic expansion to generate power spectra, spherical harmonic coefficients, and spectral entropy.
 
-Prerequisites: The spherical KDE must first be computed in R and the following files exported:
-    output_dir <- "/project/analysis/data/derived_data"
-    write.csv(sphere_grid, file.path(output_dir, "sphere_grid.csv"), row.names = FALSE)
-    kde_df <- as.data.frame(kde_matrix)
-    kde_df$ID <- rownames(kde_matrix)
-    kde_df$Typology <- typology_vec
-    write.csv(kde_df, file.path(output_dir, "kde_matrix.csv"), row.names = FALSE)
-
-Input:
-    kde_matrix.csv  - KDE value vector for each core (one row per specimen)
-    sphere_grid.csv - Spherical grid coordinates (bearing, plunge, x, y, z)
-
-Output:
-    spharm_direction.csv - Power spectrum, spherical harmonic coefficients, and spectral entropy for each core
-"""
 import numpy as np
 import pandas as pd
 import pyshtools as pysh
@@ -34,33 +14,41 @@ DH_SIZE  = 64
  
  
 # ============================================================
-# Step 1: Load SKDE data exported from R
+# Step 1: 改为加载 Python KDE 输出（.npy + metadata.csv）
 # ============================================================
-def load_r_kde(
-    kde_csv:  str = f"{DATA_DIR}/kde_matrix.csv",
-    grid_csv: str = f"{DATA_DIR}/sphere_grid.csv"
+def load_python_kde(
+    kde_npy:      str = f"{DATA_DIR}/kde_matrix.npy",
+    grid_npy:     str = f"{DATA_DIR}/kde_grid.npy",
+    metadata_csv: str = f"{DATA_DIR}/kde_metadata.csv"
 ):
     """
-    Load kde_matrix.csv and sphere_grid.csv exported from R.
+    Load KDE outputs from Python pipeline (kde_to_spharm_main.py).
 
     Returns
     -------
     kde_matrix  : ndarray, shape (n_cores, n_grid)
-    sphere_grid : DataFrame, containing columns: bearing, plunge, x, y, z
-    meta        : DataFrame, containing ID and Typology
+    sphere_grid : DataFrame, columns: x, y, z, bearing, plunge
+    meta        : DataFrame, columns: ID, Typology
     """
-    kde_df      = pd.read_csv(kde_csv)
-    sphere_grid = pd.read_csv(grid_csv)
+    kde_matrix = np.load(kde_npy)                      # (n_cores, n_grid)
+    G          = np.load(grid_npy)                     # (n_grid, 3)
+    meta       = pd.read_csv(metadata_csv)             # ID, Typology, n_scars
 
-    meta_cols  = ["ID", "Typology"]
-    meta       = kde_df[meta_cols].copy()
-    kde_matrix = kde_df.drop(columns=meta_cols).values.astype(np.float64)
+    # 从 xyz 还原 bearing 和 plunge，与原版 sphere_grid 格式一致
+    sphere_grid = pd.DataFrame({
+        "x":       G[:, 0],
+        "y":       G[:, 1],
+        "z":       G[:, 2],
+        "bearing": np.arctan2(G[:, 1], G[:, 0]),
+        "plunge":  np.arcsin(np.clip(G[:, 2], -1, 1)),
+    })
 
-    print(f"Loaded {kde_matrix.shape[0]} cores, each with {kde_matrix.shape[1]} grid points")
-    print(f"Typology distribution:\n{meta['Typology'].value_counts().to_string()}\n")
- 
-    return kde_matrix, sphere_grid, meta
- 
+    print(f"Loaded {kde_matrix.shape[0]} cores, "
+          f"each with {kde_matrix.shape[1]} grid points")
+    print(f"Typology distribution:\n"
+          f"{meta['Typology'].value_counts().to_string()}\n")
+
+    return kde_matrix, sphere_grid, meta 
  
 # ============================================================
 # Step 2: SKDE vector → DH standard 2D grid (vectorized vMF interpolation)
@@ -142,14 +130,14 @@ def compute_spharm_features(grid_2d: np.ndarray,
 # Step 4: Batch processing
 # ============================================================
 def batch_kde_to_spharm(
-    kde_csv:    str = f"{DATA_DIR}/kde_matrix.csv",
-    grid_csv:   str = f"{DATA_DIR}/sphere_grid.csv",
-    output_csv: str = f"{DATA_DIR}/spharm_direction.csv",
-    lmax:       int = LMAX,
-    dh_size:    int = DH_SIZE
+    kde_npy:      str = f"{DATA_DIR}/kde_matrix.npy",
+    grid_npy:     str = f"{DATA_DIR}/kde_grid.npy",
+    metadata_csv: str = f"{DATA_DIR}/kde_metadata.csv",
+    output_csv:   str = f"{DATA_DIR}/spharm_direction.csv",
+    lmax:         int = LMAX,
+    dh_size:      int = DH_SIZE
 ):
-    """Batch process all cores and output a CSV containing power spectra and spectral entropy."""
-    kde_matrix, sphere_grid, meta = load_r_kde(kde_csv, grid_csv)
+    kde_matrix, sphere_grid, meta = load_python_kde(kde_npy, grid_npy, metadata_csv)
     n_cores = kde_matrix.shape[0]
     rows    = []
  
