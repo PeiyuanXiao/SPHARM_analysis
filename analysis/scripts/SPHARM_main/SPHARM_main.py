@@ -1,11 +1,21 @@
+# ── 标准库 ──────────────────────────────────────
 import os
+import sys
+import time
+from pathlib import Path
+
+# ── 路径设置 ────────────
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
+# ── 第三方库 ─────────────────────────────────────
 import numpy as np
 import pandas as pd
 import pyshtools as pysh
 import igl
 import trimesh
 from trimesh.smoothing import filter_laplacian
-import time
+
+# ── 本地模块 ─────────────────────────────────────
 from SPHARM_modules import mesh_processing, pca_align, spherical_harmonics, statistics_analysis
 from SPHARM_modules import sphericity as sphericity_module
 from SPHARM_modules import curvature as curvature_module

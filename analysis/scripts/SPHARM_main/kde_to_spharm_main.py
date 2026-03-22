@@ -14,15 +14,18 @@ Output files (all in /project/analysis/data/derived_data/):
     kde_results.csv     — long-format KDE densities (optional, for R)
 """
 
-import os
+# ── 标准库 ──────────────────────────────────────
 import sys
+from pathlib import Path
+
+# ── 路径设置 ─────────────────────────────────────
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
+# ── 第三方库 ─────────────────────────────────────
 import numpy as np
 import pandas as pd
 
-# Allow importing from SPHARM_modules
-SCRIPTS_DIR = os.path.join(os.path.dirname(__file__), "..")
-sys.path.insert(0, SCRIPTS_DIR)
-
+# ── 本地模块 ─────────────────────────────────────
 from SPHARM_modules.spherical_kde import batch_spherical_kde
 
 # =============================================================================

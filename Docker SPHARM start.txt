@@ -14,16 +14,13 @@ conda activate spharm
 cd /project
 
 第四步：运行 SPHARM 形态分析
-PYTHONPATH=/project/analysis/scripts \
-    python analysis/scripts/SPHARM_main/SPHARM_main.py
+python analysis/scripts/SPHARM_main/SPHARM_main.py
 
 第五步：运行 KDE 计算
-PYTHONPATH=/project/analysis/scripts \
-    python analysis/scripts/SPHARM_main/kde_to_spharm_main.py
+python analysis/scripts/SPHARM_main/kde_to_spharm_main.py
 
 第六步：运行球谐分析
-PYTHONPATH=/project/analysis/scripts \
-    python analysis/scripts/SPHARM_main/kde_to_spharm.py
+python analysis/scripts/SPHARM_main/kde_to_spharm.py
 
 # --- R端分析 ---
 # 在RStudio中打开并运行：

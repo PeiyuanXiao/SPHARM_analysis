@@ -54,3 +54,4 @@ RUN conda tos accept --override-channels --channel https://repo.anaconda.com/pkg
   
 RUN git config --global --add safe.directory /project
 RUN /opt/conda/envs/spharm/bin/pip install pymeshfix networkx openpyxl
+RUN echo "conda activate spharm" >> /home/rstudio/.bashrc

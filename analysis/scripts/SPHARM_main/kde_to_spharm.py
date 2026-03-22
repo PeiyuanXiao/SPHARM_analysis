@@ -1,8 +1,17 @@
+# ── 标准库 ──────────────────────────────────────
+import sys
+from pathlib import Path
+
+# ── 路径设置 ─────────────────────────────────────
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
+# ── 第三方库 ─────────────────────────────────────
 import numpy as np
 import pandas as pd
 import pyshtools as pysh
+
+# ── 本地模块 ─────────────────────────────────────
 from SPHARM_modules.spectral_entropy import compute_spectral_entropy
- 
  
 # ============================================================
 # Parameter configuration
