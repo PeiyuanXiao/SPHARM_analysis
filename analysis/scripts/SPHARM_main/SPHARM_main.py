@@ -9,6 +9,7 @@ import time
 from SPHARM_modules import mesh_processing, pca_align, spherical_harmonics, statistics_analysis
 from SPHARM_modules import sphericity as sphericity_module
 from SPHARM_modules import curvature as curvature_module
+from SPHARM_modules.spectral_entropy import compute_spectral_entropy
 
 # ============================================================
 # Parameter configuration
@@ -66,18 +67,20 @@ def process_single_mesh(stl_path):
                  clm, normalization='4pi', csphase=1, lmax=LMAX
              ).pad(lmax=LMAX)
 
-    # 7. Power spectrum + spectral harmonic entropy (SHE)
-    _, spectrum = spherical_harmonics.process_spherical_harmonics(clm_sh)
-    total_power = spectrum["total_power"].astype(float)
-    SHE         = float(np.sum(clm_sh.spectrum()))
+    # 7. Power spectrum +  spherical harmonic energy (SHE) + spectral entropy
+    feats       = compute_spectral_entropy(clm_sh, lmax=LMAX)
+    SHE              = feats["SHE"]
+    spectral_entropy = feats["spectral_entropy"]
+    norm_power       = feats["norm_power"]
 
     # 8. Construct result row
     row = {
-        "specimen_id":      specimen_id,
-        "SHE":              SHE,
-        "n_faces_original": int(n_faces),
+        "specimen_id":       specimen_id,
+        "SHE":               SHE,
+        "spectral_entropy":  round(spectral_entropy, 6),
+        "n_faces_original":  int(n_faces),
     }
-    for l, p in enumerate(total_power):
+    for l, p in enumerate(norm_power):
         row[f"power_degree_{l}"] = float(p)
     for j, c in enumerate(clm_sh.coeffs.flatten()):
         row[f"coeff_{j}"] = float(np.real(c))
@@ -90,7 +93,7 @@ def batch_process(input_dir, output_dir):
     """Batch process all STL files, writing rows to CSV with support for resuming."""
     os.makedirs(output_dir, exist_ok=True)
 
-    output_csv = os.path.join(output_dir, "SPHARM_results.csv")
+    output_csv = os.path.join(output_dir, "SPHARM_morphology.csv")
     failed_csv = os.path.join(output_dir, "SPHARM_failed.csv")
 
     stl_files = sorted([

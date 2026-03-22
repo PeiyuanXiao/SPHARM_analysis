@@ -7,7 +7,7 @@ library(patchwork)
 # ============================================================
 # 参数配置
 # ============================================================
-DATA_DIR   <- "H:/SDG_Lithic_Analysis/analysis/data/derived_data"
+DATA_DIR   <- "H:/SPHARM_analysis/analysis/data/derived_data"
 LMAX_MORPH <- 20
 LMAX_SCAR  <- 20
 N_PERM     <- 9999
@@ -15,32 +15,28 @@ N_PERM     <- 9999
 # ============================================================
 # Step 1：读取数据
 # ============================================================
-df_morph <- read_csv(file.path(DATA_DIR, "SPHARM_results.csv"),
+df_morph <- read_csv(file.path(DATA_DIR, "SPHARM_morphology.csv"),
                      show_col_types = FALSE)
-df_scar  <- read_csv(file.path(DATA_DIR, "spharm_direction.csv"),
+df_scar  <- read_csv(file.path(DATA_DIR, "SPHARM_direction.csv"),
                      show_col_types = FALSE)
-df_sphy  <- read_csv(file.path(DATA_DIR, "sphericity_iso.csv"),
-                     show_col_types = FALSE)
-df_curv  <- read_csv(file.path(DATA_DIR, "curvature.csv"),
-                     show_col_types = FALSE)
+
+# 统一ID列名
+df_morph <- df_morph %>% rename(ID = specimen_id)
+
+# 只保留理想模型
+df_morph <- df_morph %>%
+  filter(startsWith(as.character(ID), "IM"))
+df_scar <- df_scar %>%
+  mutate(ID = as.character(ID)) %>%
+  filter(startsWith(ID, "IM"))
 
 # 统一顺序
 df_scar <- df_scar %>%
-  mutate(ID = as.character(ID)) %>%
-  slice(match(as.character(df_morph$specimen_id), ID))
-df_sphy <- df_sphy %>%
-  mutate(ID = as.character(ID)) %>%
-  slice(match(as.character(df_morph$specimen_id), ID))
-df_curv <- df_curv %>%
-  mutate(filename = as.character(filename)) %>%
-  slice(match(as.character(df_morph$specimen_id), filename))
+  slice(match(as.character(df_morph$ID), ID))
 
 cat("ID匹配检查（形态×方向）：",
-    all(as.character(df_morph$specimen_id) == df_scar$ID), "\n")
-cat("ID匹配检查（形态×球度）：",
-    all(as.character(df_morph$specimen_id) == df_sphy$ID), "\n")
-cat("ID匹配检查（形态×曲率）：",
-    all(as.character(df_morph$specimen_id) == df_curv$filename), "\n\n")
+    all(as.character(df_morph$ID) == df_scar$ID), "\n")
+cat("理想模型数量：", nrow(df_morph), "\n\n")
 
 # ============================================================
 # Step 2：构建功率谱矩阵
@@ -55,23 +51,15 @@ scar_power <- df_scar %>%
   rename_with(~ paste0("S", 1:LMAX_SCAR)) %>%
   as.data.frame()
 
-rownames(morph_power) <- as.character(df_morph$specimen_id)
-rownames(scar_power)  <- as.character(df_morph$specimen_id)
+rownames(morph_power) <- as.character(df_morph$ID)
+rownames(scar_power)  <- as.character(df_morph$ID)
 
 # 过滤标准差为零的列
-sd_morph <- sapply(morph_power, sd, na.rm = TRUE)
-sd_scar  <- sapply(scar_power,  sd, na.rm = TRUE)
-
-morph_power_clean <- morph_power[, sd_morph > 0]
-scar_power_clean  <- scar_power[,  sd_scar  > 0]
+morph_power_clean <- morph_power[, sapply(morph_power, sd, na.rm = TRUE) > 0]
+scar_power_clean  <- scar_power[,  sapply(scar_power,  sd, na.rm = TRUE) > 0]
 
 cat("形态保留阶数：", ncol(morph_power_clean), "\n")
 cat("片疤保留阶数：", ncol(scar_power_clean),  "\n\n")
-
-# 合并为完整功率谱矩阵（右侧热图）
-spec_df_full <- bind_cols(morph_power_clean, scar_power_clean) %>%
-  as.data.frame()
-rownames(spec_df_full) <- as.character(df_morph$specimen_id)
 
 # ============================================================
 # Step 3：构造距离矩阵
@@ -98,23 +86,24 @@ D_scar  <- cosine_dist(X_scar_norm)
 # ============================================================
 cat("==== 全局Mantel检验（形态 × 片疤方向）====\n")
 mantel_global <- mantel(D_morph, D_scar,
-                        method       = "pearson",
+                        method       = "spearman",
                         permutations = N_PERM)
 print(mantel_global)
 
 # ============================================================
 # Step 5：逐变量Mantel检验
-# 每个功率谱阶 vs D_morph 和 D_scar
 # ============================================================
+spec_df_full <- bind_cols(morph_power_clean, scar_power_clean) %>%
+  as.data.frame()
+rownames(spec_df_full) <- as.character(df_morph$ID)
+
 mantel_rows_full <- map_dfr(colnames(spec_df_full), function(var) {
   x <- spec_df_full[[var]]
   if (sd(x, na.rm = TRUE) == 0) return(NULL)
   d_x <- dist(scale(x))
   
-  res_m <- mantel(d_x, D_morph,
-                  method = "pearson", permutations = N_PERM)
-  res_s <- mantel(d_x, D_scar,
-                  method = "pearson", permutations = N_PERM)
+  res_m <- mantel(d_x, D_morph, method = "spearman", permutations = N_PERM)
+  res_s <- mantel(d_x, D_scar,  method = "spearman", permutations = N_PERM)
   
   bind_rows(
     tibble(spec = "Morphology",     env = var,
@@ -125,9 +114,9 @@ mantel_rows_full <- map_dfr(colnames(spec_df_full), function(var) {
 })
 
 # ============================================================
-# Step 6：绘图
+# Step 6：可视化
 # ============================================================
-p_mantel_full <- qcorrplot(
+p_mantel <- qcorrplot(
   correlate(spec_df_full),
   type = "upper",
   diag = FALSE
@@ -139,13 +128,13 @@ p_mantel_full <- qcorrplot(
     curvature = 0.05
   ) +
   scale_fill_viridis_c(
-    option = "D",        
+    option = "D",
     limits = c(-1, 1),
     name   = "Pearson's R"
   ) +
   scale_color_viridis_c(
-    option    = "plasma", 
-    direction = -1,       
+    option    = "plasma",
+    direction = -1,
     limits    = c(0, 1),
     name      = "Mantel's p"
   ) +
@@ -157,13 +146,12 @@ p_mantel_full <- qcorrplot(
     legend.position = "right",
     legend.key.size = unit(0.5, "cm"),
     axis.text       = element_text(size = 6),
-    plot.title      = element_text(face = "bold", size = 12),
-    plot.margin      = margin(t = 10, r = 10, b = 30, l = 80)
+    plot.margin     = margin(t = 10, r = 10, b = 30, l = 80)
   )
 
 ggsave(
-  file.path(DATA_DIR, "mantel_linkET_full.png"),
-  plot   = p_mantel_full,
+  file.path(DATA_DIR, "mantel_IM_only.png"),
+  plot   = p_mantel,
   width  = 18,
   height = 16,
   dpi    = 300

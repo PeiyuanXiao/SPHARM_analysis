@@ -1,8 +1,7 @@
-
 import numpy as np
 import pandas as pd
 import pyshtools as pysh
-from scipy.stats import entropy as scipy_entropy
+from SPHARM_modules.spectral_entropy import compute_spectral_entropy
  
  
 # ============================================================
@@ -103,25 +102,13 @@ def compute_spharm_features(grid_2d: np.ndarray,
     sh_grid = pysh.SHGrid.from_array(grid_2d, grid='DH')
     clm     = sh_grid.expand(lmax_calc=lmax)
  
-    raw_power = clm.spectrum()          # shape: (lmax+1,)
-    she       = float(np.sum(raw_power))
- 
-    # Normalize after removing the l = 0 DC component
-    power_no_dc    = raw_power.copy()
-    power_no_dc[0] = 0.0
-    total_ac       = power_no_dc.sum()
-    norm_power     = power_no_dc / total_ac if total_ac > 0 else power_no_dc
- 
-    # spectral entropy（l=1 ~ lmax）
-    p = norm_power[1:]
-    p = p[p > 0]
-    spectral_entropy = float(scipy_entropy(p))
- 
+    feats = compute_spectral_entropy(clm, lmax=lmax)
+
     return {
-        "power_spectrum"   : raw_power,
-        "norm_power"       : norm_power,
-        "spectral_entropy" : spectral_entropy,
-        "she"              : she,
+        "power_spectrum"   : feats["raw_power"],
+        "norm_power"       : feats["norm_power"],
+        "spectral_entropy" : feats["spectral_entropy"],
+        "she"              : feats["SHE"],
         "coeffs_flat"      : clm.coeffs.flatten(),
     }
  
@@ -133,7 +120,7 @@ def batch_kde_to_spharm(
     kde_npy:      str = f"{DATA_DIR}/kde_matrix.npy",
     grid_npy:     str = f"{DATA_DIR}/kde_grid.npy",
     metadata_csv: str = f"{DATA_DIR}/kde_metadata.csv",
-    output_csv:   str = f"{DATA_DIR}/spharm_direction.csv",
+    output_csv:   str = f"{DATA_DIR}/SPHARM_direction.csv",
     lmax:         int = LMAX,
     dh_size:      int = DH_SIZE
 ):
