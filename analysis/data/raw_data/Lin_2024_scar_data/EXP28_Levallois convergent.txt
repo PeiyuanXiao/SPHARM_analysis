@@ -1,0 +1,399 @@
+﻿  
+  Rhino object: curve
+  DEVELOPER DEBUGGING INFORMATION ONLY
+  Use the Rhino "What" command.
+  Runtime serial number: 2604
+  name: "LINE"
+  id: 3EF9B52F-1238-4deb-BC62-5F98DE9A4C49
+  layer index: 6
+  render material index: -1 (from layer)
+  ON_NurbsCurve dim = 3 is_rat = 0
+          order = 2 cv_count = 2
+  Knot Vector ( 2 knots )
+  index                     value  mult       delta
+      0                        0     1
+      1                        1     1           1
+  Control Points  2 non-rational points
+    index               value
+    CV[ 0] (-10.722586464315842, 15.66953556183509, 4.4031206721714184)
+    CV[ 1] (-7.2098014281943072, 20.785335858015713, -8.2161922172496133)
+  
+  Rhino object: curve
+  DEVELOPER DEBUGGING INFORMATION ONLY
+  Use the Rhino "What" command.
+  Runtime serial number: 2605
+  name: "LINE"
+  id: 7A7B5D63-1789-4eca-A4E6-E50112463C98
+  layer index: 6
+  render material index: -1 (from layer)
+  ON_NurbsCurve dim = 3 is_rat = 0
+          order = 2 cv_count = 2
+  Knot Vector ( 2 knots )
+  index                     value  mult       delta
+      0                        0     1
+      1                        1     1           1
+  Control Points  2 non-rational points
+    index               value
+    CV[ 0] (-10.125612170229974, 3.7278699546383933, 5.7256536645123646)
+    CV[ 1] (4.947206298831432, 19.230686846457772, -19.0482476645339)
+  
+  Rhino object: curve
+  DEVELOPER DEBUGGING INFORMATION ONLY
+  Use the Rhino "What" command.
+  Runtime serial number: 2606
+  name: "LINE"
+  id: 47AC879E-9B55-4f00-9361-B0F92AEC2CF3
+  layer index: 6
+  render material index: -1 (from layer)
+  ON_NurbsCurve dim = 3 is_rat = 0
+          order = 2 cv_count = 2
+  Knot Vector ( 2 knots )
+  index                     value  mult       delta
+      0                        0     1
+      1                        1     1           1
+  Control Points  2 non-rational points
+    index               value
+    CV[ 0] (1.8474954209420282, 32.664534189228306, -19.187929049993983)
+    CV[ 1] (12.367003901883514, 22.326358300056697, -23.370803692603459)
+  
+  Rhino object: curve
+  DEVELOPER DEBUGGING INFORMATION ONLY
+  Use the Rhino "What" command.
+  Runtime serial number: 2607
+  name: "LINE"
+  id: 3B531D2B-F991-48e1-A326-A90C32D27792
+  layer index: 6
+  render material index: -1 (from layer)
+  ON_NurbsCurve dim = 3 is_rat = 0
+          order = 2 cv_count = 2
+  Knot Vector ( 2 knots )
+  index                     value  mult       delta
+      0                        0     1
+      1                        1     1           1
+  Control Points  2 non-rational points
+    index               value
+    CV[ 0] (-13.000716203551402, 36.64874381943244, 2.749628998345429)
+    CV[ 1] (1.2210693874445973, 32.789756345589353, -18.550069871052074)
+  
+  Rhino object: curve
+  DEVELOPER DEBUGGING INFORMATION ONLY
+  Use the Rhino "What" command.
+  Runtime serial number: 2608
+  name: "LINE"
+  id: F47A14A4-0BDB-453e-95FA-703643B14634
+  layer index: 6
+  render material index: -1 (from layer)
+  ON_NurbsCurve dim = 3 is_rat = 0
+          order = 2 cv_count = 2
+  Knot Vector ( 2 knots )
+  index                     value  mult       delta
+      0                        0     1
+      1                        1     1           1
+  Control Points  2 non-rational points
+    index               value
+    CV[ 0] (-12.120379846810838, 60.142557869385769, -3.8096838034726517)
+    CV[ 1] (6.3841698272438272, 38.070471083291068, -20.14225088424557)
+  
+  Rhino object: curve
+  DEVELOPER DEBUGGING INFORMATION ONLY
+  Use the Rhino "What" command.
+  Runtime serial number: 2609
+  name: "LINE"
+  id: 4A13837A-6A00-4721-BAA6-16C3E3293B2F
+  layer index: 6
+  render material index: -1 (from layer)
+  ON_NurbsCurve dim = 3 is_rat = 0
+          order = 2 cv_count = 2
+  Knot Vector ( 2 knots )
+  index                     value  mult       delta
+      0                        0     1
+      1                        1     1           1
+  Control Points  2 non-rational points
+    index               value
+    CV[ 0] (1.6101429128105984, 66.208179410627977, -7.8158216806113856)
+    CV[ 1] (1.0952984597189328, 58.268820756293294, -10.699776527832533)
+  
+  Rhino object: curve
+  DEVELOPER DEBUGGING INFORMATION ONLY
+  Use the Rhino "What" command.
+  Runtime serial number: 2610
+  name: "LINE"
+  id: 8ECB6D0C-F529-4ac1-8212-043F8DBEBFF7
+  layer index: 6
+  render material index: -1 (from layer)
+  ON_NurbsCurve dim = 3 is_rat = 0
+          order = 2 cv_count = 2
+  Knot Vector ( 2 knots )
+  index                     value  mult       delta
+      0                        0     1
+      1                        1     1           1
+  Control Points  2 non-rational points
+    index               value
+    CV[ 0] (6.3690466570687878, 74.499085154991604, -1.7232973949728674)
+    CV[ 1] (6.2151680570227654, 68.649884470506805, -6.6459715566446391)
+  
+  Rhino object: curve
+  DEVELOPER DEBUGGING INFORMATION ONLY
+  Use the Rhino "What" command.
+  Runtime serial number: 2611
+  name: "LINE"
+  id: 9C473ECF-9E64-4698-9678-BAEF1F8C0589
+  layer index: 6
+  render material index: -1 (from layer)
+  ON_NurbsCurve dim = 3 is_rat = 0
+          order = 2 cv_count = 2
+  Knot Vector ( 2 knots )
+  index                     value  mult       delta
+      0                        0     1
+      1                        1     1           1
+  Control Points  2 non-rational points
+    index               value
+    CV[ 0] (7.1404287455650959, 67.887847163405922, -9.4302887834909512)
+    CV[ 1] (21.819857812905543, 40.738813230733044, -16.291105461617775)
+  
+  Rhino object: curve
+  DEVELOPER DEBUGGING INFORMATION ONLY
+  Use the Rhino "What" command.
+  Runtime serial number: 2612
+  name: "LINE"
+  id: 5BE2B5A4-D882-4a76-9AD5-B5D90D906EA0
+  layer index: 6
+  render material index: -1 (from layer)
+  ON_NurbsCurve dim = 3 is_rat = 0
+          order = 2 cv_count = 2
+  Knot Vector ( 2 knots )
+  index                     value  mult       delta
+      0                        0     1
+      1                        1     1           1
+  Control Points  2 non-rational points
+    index               value
+    CV[ 0] (25.569234649385798, 41.166064309252775, -16.261467787646211)
+    CV[ 1] (44.789429372337409, 24.050221983694257, -16.540070190436939)
+  
+  Rhino object: curve
+  DEVELOPER DEBUGGING INFORMATION ONLY
+  Use the Rhino "What" command.
+  Runtime serial number: 2613
+  name: "LINE"
+  id: 1FAFC4F7-6ACB-4465-B0F0-BC910973039D
+  layer index: 6
+  render material index: -1 (from layer)
+  ON_NurbsCurve dim = 3 is_rat = 0
+          order = 2 cv_count = 2
+  Knot Vector ( 2 knots )
+  index                     value  mult       delta
+      0                        0     1
+      1                        1     1           1
+  Control Points  2 non-rational points
+    index               value
+    CV[ 0] (22.833334871985752, 74.400274345295685, 1.4517537874252113)
+    CV[ 1] (20.131508040067221, 62.289790824391204, -10.576374016736803)
+  
+  Rhino object: curve
+  DEVELOPER DEBUGGING INFORMATION ONLY
+  Use the Rhino "What" command.
+  Runtime serial number: 2614
+  name: "LINE"
+  id: 45ADF962-13FE-4ff2-BE02-2BD68244AF33
+  layer index: 6
+  render material index: -1 (from layer)
+  ON_NurbsCurve dim = 3 is_rat = 0
+          order = 2 cv_count = 2
+  Knot Vector ( 2 knots )
+  index                     value  mult       delta
+      0                        0     1
+      1                        1     1           1
+  Control Points  2 non-rational points
+    index               value
+    CV[ 0] (36.097492395775362, 66.622494321490649, 3.3371182122465228)
+    CV[ 1] (32.688237557850854, 45.468240415924456, -14.440345757732956)
+  
+  Rhino object: curve
+  DEVELOPER DEBUGGING INFORMATION ONLY
+  Use the Rhino "What" command.
+  Runtime serial number: 2615
+  name: "LINE"
+  id: 50159A0A-9389-4241-9AB4-2B6A83879033
+  layer index: 6
+  render material index: -1 (from layer)
+  ON_NurbsCurve dim = 3 is_rat = 0
+          order = 2 cv_count = 2
+  Knot Vector ( 2 knots )
+  index                     value  mult       delta
+      0                        0     1
+      1                        1     1           1
+  Control Points  2 non-rational points
+    index               value
+    CV[ 0] (47.00677704400114, 55.034278590173699, 4.6738506438948946)
+    CV[ 1] (44.301532956321296, 46.57915319143936, -12.231775358689148)
+  
+  Rhino object: curve
+  DEVELOPER DEBUGGING INFORMATION ONLY
+  Use the Rhino "What" command.
+  Runtime serial number: 2616
+  name: "LINE"
+  id: 418212E0-5CF4-4b87-8FAF-52F2AC6D14CB
+  layer index: 6
+  render material index: -1 (from layer)
+  ON_NurbsCurve dim = 3 is_rat = 0
+          order = 2 cv_count = 2
+  Knot Vector ( 2 knots )
+  index                     value  mult       delta
+      0                        0     1
+      1                        1     1           1
+  Control Points  2 non-rational points
+    index               value
+    CV[ 0] (58.122779654922027, 28.780014547624603, 3.9825961480462198)
+    CV[ 1] (51.706366575378979, 31.959780585364697, -13.061755362362)
+  
+  Rhino object: curve
+  DEVELOPER DEBUGGING INFORMATION ONLY
+  Use the Rhino "What" command.
+  Runtime serial number: 2617
+  name: "LINE"
+  id: 5F6223BF-E334-4993-9496-32CB601E64DB
+  layer index: 6
+  render material index: -1 (from layer)
+  ON_NurbsCurve dim = 3 is_rat = 0
+          order = 2 cv_count = 2
+  Knot Vector ( 2 knots )
+  index                     value  mult       delta
+      0                        0     1
+      1                        1     1           1
+  Control Points  2 non-rational points
+    index               value
+    CV[ 0] (51.387811046035878, 22.179080702192309, 7.2759242681113108)
+    CV[ 1] (35.174131647192027, 16.327153560149391, -16.438082270258366)
+  
+  Rhino object: curve
+  DEVELOPER DEBUGGING INFORMATION ONLY
+  Use the Rhino "What" command.
+  Runtime serial number: 2618
+  name: "LINE"
+  id: F64EB11D-9D98-405d-A7A7-64A86FC86A43
+  layer index: 6
+  render material index: -1 (from layer)
+  ON_NurbsCurve dim = 3 is_rat = 0
+          order = 2 cv_count = 2
+  Knot Vector ( 2 knots )
+  index                     value  mult       delta
+      0                        0     1
+      1                        1     1           1
+  Control Points  2 non-rational points
+    index               value
+    CV[ 0] (34.106058347047266, 6.5804621216700951, 0.51714148516308001)
+    CV[ 1] (23.991129077814346, 20.465559240169185, -23.332165148206172)
+  
+  Rhino object: curve
+  DEVELOPER DEBUGGING INFORMATION ONLY
+  Use the Rhino "What" command.
+  Runtime serial number: 2619
+  name: "LINE"
+  id: AD5A8096-C5F4-4c6e-A81C-A6392ACD270B
+  layer index: 6
+  render material index: -1 (from layer)
+  ON_NurbsCurve dim = 3 is_rat = 0
+          order = 2 cv_count = 2
+  Knot Vector ( 2 knots )
+  index                     value  mult       delta
+      0                        0     1
+      1                        1     1           1
+  Control Points  2 non-rational points
+    index               value
+    CV[ 0] (5.9425029487611276, 1.2844047732887702, 8.3737344230125785)
+    CV[ 1] (22.919763234831056, 7.8574752760967641, -15.168480306826986)
+  
+  Rhino object: curve
+  DEVELOPER DEBUGGING INFORMATION ONLY
+  Use the Rhino "What" command.
+  Runtime serial number: 2620
+  name: "LINE"
+  id: A02F814B-2B23-4d91-8788-CF906860667D
+  layer index: 6
+  render material index: -1 (from layer)
+  ON_NurbsCurve dim = 3 is_rat = 0
+          order = 2 cv_count = 2
+  Knot Vector ( 2 knots )
+  index                     value  mult       delta
+      0                        0     1
+      1                        1     1           1
+  Control Points  2 non-rational points
+    index               value
+    CV[ 0] (-2.9409952459881801, -0.35304109299032405, 6.5964751920916243)
+    CV[ 1] (17.820288866691168, 18.038393716493744, -24.407423043941513)
+  
+  Rhino object: curve
+  DEVELOPER DEBUGGING INFORMATION ONLY
+  Use the Rhino "What" command.
+  Runtime serial number: 2621
+  name: "LINE"
+  id: 9593812B-EF44-46fc-94FC-A4F80B2D71AE
+  layer index: 6
+  render material index: -1 (from layer)
+  ON_NurbsCurve dim = 3 is_rat = 0
+          order = 2 cv_count = 2
+  Knot Vector ( 2 knots )
+  index                     value  mult       delta
+      0                        0     1
+      1                        1     1           1
+  Control Points  2 non-rational points
+    index               value
+    CV[ 0] (7.7761357569458465, 74.865361742564261, -1.2043451615839942)
+    CV[ 1] (37.608454474402706, 64.258681609006445, 5.3060035575410964)
+  
+  Rhino object: curve
+  DEVELOPER DEBUGGING INFORMATION ONLY
+  Use the Rhino "What" command.
+  Runtime serial number: 2622
+  name: "LINE"
+  id: 325905C8-BAF9-4cae-883B-D85CBF9ACAE0
+  layer index: 6
+  render material index: -1 (from layer)
+  ON_NurbsCurve dim = 3 is_rat = 0
+          order = 2 cv_count = 2
+  Knot Vector ( 2 knots )
+  index                     value  mult       delta
+      0                        0     1
+      1                        1     1           1
+  Control Points  2 non-rational points
+    index               value
+    CV[ 0] (-0.035261519179993428, 0.00010006715125854271, 7.0707960697282601)
+    CV[ 1] (-0.035261519179996981, 71.024647222879338, 2.0134724429300235)
+  
+  Rhino object: curve
+  DEVELOPER DEBUGGING INFORMATION ONLY
+  Use the Rhino "What" command.
+  Runtime serial number: 2623
+  name: "LINE"
+  id: DB73530C-D083-41a2-BB39-DA5FB119B630
+  layer index: 6
+  render material index: -1 (from layer)
+  ON_NurbsCurve dim = 3 is_rat = 0
+          order = 2 cv_count = 2
+  Knot Vector ( 2 knots )
+  index                     value  mult       delta
+      0                        0     1
+      1                        1     1           1
+  Control Points  2 non-rational points
+    index               value
+    CV[ 0] (55.015037534584721, 26.703796693379203, 5.8515103433811291)
+    CV[ 1] (8.5158453431254699, 68.518216498957543, 10.478536089836744)
+  
+  Rhino object: curve
+  DEVELOPER DEBUGGING INFORMATION ONLY
+  Use the Rhino "What" command.
+  Runtime serial number: 2624
+  name: "LINE"
+  id: 6630C307-F9AD-4b23-AD36-916C5982FA89
+  layer index: 6
+  render material index: -1 (from layer)
+  ON_NurbsCurve dim = 3 is_rat = 0
+          order = 2 cv_count = 2
+  Knot Vector ( 2 knots )
+  index                     value  mult       delta
+      0                        0     1
+      1                        1     1           1
+  Control Points  2 non-rational points
+    index               value
+    CV[ 0] (36.764596693015889, 9.1235491450128166, 1.9317483300885456)
+    CV[ 1] (6.5723685346091738, 65.72140675358888, 12.034720437671893)

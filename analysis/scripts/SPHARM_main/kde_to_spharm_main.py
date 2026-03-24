@@ -15,6 +15,7 @@ Output files (all in /project/analysis/data/derived_data/):
 """
 
 # ── 标准库 ──────────────────────────────────────
+import os
 import sys
 from pathlib import Path
 
@@ -44,7 +45,10 @@ N_PLUNGE    = 36
 # =============================================================================
 
 def load_data(path: str) -> pd.DataFrame:
-    df = pd.read_excel(path)
+    if path.endswith(".xlsx"):
+        df = pd.read_excel(path)
+    else:
+        df = pd.read_csv(path)
     print(f"Loaded {len(df)} rows from {os.path.basename(path)}")
     print(f"Columns: {list(df.columns)}\n")
     return df
@@ -214,11 +218,23 @@ def export_results(kde_result: dict, output_dir: str) -> None:
 # =============================================================================
 
 if __name__ == "__main__":
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--source",
+        choices=["xlsx", "lin2024"],
+        default="xlsx",
+        help="data source：xlsx = raw data，lin2024 = Lin 2024 pipeline"
+    )
+    args = parser.parse_args()
+
     print("=" * 60)
     print("Spherical KDE Pipeline")
     print("=" * 60)
 
-    raw     = load_data(INPUT_XLSX)
+    LIN2024_CSV = "/project/analysis/data/raw_data/Lin_2024_scar_data/Scar_Vectors_Lin2024_pipeline.csv"
+
+    raw     = load_data(LIN2024_CSV if args.source == "lin2024" else INPUT_XLSX)
     aligned = align_all(raw)
 
     kde_result = batch_spherical_kde(
@@ -228,8 +244,11 @@ if __name__ == "__main__":
         n_plunge  = N_PLUNGE,
     )
 
+    out_dir = os.path.join(OUTPUT_DIR, "lin2024") \
+              if args.source == "lin2024" else OUTPUT_DIR
+
     print("Exporting results...")
-    export_results(kde_result, OUTPUT_DIR)
+    export_results(kde_result, out_dir)
 
     print("\n" + "=" * 60)
     print("Done!")

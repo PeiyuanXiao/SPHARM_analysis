@@ -1,0 +1,352 @@
+  
+  Rhino object: curve
+  name: "LINE"
+  id: 8E6056C5-4596-4a91-ACE2-9E58D021427D
+  layer index: 1
+  render material index: -1 (from layer)
+  ON_NurbsCurve dim = 3 is_rat = 0
+          order = 2 cv_count = 2
+  Knot Vector ( 2 knots )
+  index                     value  mult       delta
+      0                        0     1
+      1                        1     1           1
+  Control Points  2 non-rational points
+    index               value
+    CV[ 0] (14.053298311612368, 63.110260535515167, -3.0392825162796182)
+    CV[ 1] (11.547618201000269, 60.79681029558305, -4.995706087952632)
+  
+  Rhino object: curve
+  name: "LINE"
+  id: 1C60A5AF-144B-4802-9F2B-069ABCFBAAE2
+  layer index: 1
+  render material index: -1 (from layer)
+  ON_NurbsCurve dim = 3 is_rat = 0
+          order = 2 cv_count = 2
+  Knot Vector ( 2 knots )
+  index                     value  mult       delta
+      0                        0     1
+      1                        1     1           1
+  Control Points  2 non-rational points
+    index               value
+    CV[ 0] (5.297585829880834, -3.3305070064600861, -0.24863160499546932)
+    CV[ 1] (13.89186666132067, -1.4368251382800743, -5.3339311600214039)
+  
+  Rhino object: curve
+  name: "LINE"
+  id: AA1E33DF-BA52-48f7-A041-B7CB1D34D22D
+  layer index: 1
+  render material index: -1 (from layer)
+  ON_NurbsCurve dim = 3 is_rat = 0
+          order = 2 cv_count = 2
+  Knot Vector ( 2 knots )
+  index                     value  mult       delta
+      0                        0     1
+      1                        1     1           1
+  Control Points  2 non-rational points
+    index               value
+    CV[ 0] (29.484459215048187, 1.0388367864441961, 1.0632862871496638)
+    CV[ 1] (8.9508595919640275, 43.936318526045511, 12.663301849596952)
+  
+  Rhino object: curve
+  name: "LINE"
+  id: 7EA319AC-D47D-453b-AEAF-DEDAF90F2101
+  layer index: 1
+  render material index: -1 (from layer)
+  ON_NurbsCurve dim = 3 is_rat = 0
+          order = 2 cv_count = 2
+  Knot Vector ( 2 knots )
+  index                     value  mult       delta
+      0                        0     1
+      1                        1     1           1
+  Control Points  2 non-rational points
+    index               value
+    CV[ 0] (47.531687598465552, 19.41031149242858, -8.6912272695784676)
+    CV[ 1] (35.183808269588148, 22.505100003391767, -20.434946546666552)
+  
+  Rhino object: curve
+  name: "LINE"
+  id: 739A44CA-6EE1-4d4a-9970-B19CAD5884EF
+  layer index: 1
+  render material index: -1 (from layer)
+  ON_NurbsCurve dim = 3 is_rat = 0
+          order = 2 cv_count = 2
+  Knot Vector ( 2 knots )
+  index                     value  mult       delta
+      0                        0     1
+      1                        1     1           1
+  Control Points  2 non-rational points
+    index               value
+    CV[ 0] (38.690371105430991, 45.344485066696883, 0.24950781620011231)
+    CV[ 1] (33.837981367519561, 42.595704246714185, -6.0671183132011386)
+  
+  Rhino object: curve
+  name: "LINE"
+  id: 5B8DF1AB-7F36-4cc0-9BFB-4152D00F829C
+  layer index: 1
+  render material index: -1 (from layer)
+  ON_NurbsCurve dim = 3 is_rat = 0
+          order = 2 cv_count = 2
+  Knot Vector ( 2 knots )
+  index                     value  mult       delta
+      0                        0     1
+      1                        1     1           1
+  Control Points  2 non-rational points
+    index               value
+    CV[ 0] (39.734356779917356, 10.709807313628122, -1.2145686401386033)
+    CV[ 1] (24.252641833058956, 13.314259439445669, -16.640618136650328)
+  
+  Rhino object: curve
+  name: "LINE"
+  id: EA8981FF-2869-4113-805A-A1B8005E4666
+  layer index: 1
+  render material index: -1 (from layer)
+  ON_NurbsCurve dim = 3 is_rat = 0
+          order = 2 cv_count = 2
+  Knot Vector ( 2 knots )
+  index                     value  mult       delta
+      0                        0     1
+      1                        1     1           1
+  Control Points  2 non-rational points
+    index               value
+    CV[ 0] (44.206089184543018, 13.849759413760536, 2.0040393117822108)
+    CV[ 1] (22.787372875669629, 53.171712442357673, 5.0534558822760696)
+  
+  Rhino object: curve
+  name: "LINE"
+  id: 3772994B-683F-47b6-985D-453CC5A0C7E0
+  layer index: 1
+  render material index: -1 (from layer)
+  ON_NurbsCurve dim = 3 is_rat = 0
+          order = 2 cv_count = 2
+  Knot Vector ( 2 knots )
+  index                     value  mult       delta
+      0                        0     1
+      1                        1     1           1
+  Control Points  2 non-rational points
+    index               value
+    CV[ 0] (-12.599378619132629, 20.652319125755763, -3.4877946807551243)
+    CV[ 1] (-4.2605384750587723, 18.74809340590442, -10.762512458366686)
+  
+  Rhino object: curve
+  name: "LINE"
+  id: 22ECB2B1-20B0-4d65-B18F-8E9DE696E5B9
+  layer index: 1
+  render material index: -1 (from layer)
+  ON_NurbsCurve dim = 3 is_rat = 0
+          order = 2 cv_count = 2
+  Knot Vector ( 2 knots )
+  index                     value  mult       delta
+      0                        0     1
+      1                        1     1           1
+  Control Points  2 non-rational points
+    index               value
+    CV[ 0] (-2.6749780676450472, -0.92726897176533774, -4.4345178611161593)
+    CV[ 1] (12.071667060182389, 9.1612148021856896, -18.280195731033661)
+  
+  Rhino object: curve
+  name: "LINE"
+  id: 7D65637C-DD88-4196-9980-FC53C9DF62BE
+  layer index: 1
+  render material index: -1 (from layer)
+  ON_NurbsCurve dim = 3 is_rat = 0
+          order = 2 cv_count = 2
+  Knot Vector ( 2 knots )
+  index                     value  mult       delta
+      0                        0     1
+      1                        1     1           1
+  Control Points  2 non-rational points
+    index               value
+    CV[ 0] (0, 0, 5.3520000000000003)
+    CV[ 1] (8.1268325402561459e-14, 62.893433240681674, 3.1598459294870689)
+  
+  Rhino object: curve
+  name: "LINE"
+  id: 50231261-11A9-4ccc-AED6-CB77DBEA3A27
+  layer index: 1
+  render material index: -1 (from layer)
+  ON_NurbsCurve dim = 3 is_rat = 0
+          order = 2 cv_count = 2
+  Knot Vector ( 2 knots )
+  index                     value  mult       delta
+      0                        0     1
+      1                        1     1           1
+  Control Points  2 non-rational points
+    index               value
+    CV[ 0] (6.3213929405434666, -3.8765601107840766, 4.4649550253844339)
+    CV[ 1] (10.483640922339385, -2.8155149853732575, 1.4557679981125466)
+  
+  Rhino object: curve
+  name: "LINE"
+  id: B56D4934-CDA2-40d1-AB31-C59DADA6E05B
+  layer index: 1
+  render material index: -1 (from layer)
+  ON_NurbsCurve dim = 3 is_rat = 0
+          order = 2 cv_count = 2
+  Knot Vector ( 2 knots )
+  index                     value  mult       delta
+      0                        0     1
+      1                        1     1           1
+  Control Points  2 non-rational points
+    index               value
+    CV[ 0] (-6.2663382396679941, 7.6276774936627652, -9.1508786463157055)
+    CV[ 1] (5.2893817493737476, 7.6956287949528024, -16.170367567373233)
+  
+  Rhino object: curve
+  name: "LINE"
+  id: FFA6F17A-3E03-45ab-A624-B8B423FFE7C2
+  layer index: 1
+  render material index: -1 (from layer)
+  ON_NurbsCurve dim = 3 is_rat = 0
+          order = 2 cv_count = 2
+  Knot Vector ( 2 knots )
+  index                     value  mult       delta
+      0                        0     1
+      1                        1     1           1
+  Control Points  2 non-rational points
+    index               value
+    CV[ 0] (48.960928577538461, 18.520375507475141, -2.0775591937377085)
+    CV[ 1] (46.889414795673126, 18.434630601356268, -5.5452067350601322)
+  
+  Rhino object: curve
+  name: "LINE"
+  id: AECC15AA-3842-423a-977A-E90222722216
+  layer index: 1
+  render material index: -1 (from layer)
+  ON_NurbsCurve dim = 3 is_rat = 0
+          order = 2 cv_count = 2
+  Knot Vector ( 2 knots )
+  index                     value  mult       delta
+      0                        0     1
+      1                        1     1           1
+  Control Points  2 non-rational points
+    index               value
+    CV[ 0] (21.078104235438786, 7.3177967956372623, -13.688256594811257)
+    CV[ 1] (14.415934095654849, 9.8199253492917453, -17.565512878818058)
+  
+  Rhino object: curve
+  name: "LINE"
+  id: 20D7DC40-8DC6-488b-A318-035C51663DC5
+  layer index: 1
+  render material index: -1 (from layer)
+  ON_NurbsCurve dim = 3 is_rat = 0
+          order = 2 cv_count = 2
+  Knot Vector ( 2 knots )
+  index                     value  mult       delta
+      0                        0     1
+      1                        1     1           1
+  Control Points  2 non-rational points
+    index               value
+    CV[ 0] (44.775952746250006, 13.617873683438951, 0.13676738014755063)
+    CV[ 1] (41.286765365791432, 13.467774001958038, -4.0339116302754761)
+  
+  Rhino object: curve
+  name: "LINE"
+  id: B1A6AF91-3D38-46f6-A405-2CD972AC3BE2
+  layer index: 1
+  render material index: -1 (from layer)
+  ON_NurbsCurve dim = 3 is_rat = 0
+          order = 2 cv_count = 2
+  Knot Vector ( 2 knots )
+  index                     value  mult       delta
+      0                        0     1
+      1                        1     1           1
+  Control Points  2 non-rational points
+    index               value
+    CV[ 0] (48.024855969374144, 28.610653011884228, -1.0994915086574215)
+    CV[ 1] (35.840184037964974, 23.873043368497846, -19.79977737194768)
+  
+  Rhino object: curve
+  name: "LINE"
+  id: 5BAEB2F9-C24C-4db7-B816-458205047736
+  layer index: 1
+  render material index: -1 (from layer)
+  ON_NurbsCurve dim = 3 is_rat = 0
+          order = 2 cv_count = 2
+  Knot Vector ( 2 knots )
+  index                     value  mult       delta
+      0                        0     1
+      1                        1     1           1
+  Control Points  2 non-rational points
+    index               value
+    CV[ 0] (30.722677532320304, 52.20226683337787, 2.1021119228509799)
+    CV[ 1] (19.608162787402279, 46.74716783282603, -13.0048661077685)
+  
+  Rhino object: curve
+  name: "LINE"
+  id: 4772448B-1E71-4f7c-85A5-525BDC1F5417
+  layer index: 1
+  render material index: -1 (from layer)
+  ON_NurbsCurve dim = 3 is_rat = 0
+          order = 2 cv_count = 2
+  Knot Vector ( 2 knots )
+  index                     value  mult       delta
+      0                        0     1
+      1                        1     1           1
+  Control Points  2 non-rational points
+    index               value
+    CV[ 0] (3.1639336033207122, 67.012113914286701, 2.8677004226651244)
+    CV[ 1] (20.815026467344726, 54.02322384537689, 3.5746353772589341)
+  
+  Rhino object: curve
+  name: "LINE"
+  id: 86FF00B9-6F5D-489a-B398-67D40A6545D5
+  layer index: 1
+  render material index: -1 (from layer)
+  ON_NurbsCurve dim = 3 is_rat = 0
+          order = 2 cv_count = 2
+  Knot Vector ( 2 knots )
+  index                     value  mult       delta
+      0                        0     1
+      1                        1     1           1
+  Control Points  2 non-rational points
+    index               value
+    CV[ 0] (-11.631583699021572, 7.9027874808896756, 0.40901232073643623)
+    CV[ 1] (-6.9940093429580124, 7.5275658000339156, -8.4418487287528396)
+  
+  Rhino object: curve
+  name: "LINE"
+  id: 1ECA4520-7049-4d34-A857-17B2745611A7
+  layer index: 1
+  render material index: -1 (from layer)
+  ON_NurbsCurve dim = 3 is_rat = 0
+          order = 2 cv_count = 2
+  Knot Vector ( 2 knots )
+  index                     value  mult       delta
+      0                        0     1
+      1                        1     1           1
+  Control Points  2 non-rational points
+    index               value
+    CV[ 0] (-10.279118572871615, 41.483075337327463, -1.7016971925178268)
+    CV[ 1] (-8.2440825492969445, 38.942488804193452, -4.7221000703332745)
+  
+  Rhino object: curve
+  name: "LINE"
+  id: 41A601BF-296D-4f68-9046-8F637C40A511
+  layer index: 1
+  render material index: -1 (from layer)
+  ON_NurbsCurve dim = 3 is_rat = 0
+          order = 2 cv_count = 2
+  Knot Vector ( 2 knots )
+  index                     value  mult       delta
+      0                        0     1
+      1                        1     1           1
+  Control Points  2 non-rational points
+    index               value
+    CV[ 0] (41.820954202838841, 38.345899379972423, -2.3504637639739823)
+    CV[ 1] (26.44318513994784, 31.766930340860625, -17.524120759512282)
+  
+  Rhino object: curve
+  name: "LINE"
+  id: 7FEF1DD5-C682-4572-BDA2-416078194B65
+  layer index: 1
+  render material index: -1 (from layer)
+  ON_NurbsCurve dim = 3 is_rat = 0
+          order = 2 cv_count = 2
+  Knot Vector ( 2 knots )
+  index                     value  mult       delta
+      0                        0     1
+      1                        1     1           1
+  Control Points  2 non-rational points
+    index               value
+    CV[ 0] (14.584130702487263, 65.586390721329948, 1.3472681531047179)
+    CV[ 1] (13.091454118659914, 64.411868095064577, -0.685786819567757)

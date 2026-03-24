@@ -6,6 +6,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 # ── 第三方库 ─────────────────────────────────────
+import os
 import numpy as np
 import pandas as pd
 import pyshtools as pysh
@@ -16,10 +17,10 @@ from SPHARM_modules.spectral_entropy import compute_spectral_entropy
 # ============================================================
 # Parameter configuration
 # ============================================================
-DATA_DIR = "/project/analysis/data/derived_data"
-LMAX     = 20   
-DH_SIZE  = 64  
- 
+BASE_DIR   = "/project/analysis/data/derived_data"
+DATA_DIR   = BASE_DIR
+LMAX       = 20
+DH_SIZE    = 64 
  
 # ============================================================
 # Step 1: 改为加载 Python KDE 输出（.npy + metadata.csv）
@@ -178,8 +179,28 @@ def batch_kde_to_spharm(
 # Entry
 # ============================================================
 if __name__ == "__main__":
- 
-    df_results = batch_kde_to_spharm()
- 
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--source",
+        choices=["xlsx", "lin2024"],
+        default="xlsx",
+        help="data source：xlsx = raw date，lin2024 = Lin 2024 data"
+    )
+    args = parser.parse_args()
+
+    DATA_DIR = os.path.join(BASE_DIR, "lin2024") \
+               if args.source == "lin2024" else BASE_DIR
+
+    output_name = "SPHARM_direction_lin2024.csv" \
+                  if args.source == "lin2024" else "SPHARM_direction.csv"
+
+    df_results = batch_kde_to_spharm(
+        kde_npy      = f"{DATA_DIR}/kde_matrix.npy",
+        grid_npy     = f"{DATA_DIR}/kde_grid.npy",
+        metadata_csv = f"{DATA_DIR}/kde_metadata.csv",
+        output_csv   = f"{BASE_DIR}/{output_name}",
+    )
+
     print("\nMean spectral entropy by typology:")
     print(df_results.groupby("Typology")["spectral_entropy"].mean().round(4))
