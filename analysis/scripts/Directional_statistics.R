@@ -70,17 +70,19 @@ align_svd <- function(df_group) {
   df_group$d_x <- D[,1]; df_group$d_y <- D[,2]; df_group$d_z <- D[,3]
   
   # === Step 2: Translation — Center the rotated plane at the origin ===
-  center         <- as.numeric(df_group[1, c("Pos_X", "Pos_Y", "Pos_Z")])
-  center_rotated <- as.numeric(R1 %*% center)
+  global_center_x <- mean(c(df_group$s_x, df_group$e_x))
+  global_center_y <- mean(c(df_group$s_y, df_group$e_y))
+  global_center_z <- mean(c(df_group$s_z, df_group$e_z))
   
   df_group <- df_group %>%
     mutate(
-      s_x = s_x - center_rotated[1],
-      s_y = s_y - center_rotated[2],
-      s_z = s_z - center_rotated[3],
-      e_x = e_x - center_rotated[1],
-      e_y = e_y - center_rotated[2],
-      e_z = e_z - center_rotated[3]
+      s_x = s_x - global_center_x,
+      s_y = s_y - global_center_y,
+      s_z = s_z - global_center_z,
+      
+      e_x = e_x - global_center_x,
+      e_y = e_y - global_center_y,
+      e_z = e_z - global_center_z
     )
   
   # === Step 3: XY平面内旋转 — 对齐主轴到 X 轴 ===
@@ -265,7 +267,11 @@ build_panel <- function(demo_id) {
   
   s0 <- as.matrix(df[, c("Start_X","Start_Y","Start_Z")])
   e0 <- as.matrix(df[, c("End_X",  "End_Y",  "End_Z"  )])
-  center_raw <- as.numeric(df[1, c("Pos_X","Pos_Y","Pos_Z")])
+  center_raw <- c(
+    mean(c(s0[, 1], e0[, 1])),
+    mean(c(s0[, 2], e0[, 2])),
+    mean(c(s0[, 3], e0[, 3]))
+  )
   
   longest_idx <- which.max(df$Length)
   arr_scale   <- max(dist(s0)) * 0.25
@@ -293,7 +299,11 @@ build_panel <- function(demo_id) {
   R1        <- get_rot_matrix(normal_svd, c(0,0,1))
   s1        <- s0 %*% t(R1)
   e1        <- e0 %*% t(R1)
-  center_r1 <- as.numeric(R1 %*% center_raw)
+  center_r1 <- c(
+    mean(c(s1[, 1], e1[, 1])),
+    mean(c(s1[, 2], e1[, 2])),
+    mean(c(s1[, 3], e1[, 3]))
+  )
   
   # Step 2: Moving the SVD plane center to the global origin
   s2 <- sweep(s1, 2, center_r1, "-")
