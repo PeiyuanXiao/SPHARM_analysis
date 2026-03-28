@@ -26,6 +26,10 @@ align_svd <- function(df_group) {
   len <- sqrt(dx^2 + dy^2 + dz^2)
   valid <- len > 1e-10
   
+  df_group$Direct_X <- ifelse(valid, dx / len, 0)
+  df_group$Direct_Y <- ifelse(valid, dy / len, 0)
+  df_group$Direct_Z <- ifelse(valid, dz / len, 0)
+  
   if (sum(valid) >= 3) {
     U      <- cbind(dx[valid]/len[valid],
                     dy[valid]/len[valid],
@@ -150,26 +154,21 @@ get_rot_matrix <- function(a, b) {
   diag(3) + v_skew + v_skew %*% v_skew * ((1-cos_theta)/sum(v^2))
 }
 
-add_scars_3d <- function(fig, sx, sy, sz, ex, ey, ez,
-                         lengths, highlight_idx = NULL) {
+add_scars_3d <- function(fig, sx, sy, sz, ex, ey, ez) {          # ← 删除 lengths, highlight_idx 参数
   for (i in seq_along(sx)) {
-    is_hl <- !is.null(highlight_idx) && i == highlight_idx
-    clr   <- if (is_hl) "pink" else "steelblue"
-    lwd   <- if (is_hl) 6 else 2
-    csz   <- if (is_hl) 0.08 else 0.05
-    dx <- ex[i] - sx[i]; dy <- ey[i] - sy[i]; dz <- ez[i] - sz[i]
     fig <- fig %>% add_trace(
       type = "scatter3d", mode = "lines",
       x = c(sx[i], ex[i]), y = c(sy[i], ey[i]), z = c(sz[i], ez[i]),
-      line = list(color = clr, width = lwd),
+      line = list(color = "steelblue", width = 2),               # ← 删除高亮逻辑，统一样式
       showlegend = FALSE
     )
+    dx <- ex[i] - sx[i]; dy <- ey[i] - sy[i]; dz <- ez[i] - sz[i]
     fig <- fig %>% add_trace(
       type       = "cone",
       x = list(ex[i]), y = list(ey[i]), z = list(ez[i]),
       u = list(dx),    v = list(dy),    w = list(dz),
-      sizemode   = "scaled", sizeref = csz,
-      colorscale = list(list(0, clr), list(1, clr)),
+      sizemode   = "scaled", sizeref = 0.05,                     # ← 统一箭头大小
+      colorscale = list(list(0, "steelblue"), list(1, "steelblue")),
       cmin = 0, cmax = 1,
       showscale = FALSE, showlegend = FALSE,
       anchor    = "tip",
@@ -273,9 +272,8 @@ build_panel <- function(demo_id) {
     mean(c(s0[, 3], e0[, 3]))
   )
   
-  longest_idx <- which.max(df$Length)
-  arr_scale   <- max(dist(s0)) * 0.25
-  half_sz     <- max(dist(s0)) * 0.55
+  arr_scale <- max(dist(s0)) * 0.25                              # ← 删除 longest_idx
+  half_sz   <- max(dist(s0)) * 0.55
   
   # --- SVD normal vector ---
   dx  <- e0[,1] - s0[,1]
@@ -305,7 +303,7 @@ build_panel <- function(demo_id) {
     mean(c(s1[, 3], e1[, 3]))
   )
   
-  # Step 2: Moving the SVD plane center to the global origin
+  # Step 2: Moving the SVD plane center to the global origin (0,0,0)
   s2 <- sweep(s1, 2, center_r1, "-")
   e2 <- sweep(e1, 2, center_r1, "-")
   
@@ -327,7 +325,7 @@ build_panel <- function(demo_id) {
   # --- Panel 0: Raw data with SVD plane and normal ---
   p0 <- plot_ly() %>%
     add_scars_3d(s0[,1],s0[,2],s0[,3],
-                 e0[,1],e0[,2],e0[,3], df$Length, longest_idx) %>%
+                 e0[,1],e0[,2],e0[,3]) %>%                       # ← 删除 df$Length, longest_idx
     add_arrow_3d(center_raw, normal_svd, arr_scale) %>%
     add_tilted_plane_3d(center_raw, normal_svd, half_sz) %>%
     layout(panel_layout("<b>Step 0</b>: Raw data — SVD normal shown"))
@@ -335,7 +333,7 @@ build_panel <- function(demo_id) {
   # --- Panel 1: Align SVD normal to Z-axis ---
   p1 <- plot_ly() %>%
     add_scars_3d(s1[,1],s1[,2],s1[,3],
-                 e1[,1],e1[,2],e1[,3], df$Length, longest_idx) %>%
+                 e1[,1],e1[,2],e1[,3]) %>%                       # ← 删除 df$Length, longest_idx
     add_arrow_3d(center_r1, c(0,0,1), arr_scale) %>%
     add_plane_3d(center_r1[1], center_r1[2], center_r1[3], half_sz) %>%
     layout(panel_layout("<b>Step 1</b>: Rotate — SVD normal aligned to Z-axis"))
@@ -343,7 +341,7 @@ build_panel <- function(demo_id) {
   # --- Panel 2: Moving the SVD plane center to the global origin (0,0,0) ---
   p2 <- plot_ly() %>%
     add_scars_3d(s2[,1],s2[,2],s2[,3],
-                 e2[,1],e2[,2],e2[,3], df$Length, longest_idx) %>%
+                 e2[,1],e2[,2],e2[,3]) %>%                       # ← 删除 df$Length, longest_idx
     add_arrow_3d(c(0,0,0), c(0,0,1), arr_scale) %>%
     add_plane_3d(0, 0, 0, half_sz) %>%
     layout(panel_layout("<b>Step 2</b>: Translate — center moved to origin"))
@@ -351,7 +349,7 @@ build_panel <- function(demo_id) {
   # --- Panel 3: XY平面内PCA主轴对齐到X轴 ---
   p3 <- plot_ly() %>%
     add_scars_3d(s3[,1],s3[,2],s3[,3],
-                 e3[,1],e3[,2],e3[,3], df$Length, longest_idx) %>%
+                 e3[,1],e3[,2],e3[,3]) %>%                       # ← 删除 df$Length, longest_idx
     add_arrow_3d(c(0,0,0), c(0,0,1), arr_scale) %>%
     add_arrow_3d(c(0,0,0), c(1,0,0), arr_scale, color = "orange") %>%
     add_plane_3d(0, 0, 0, half_sz) %>%
@@ -396,6 +394,7 @@ grid <- browsable(
       "Core Alignment Pipeline  (SVD normal)"
     ),
     
+    # 下拉框
     tags$div(
       style = "text-align:center; margin-bottom:10px;",
       tags$label("Select specimen: ",
@@ -407,23 +406,64 @@ grid <- browsable(
       )
     ),
     
+    # 图例
     tags$p(
       style = "font-family:sans-serif; text-align:center; color:#666;
                margin:0 0 12px; font-size:13px;",
       HTML("&#9642; <b style='color:steelblue'>Blue</b> = Flaking scars &nbsp;|&nbsp;
-            <b style='color:pink'>Pink</b> = Longest scar &nbsp;|&nbsp;
             <b style='color:red'>Red arrow</b> = SVD normal &nbsp;|&nbsp;
             <b style='color:orange'>Orange arrow</b> = PCA main axis (X) &nbsp;|&nbsp;
             <b style='color:lightgray'>Gray plane</b> = SVD best-fit plane")
     ),
     
+    # 四个图 + 注释
     tags$div(
       style = "display:grid; grid-template-columns:1fr 1fr 1fr 1fr;
                gap:8px; padding:0 12px 12px;",
-      tags$div(id="plot0", style="height:480px;"),
-      tags$div(id="plot1", style="height:480px;"),
-      tags$div(id="plot2", style="height:480px;"),
-      tags$div(id="plot3", style="height:480px;")
+      
+      tags$div(
+        tags$div(id="plot0", style="height:480px;"),
+        tags$p(
+          style = "font-family:sans-serif; font-size:12px; color:#444;
+                   text-align:center; margin:4px 8px 12px;",
+          HTML("Compute unit direction vectors from scar endpoints.<br>
+                SVD decomposition extracts the 3rd right singular vector<br>
+                as the <b>best-fit plane normal</b> of the scar distribution.")
+        )
+      ),
+      
+      tags$div(
+        tags$div(id="plot1", style="height:480px;"),
+        tags$p(
+          style = "font-family:sans-serif; font-size:12px; color:#444;
+                   text-align:center; margin:4px 8px 12px;",
+          HTML("Construct rotation matrix R&#8321; via Rodrigues' formula.<br>
+                Rotate all coordinates so the SVD normal aligns with <b>Z-axis</b>.<br>
+                The scar plane now lies flat in the XY plane.")
+        )
+      ),
+      
+      tags$div(
+        tags$div(id="plot2", style="height:480px;"),
+        tags$p(
+          style = "font-family:sans-serif; font-size:12px; color:#444;
+                   text-align:center; margin:4px 8px 12px;",
+          HTML("Compute the centroid of all scar endpoints in rotated space.<br>
+                Subtract centroid from all coordinates to <b>center the cloud at origin</b>.<br>
+                Removes positional bias between specimens.")
+        )
+      ),
+      
+      tags$div(
+        tags$div(id="plot3", style="height:480px;"),
+        tags$p(
+          style = "font-family:sans-serif; font-size:12px; color:#444;
+                   text-align:center; margin:4px 8px 12px;",
+          HTML("SVD on XY projections of direction vectors finds the <b>main axis</b>.<br>
+                Rotation matrix R&#8322; aligns this axis to the <b>X-axis</b>.<br>
+                All specimens now share a canonical orientation for comparison.")
+        )
+      )
     ),
     
     tags$script(HTML(paste0(
