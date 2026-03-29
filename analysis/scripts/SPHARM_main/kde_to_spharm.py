@@ -13,17 +13,18 @@ import pyshtools as pysh
 
 # ── 本地模块 ─────────────────────────────────────
 from SPHARM_modules.spectral_entropy import compute_spectral_entropy
- 
+
 # ============================================================
 # Parameter configuration
 # ============================================================
 BASE_DIR   = "/project/analysis/data/derived_data"
 DATA_DIR   = BASE_DIR
 LMAX       = 20
-DH_SIZE    = 64 
- 
+DH_SIZE    = 64
+
+
 # ============================================================
-# Step 1: 改为加载 Python KDE 输出（.npy + metadata.csv）
+# Step 1: Load Python KDE outputs (.npy + metadata.csv)
 # ============================================================
 def load_python_kde(
     kde_npy:      str = f"{DATA_DIR}/kde_matrix.npy",
@@ -39,11 +40,10 @@ def load_python_kde(
     sphere_grid : DataFrame, columns: x, y, z, bearing, plunge
     meta        : DataFrame, columns: ID, Typology
     """
-    kde_matrix = np.load(kde_npy)                      # (n_cores, n_grid)
-    G          = np.load(grid_npy)                     # (n_grid, 3)
-    meta       = pd.read_csv(metadata_csv)             # ID, Typology, n_scars
+    kde_matrix = np.load(kde_npy)
+    G          = np.load(grid_npy)
+    meta       = pd.read_csv(metadata_csv)
 
-    # 从 xyz 还原 bearing 和 plunge，与原版 sphere_grid 格式一致
     sphere_grid = pd.DataFrame({
         "x":       G[:, 0],
         "y":       G[:, 1],
@@ -57,8 +57,9 @@ def load_python_kde(
     print(f"Typology distribution:\n"
           f"{meta['Typology'].value_counts().to_string()}\n")
 
-    return kde_matrix, sphere_grid, meta 
- 
+    return kde_matrix, sphere_grid, meta
+
+
 # ============================================================
 # Step 2: SKDE vector → DH standard 2D grid (vectorized vMF interpolation)
 # ============================================================
@@ -100,18 +101,20 @@ def kde_vector_to_dh_grid(kde_vec: np.ndarray,
     grid_2d    /= area_sum if area_sum > 0 else 1.0
 
     return grid_2d
- 
+
+
 # ============================================================
 # Step 3: DH grid → spherical harmonic expansion → power spectrum + spectral entropy
 # ============================================================
 def compute_spharm_features(grid_2d: np.ndarray,
                              lmax: int = LMAX) -> dict:
     """
-    Perform spherical harmonic expansion on the DH grid and return the power spectrum and spectral entropy
+    Perform spherical harmonic expansion on the DH grid
+    and return the power spectrum and spectral entropy.
     """
     sh_grid = pysh.SHGrid.from_array(grid_2d, grid='DH')
     clm     = sh_grid.expand(lmax_calc=lmax)
- 
+
     feats = compute_spectral_entropy(clm, lmax=lmax)
 
     return {
@@ -121,8 +124,60 @@ def compute_spharm_features(grid_2d: np.ndarray,
         "she"              : feats["SHE"],
         "coeffs_flat"      : clm.coeffs.flatten(),
     }
- 
- 
+
+
+# ============================================================
+# [修改] 新增：方差分析函数
+#   对所有标本的每个球谐阶功率值计算跨标本方差，
+#   与 SPHARM_main 的 statistics_analysis 输出格式一致。
+# ============================================================
+def compute_variance_analysis(df_out: pd.DataFrame,
+                               lmax: int,
+                               output_csv: str) -> pd.DataFrame:
+    """
+    Compute per-degree variance of normalised power across all specimens.
+
+    Parameters
+    ----------
+    df_out     : DataFrame output from batch_kde_to_spharm
+    lmax       : maximum spherical harmonic degree
+    output_csv : path to save variance CSV
+
+    Returns
+    -------
+    df_var : DataFrame with columns [degree, variance]
+    """
+    power_cols = [f"power_l{l}" for l in range(lmax + 1)]
+    available  = [c for c in power_cols if c in df_out.columns]
+
+    variances = df_out[available].var(axis=0).values
+    degrees   = list(range(len(variances)))
+
+    df_var = pd.DataFrame({
+        "degree":   degrees,
+        "variance": variances,
+    })
+
+    df_var.to_csv(output_csv, index=False)
+
+    # Console summary
+    print("\n==== Variance Analysis (Direction SPHARM) ====")
+    print(f"Samples:       {len(df_out)}")
+    print(f"Max variance:  {variances.max():.4f} (degree {variances.argmax()})")
+    print(f"Min variance:  {variances.min():.4f} (degree {variances.argmin()})")
+    print(f"Mean variance: {variances.mean():.4f}")
+    print("\nTop 5 degrees by variance:")
+    top5 = df_var.nlargest(5, "variance")
+    for rank, (_, row) in enumerate(top5.iterrows(), 1):
+        print(f"  Rank {rank}: degree {int(row['degree'])} → {row['variance']:.4f}")
+    print(f"\nSaved variance analysis: {output_csv}")
+
+    return df_var
+# ============================================================
+# [修改结束]
+# ============================================================
+
+
 # ============================================================
 # Step 4: Batch processing
 # ============================================================
@@ -137,18 +192,18 @@ def batch_kde_to_spharm(
     kde_matrix, sphere_grid, meta = load_python_kde(kde_npy, grid_npy, metadata_csv)
     n_cores = kde_matrix.shape[0]
     rows    = []
- 
+
     print(f"Starting spherical harmonic expansion (lmax={lmax}, DH grid={dh_size}×{dh_size*2})\n")
- 
+
     for i in range(n_cores):
         specimen_id = meta["ID"].iloc[i]
         typology    = meta["Typology"].iloc[i]
         print(f"  [{i+1}/{n_cores}] {specimen_id}（{typology}）", end="  ")
- 
+
         try:
             grid_2d = kde_vector_to_dh_grid(kde_matrix[i], sphere_grid, dh_size=dh_size)
             feats   = compute_spharm_features(grid_2d, lmax=lmax)
- 
+
             row = {
                 "ID"               : specimen_id,
                 "Typology"         : typology,
@@ -159,22 +214,36 @@ def batch_kde_to_spharm(
                 row[f"power_l{l}"] = round(float(p), 8)
             for j, c in enumerate(feats["coeffs_flat"]):
                 row[f"coeff_{j}"] = round(float(np.real(c)), 8)
- 
+
             rows.append(row)
             print(f"H={feats['spectral_entropy']:.4f}  SHE={feats['she']:.6f}  ✓")
- 
+
         except Exception as e:
             print(f"✗ Error：{e}")
             rows.append({"ID": specimen_id, "Typology": typology})
- 
+
     df_out = pd.DataFrame(rows)
     df_out.to_csv(output_csv, index=False)
     print(f"\nCompleted! Results saved to: {output_csv}")
-    print(f"Total {len(df_out)} cores processed; power spectrum columns: power_l0–power_l{lmax}, spectral entropy column: spectral_entropy")
- 
+    print(f"Total {len(df_out)} cores processed; "
+          f"power spectrum columns: power_l0–power_l{lmax}, "
+          f"spectral entropy column: spectral_entropy")
+
+    # ============================================================
+    # [修改] 批处理完成后自动运行方差分析
+    # ============================================================
+    variance_csv = output_csv.replace(".csv", "_variance_per_degree.csv")
+    try:
+        compute_variance_analysis(df_out, lmax, variance_csv)
+    except Exception as e:
+        print(f"Variance analysis failed (non-critical): {e}")
+    # ============================================================
+    # [修改结束]
+    # ============================================================
+
     return df_out
- 
- 
+
+
 # ============================================================
 # Entry
 # ============================================================
@@ -185,7 +254,7 @@ if __name__ == "__main__":
         "--source",
         choices=["xlsx", "lin2024"],
         default="xlsx",
-        help="data source：xlsx = raw date，lin2024 = Lin 2024 data"
+        help="data source：xlsx = raw data，lin2024 = Lin 2024 data"
     )
     args = parser.parse_args()
 

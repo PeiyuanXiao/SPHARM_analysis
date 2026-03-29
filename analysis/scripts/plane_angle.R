@@ -67,8 +67,7 @@ compute_plane_deviation <- function(df_group) {
 
 deviation_results <- IM_data %>%
   group_by(ID) %>%
-  group_map(~ compute_plane_deviation(.x), .keep = TRUE) %>%
-  bind_rows()
+  group_modify(~ compute_plane_deviation(.x))
 
 print(deviation_results)
 

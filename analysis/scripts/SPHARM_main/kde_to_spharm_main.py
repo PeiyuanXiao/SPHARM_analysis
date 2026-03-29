@@ -46,10 +46,14 @@ N_PLUNGE    = 36
 
 def load_data(path: str) -> pd.DataFrame:
     if path.endswith(".xlsx"):
-        df = pd.read_excel(path)
+        # [修改] 读取所有 sheet 并合并，支持理想模型和考古标本分 sheet 存放
+        all_sheets = pd.read_excel(path, sheet_name=None)
+        df = pd.concat(all_sheets.values(), ignore_index=True)
+        print(f"Loaded {len(df)} rows from {os.path.basename(path)} "
+              f"({len(all_sheets)} sheets: {list(all_sheets.keys())})")
+        # [修改结束]
     else:
         df = pd.read_csv(path)
-    print(f"Loaded {len(df)} rows from {os.path.basename(path)}")
     print(f"Columns: {list(df.columns)}\n")
     return df
 
@@ -117,7 +121,17 @@ def align_group(df_group: pd.DataFrame) -> pd.DataFrame:
 
     S1 = df[["Start_X", "Start_Y", "Start_Z"]].values @ R1.T
     E1 = df[["End_X",   "End_Y",   "End_Z"  ]].values @ R1.T
-    D1 = df[["Direct_X","Direct_Y","Direct_Z"]].values @ R1.T
+
+    # ============================================================
+    # [修改] Direct_X/Y/Z 已从数据表删除，改为从端点坐标重建单位方向向量
+    # ============================================================
+    dv_raw = df[["End_X","End_Y","End_Z"]].values - df[["Start_X","Start_Y","Start_Z"]].values
+    dv_len = np.linalg.norm(dv_raw, axis=1, keepdims=True)
+    dv_len = np.where(dv_len < 1e-10, 1.0, dv_len)
+    D1 = (dv_raw / dv_len) @ R1.T
+    # ============================================================
+    # [修改结束]
+    # ============================================================
 
     # Step 2: Translate centre to origin
     centre    = df[["Pos_X", "Pos_Y", "Pos_Z"]].iloc[0].values
