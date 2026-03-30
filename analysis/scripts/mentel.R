@@ -7,7 +7,7 @@ library(patchwork)
 # ============================================================
 # Step 1：统一ID列名并严格对齐标本
 # ============================================================
-df_morph <- SPHARM_morphology_filter %>% rename(ID = specimen_id)
+df_morph <- SPHARM_morphology_filter %>% rename(ID = ID)
 df_scar  <- SPHARM_direction_filter  %>% rename(ID = ID)
 
 # 找出两个数据集中共有的标本 ID（避免因为个别标本缺失导致矩阵错位）
@@ -25,7 +25,7 @@ cat("ID是否完全匹配：", all(df_morph$ID == df_scar$ID), "\n\n")
 # ============================================================
 # 提取形态矩阵 (M1-M5)
 morph_power <- df_morph %>%
-  select(power_degree_1:power_degree_5) %>%
+  select(power_l1:power_l5) %>%
   rename_with(~ paste0("M", 1:5)) %>%
   as.data.frame()
 
@@ -87,8 +87,8 @@ mantel_rows_full <- map_dfr(colnames(spec_df_full), function(var) {
   # 对单一变量计算欧式距离
   d_x <- dist(scale(x))
   
-  res_m <- mantel(d_x, D_morph, method = "spearman", permutations = N_PERM)
-  res_s <- mantel(d_x, D_scar,  method = "spearman", permutations = N_PERM)
+  res_m <- mantel(d_x, D_morph, method = "spearman", permutations = 9999)
+  res_s <- mantel(d_x, D_scar,  method = "spearman", permutations = 9999)
   
   bind_rows(
     tibble(spec = "Morphology",     env = var,

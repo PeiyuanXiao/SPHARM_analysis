@@ -1,4 +1,3 @@
-
 import numpy as np
 import pandas as pd
  
@@ -10,28 +9,34 @@ import pandas as pd
 def make_sphere_grid(n_bearing: int = 72, n_plunge: int = 36) -> np.ndarray:
     """
     Build a uniform evaluation grid on the unit sphere.
- 
+
     Parameters
     ----------
     n_bearing : int
         Number of azimuthal divisions (longitude), default 72 → 5° steps.
     n_plunge : int
-        Number of elevation divisions (latitude), default 36 → ~5° steps.
-        Endpoints are clamped to ±0.95 * π/2 to avoid polar singularities.
- 
+        Number of elevation divisions (latitude), default 36 → 5° steps.
+        The grid covers the full sphere from −90° to +90° (poles included).
+        A small epsilon is applied only at the exact poles to avoid
+        coordinate singularities in downstream spherical-coordinate
+        conversions, while keeping effective angular coverage at > 99.9%.
+
     Returns
     -------
     G : np.ndarray, shape (n_bearing * n_plunge, 3)
         Unit vectors for each grid point (x, y, z).
     """
+    # Include poles with a tiny epsilon guard (0.01°) to avoid
+    # sin(colat)=0 singularities in spherical-coordinate conversions.
+    eps     = np.deg2rad(0.01)
     bearing = np.linspace(0, 2 * np.pi, n_bearing, endpoint=False)
-    plunge  = np.linspace(-np.pi / 2 * 0.95, np.pi / 2 * 0.95, n_plunge)
- 
+    plunge  = np.linspace(-np.pi / 2 + eps, np.pi / 2 - eps, n_plunge)
+
     b, p = np.meshgrid(bearing, plunge)
     x = np.cos(p) * np.cos(b)
     y = np.cos(p) * np.sin(b)
     z = np.sin(p)
- 
+
     G = np.column_stack([x.ravel(), y.ravel(), z.ravel()])
     return G
  
@@ -164,4 +169,3 @@ def batch_spherical_kde(
         "typologies": typologies,
         "n_scars":    n_scars,
     }
-

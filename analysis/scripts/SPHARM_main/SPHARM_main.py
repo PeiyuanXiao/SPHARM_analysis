@@ -30,16 +30,13 @@ GRID_SIZE    = 256
 LMAX         = 20
 
 # ============================================================
-# [修改] 预降采样参数
+# 预降采样参数
 #   PRE_DECIMATE_THRESHOLD : 面片数超过此值时触发预降采样
 #   PRE_DECIMATE_TARGET    : 预降采样目标面片数
 #   （预降采样后仍会经过 open3d 降至 TARGET_FACES）
 # ============================================================
 PRE_DECIMATE_THRESHOLD = 3_000_000
 PRE_DECIMATE_TARGET    = 500_000
-# ============================================================
-# [修改结束]
-# ============================================================
 
 
 def process_single_mesh(stl_path):
@@ -50,13 +47,13 @@ def process_single_mesh(stl_path):
     specimen_id = os.path.splitext(os.path.basename(stl_path))[0]
 
     # ============================================================
-    # [修改] 统一用 open3d 处理所有文件（ASCII 和二进制），消除
-    #        igl / open3d 混用的方法论不一致问题。
-    #        流程：
-    #          1. 读取文件头判断格式，获取面片数
-    #          2. 超过阈值 → 预降采样到 PRE_DECIMATE_TARGET
-    #             未超过阈值 → 直接加载
-    #          3. open3d.simplify_quadric_decimation 统一降至 TARGET_FACES
+    # 统一用 open3d 处理所有文件（ASCII 和二进制），消除
+    # igl / open3d 混用的方法论不一致问题。
+    # 流程：
+    #   1. 读取文件头判断格式，获取面片数
+    #   2. 超过阈值 → 预降采样到 PRE_DECIMATE_TARGET
+    #      未超过阈值 → 直接加载
+    #   3. open3d.simplify_quadric_decimation 统一降至 TARGET_FACES
     # ============================================================
     tmp_path = None
 
@@ -112,14 +109,9 @@ def process_single_mesh(stl_path):
         else:
             load_path  = stl_path
             need_final = True
-    # ============================================================
-    # [修改结束]
-    # ============================================================
 
     try:
-        # ============================================================
-        # [修改] 统一降采样：所有路径经此步用 open3d 降至 TARGET_FACES
-        # ============================================================
+        # 统一降采样：所有路径经此步用 open3d 降至 TARGET_FACES
         if is_ascii and n_raw <= PRE_DECIMATE_THRESHOLD:
             o3d_mesh_final = o3d_mesh_hold
         else:
@@ -133,9 +125,6 @@ def process_single_mesh(stl_path):
 
         if n_faces == 0:
             raise ValueError("open3d.simplify_quadric_decimation returned empty mesh")
-        # ============================================================
-        # [修改结束]
-        # ============================================================
 
         # 3. Smooth
         valid_mask = np.all(decimated_faces < len(decimated_vertices), axis=1)
@@ -153,7 +142,9 @@ def process_single_mesh(stl_path):
         normalized_vertices = mesh_processing.normalize_mesh(
                                   decimated_vertices, decimated_faces)
         aligned_vertices, _ = pca_align.robust_pca_alignment(
-                                  normalized_vertices, enforce_direction=True)
+                                  normalized_vertices,
+                                  faces=decimated_faces,
+                                  enforce_direction=True)
 
         # 5. Spherical coordinate interpolation
         spherical_coords = spherical_harmonics.cartesian_to_spherical(aligned_vertices)
@@ -176,13 +167,13 @@ def process_single_mesh(stl_path):
 
         # 8. Construct result row
         row = {
-            "specimen_id":       specimen_id,
+            "ID":                specimen_id,
             "SHE":               SHE,
             "spectral_entropy":  round(spectral_entropy, 6),
             "n_faces_original":  int(n_raw),
         }
         for l, p in enumerate(norm_power):
-            row[f"power_degree_{l}"] = float(p)
+            row[f"power_l{l}"] = float(p)
         for j, c in enumerate(clm_sh.coeffs.flatten()):
             row[f"coeff_{j}"] = float(np.real(c))
 
@@ -209,17 +200,18 @@ def batch_process(input_dir, output_dir):
     total = len(stl_files)
 
     # Resume processing from last checkpoint
+    # [修改] 读取已处理ID时使用统一列名 "id"
     processed_ids  = set()
     header_written = False
     if os.path.exists(output_csv):
         df_existing    = pd.read_csv(output_csv)
-        processed_ids  = set(df_existing["specimen_id"].astype(str).tolist())
+        processed_ids  = set(df_existing["ID"].astype(str).tolist())
         header_written = True
 
     failed_ids = set()
     if os.path.exists(failed_csv):
         df_failed  = pd.read_csv(failed_csv)
-        failed_ids = set(df_failed["specimen_id"].astype(str).tolist())
+        failed_ids = set(df_failed["ID"].astype(str).tolist())
 
     stl_files_todo = [
         f for f in stl_files
@@ -258,8 +250,8 @@ def batch_process(input_dir, output_dir):
                 print(f"  ✗ Error: {specimen_id}: {e}")
                 import traceback
                 traceback.print_exc()
-                failed_rows.append({"specimen_id": specimen_id,
-                                    "error": str(e)})
+                # [修改] failed_csv 也使用统一列名 "id"
+                failed_rows.append({"ID": specimen_id, "error": str(e)})
                 fail_count += 1
 
         if failed_rows:

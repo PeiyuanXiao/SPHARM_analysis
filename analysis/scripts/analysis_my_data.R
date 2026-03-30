@@ -5,6 +5,8 @@ library(umap)
 library(htmlwidgets)
 library(vegan)
 library(ggrepel)
+library(readxl)
+library(glue)
 # ============================================================
 # 读取数据
 # ============================================================
@@ -16,6 +18,11 @@ variance_direction <-
   read_csv("analysis/data/derived_data/SPHARM_direction_variance_per_degree.csv")
 variance_morphology <- 
   read_csv("analysis/data/derived_data/variance_per_degree.csv")
+
+metric_data <- 
+  read_xlsx("analysis/data/raw_data/SDG_core_metric.xlsx") %>%
+  select(ID, Layer, Core_type_Li_merged, Raw_mat)
+
 
 # ==============================================================================
 # 方差贡献折线图-筛选阶数
@@ -67,139 +74,168 @@ SPHARM_direction_filter <- SPHARM_direction %>%
     SHE,                 
     spectral_entropy,
     power_l1:power_l5  
-  )
+  ) %>%
+  left_join(metric_data, by = "ID")
 
 SPHARM_morphology_filter <- SPHARM_morphology %>%
   select(
-    specimen_id,   
+    ID,   
     SHE,                  
     spectral_entropy,
-    power_degree_1:power_degree_5  
-  )
+    power_l1:power_l5  
+  ) %>%
+  left_join(metric_data, by = "ID")
 
 print(SPHARM_direction_filter)
 print(SPHARM_morphology_filter)
 
+set.seed(42)
+
 # ============================================================
 # UMAP
 # ============================================================
-# 1. 准备数据：提取数值矩阵并进行简单预处理
-umap_input <- df %>% 
-  select(all_of(power_cols)) %>% 
-  as.matrix()
-
-# 2. 运行 UMAP (设置随机种子保证结果可重复)
-set.seed(42) 
-umap_config <- umap.defaults
-umap_results <- umap(umap_input, config = umap_config)
-
-# 3. 将结果合并回原始数据框
-df_umap <- df %>%
-  mutate(
-    UMAP1 = umap_results$layout[, 1],
-    UMAP2 = umap_results$layout[, 2]
-  )
-
-# 4. 绘制 UMAP 散点图
-df_hull <- df_umap %>%
-  group_by(Typology) %>%
-  slice(chull(UMAP1, UMAP2)) %>%
-  ungroup()
-
-  ggplot(df_umap, aes(x = UMAP1, y = UMAP2)) +
-  geom_point(data = transform(df_umap, Typology = NULL), 
-             color = "grey90", size = 1) +
-  geom_polygon(data = df_hull, aes(fill = Typology), alpha = 0.3) +
-  geom_point(aes(color = Typology), size = 1.5) +
-  facet_wrap(~Typology, ncol = 4) +
-  theme_bw(base_size = 10) +
-  theme(legend.position = "none", strip.background = element_blank())
-
-
-
-
-  # 【极度重要】：UMAP 是随机算法，设置随机种子保证每次跑出来的图一模一样
-  set.seed(42) 
+run_umap_pair <- function(morph_filter, scar_filter, color_var, color_title) {
   
-  # ============================================================
-  # Step 1: 形态学数据 (Morphology) UMAP 降维
-  # ============================================================
-  # 1. 提取用于降维的纯数字特征矩阵 (只用 1-5 阶)
-  morph_features <- SPHARM_morphology_filter %>%
-    select(power_degree_1:power_degree_5) %>%
+  # ── Morphology ──────────────────────────────────────────
+  morph_features <- morph_filter %>%
+    select(power_l1:power_l5) %>%
     as.matrix()
   
-  # 2. 运行 UMAP 算法
-  # 注意：因为你的理想模型样本量很小(约10个)，我们需要调小 n_neighbors 参数，否则 UMAP 会报错
-  umap_morph <- umap(morph_features, n_neighbors = 3, random_state = 42)
+  umap_morph <- umap(morph_features, n_neighbors = 5, random_state = 42)
   
-  # 3. 构建绘图数据框
   df_umap_morph <- data.frame(
-    ID    = SPHARM_morphology_filter$specimen_id,
+    ID    = morph_filter$ID,
+    color = as.factor(morph_filter[[color_var]]),
     UMAP1 = umap_morph$layout[, 1],
     UMAP2 = umap_morph$layout[, 2]
   )
   
-  # 4. 绘制形态学 UMAP 图
-  p_morph <- ggplot(df_umap_morph, aes(x = UMAP1, y = UMAP2, color = ID)) +
-    geom_point(size = 4, alpha = 0.8) +
-    geom_text_repel(aes(label = ID), size = 3, show.legend = FALSE, max.overlaps = 20) +
-    scale_color_viridis_d(option = "turbo") + # 使用高对比度离散配色
-    theme_minimal() +
-    labs(
-      title = "UMAP: Overall Morphology",
-      subtitle = "Based on SPHARM Degrees 1-5",
-      x = "UMAP 1", y = "UMAP 2"
-    ) +
-    theme(
-      plot.title    = element_text(face = "bold", hjust = 0.5),
-      plot.subtitle = element_text(hjust = 0.5, color = "grey40"),
-      legend.position = "none", # 名字已经在图上了，关掉图例让图面更干净
-      panel.border  = element_rect(color = "black", fill = NA, size = 0.5)
-    )
-  
-  # ============================================================
-  # Step 2: 片疤方向数据 (Scar Direction) UMAP 降维
-  # ============================================================
-  # 1. 提取特征
-  scar_features <- SPHARM_direction_filter %>%
+  # ── Scar Direction ───────────────────────────────────────
+  scar_features <- scar_filter %>%
     select(power_l1:power_l5) %>%
     as.matrix()
   
-  # 2. 运行 UMAP (同样调整 n_neighbors)
-  umap_scar <- umap(scar_features, n_neighbors = 3, random_state = 42)
+  umap_scar <- umap(scar_features, n_neighbors = 5, random_state = 42)
   
-  # 3. 构建绘图数据框
   df_umap_scar <- data.frame(
-    ID    = SPHARM_direction_filter$ID,
+    ID    = scar_filter$ID,
+    color = as.factor(scar_filter[[color_var]]),
     UMAP1 = umap_scar$layout[, 1],
     UMAP2 = umap_scar$layout[, 2]
   )
   
-  # 4. 绘制片疤方向 UMAP 图
-  p_scar <- ggplot(df_umap_scar, aes(x = UMAP1, y = UMAP2, color = ID)) +
-    geom_point(size = 4, alpha = 0.8) +
-    geom_text_repel(aes(label = ID), size = 3, show.legend = FALSE, max.overlaps = 20) +
-    scale_color_viridis_d(option = "turbo") +
-    theme_minimal() +
-    labs(
-      title = "UMAP: Scar Direction Pattern",
-      subtitle = "Based on SPHARM Degrees 1-5",
-      x = "UMAP 1", y = "UMAP 2"
-    ) +
-    theme(
-      plot.title    = element_text(face = "bold", hjust = 0.5),
-      plot.subtitle = element_text(hjust = 0.5, color = "grey40"),
-      legend.position = "none",
-      panel.border  = element_rect(color = "black", fill = NA, size = 0.5)
+  # ── 统一颜色 ─────────────────────────────────────────────
+  # 两图用同一套离散色板，保证颜色含义一致
+  all_levels <- union(
+    as.character(unique(df_umap_morph$color)),
+    as.character(unique(df_umap_scar$color))
+  ) %>% sort()
+  
+  color_palette <- setNames(
+    scales::hue_pal()(length(all_levels)),
+    all_levels
+  )
+  
+  # ── 绘图函数（内部复用）──────────────────────────────────
+  make_umap_plot <- function(df, subtitle) {
+    ggplot(df, aes(x = UMAP1, y = UMAP2, color = color)) +
+      geom_point(size = 3.5, alpha = 0.85) +
+      geom_text_repel(
+        data     = df %>% filter(startsWith(as.character(ID), "IM_")),
+        aes(label = ID),
+        size          = 2.8,
+        show.legend   = FALSE,
+        max.overlaps  = 20,
+        segment.color = "grey60",
+        fontface      = "italic"
+      ) +
+      scale_color_manual(
+        values = color_palette,
+        name   = color_title,
+        drop   = FALSE
+      ) +
+      theme_minimal(base_size = 11) +
+      labs(
+        subtitle = subtitle,
+        x = "UMAP 1",
+        y = "UMAP 2"
+      ) +
+      theme(
+        plot.subtitle = element_text(hjust = 0.5, color = "grey30", size = 10),
+        legend.position  = "right",
+        legend.title     = element_text(face = "bold", size = 9),
+        legend.text      = element_text(size = 8),
+        panel.border     = element_rect(color = "black", fill = NA, linewidth = 0.5),
+        panel.grid.minor = element_blank()
+      )
+  }
+  
+  p_morph <- make_umap_plot(df_umap_morph, "Overall Morphology (Degrees 1–5)")
+  p_scar  <- make_umap_plot(df_umap_scar,  "Scar Direction Pattern (Degrees 1–5)")
+  
+  # ── 拼图 ─────────────────────────────────────────────────
+  p_combined <- (p_morph + p_scar) +
+    plot_layout(guides = "collect") +         
+    plot_annotation(
+      theme   = theme(
+        plot.title    = element_text(face = "bold", hjust = 0.5, size = 13),
+        plot.subtitle = element_text(hjust = 0.5, color = "grey40", size = 10)
+      )
     )
   
-  # ============================================================
-  # Step 3: 合并图像并输出
-  # ============================================================
-  # 使用 patchwork 包极其简单的加号语法拼接图像
-  p_combined <- p_morph + p_scar
-  
-  # 打印显示
-  print(p_combined)
-  
+  return(p_combined)
+}
+
+# ============================================================
+# 生成三张图
+# ============================================================
+
+p_layer <- run_umap_pair(
+  SPHARM_morphology_filter,
+  SPHARM_direction_filter,
+  color_var   = "Layer",
+  color_title = "Layer"
+)
+
+p_coretype <- run_umap_pair(
+  SPHARM_morphology_filter,
+  SPHARM_direction_filter,
+  color_var   = "Core_type_Li_merged",
+  color_title = "Core Type"
+)
+
+p_rawmat <- run_umap_pair(
+  SPHARM_morphology_filter,
+  SPHARM_direction_filter,
+  color_var   = "Raw_mat",
+  color_title = "Raw Material"
+)
+
+# ============================================================
+# 打印 & 保存
+# ============================================================
+print(p_layer)
+print(p_coretype)
+print(p_rawmat)
+
+ggsave(
+  "analysis/data/derived_data/UMAP_by_Layer.png",
+  plot = p_layer, width = 12, height = 5.5, dpi = 300
+)
+ggsave(
+  "analysis/data/derived_data/UMAP_by_CoreType.png",
+  plot = p_coretype, width = 12, height = 5.5, dpi = 300
+)
+ggsave(
+  "analysis/data/derived_data/UMAP_by_RawMat.png",
+  plot = p_rawmat, width = 12, height = 5.5, dpi = 300
+)
+
+
+
+
+
+
+
+
+
