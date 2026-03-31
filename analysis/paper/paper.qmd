@@ -64,53 +64,61 @@ Highlights: `r rmarkdown::metadata$highlights`
 
 # Introduction
 
-石核是保留剥坯策略信息最多的石制品类型，对理解古人类的技术行为具有相当重要的地位。传统分析主要基于操作链方法，通过定性观察判断片疤模式和石核形态，进而理解剥坯策略。近二十年来，越来越多的石制品分析转向定量方法，极大拓展了石制品分析的科学性和可重复性。这些成果包括对多元统计分析的应用、基于地标点或傅里叶级数的2D几何形态计量分析、以及基于三维模型的分析等。但是，目前这些分析多针对于形态，而缺少对剥坯方向的系统研究；此外，这些研究的方法主要是碎片式的，即针对传统的技术定义选择测量值，这会大大限制方法对不同石核类型或不同年代组合石制品的分析能力，因而缺乏可推广性。
+Cores preserve the most complete record of reduction strategies among all lithic artifact types, making them indispensable for understanding hominin technological behavior. Traditional analyses have relied primarily on the *chaîne opératoire* framework, employing qualitative observations of scar patterns and core morphology to infer reduction strategies. Over the past two decades, lithic studies have witnessed a marked shift toward quantitative approaches, substantially enhancing the scientific rigor and reproducibility of lithic analysis. These advances include the application of multivariate statistical methods, 2D geometric morphometric analyses based on landmarks or Fourier series, and morphological analyses derived from 3D models.
 
-基于此，本研究旨在提出一套新的石核定量分析框架，以解决两个问题：1.提升石核片疤方向分析方法；2.基于统一的数学框架统合片疤分析和形态分析，并采用专门多元统计方法。这一完整的分析框架，以期为石核定量分析做出贡献。
+Despite these developments, existing quantitative studies have largely focused on morphological description, leaving the systematic analysis of flaking direction comparatively underdeveloped. To date, only two studies have addressed this issue directly — Clarkson (2006) and Lin et al. (2024) — yet both rely on one or two variables to characterize overall scar patterns, inevitably entailing a loss of information. This limitation is evident in their capacity to discriminate certain scar configurations: the SPI method struggles to differentiate discoidal cores from Levallois cores, while the Lin's method has difficulty distinguishing unipolar from bipolar reduction patterns. More broadly, most existing approaches are methodologically fragmented, with variables selected *a priori* to match predefined technological categories. This constrains their applicability across different core types and assemblages from different periods, and ultimately limits their generalizability.
+
+Against this background, the present study proposes a new quantitative analytical framework for cores, designed to address two interrelated problems: (1) to improve methods for analyzing flaking pattern on cores; and (2) to integrate scar pattern analysis and morphological analysis within a unified mathematical framework, supported by multivariate statistical methods. By presenting this comprehensive analytical framework, the study aims to offer a methodological contribution to the quantitative study of core analysis.
 
 # Material and Methods
 
-2.1 研究材料
+**2.1 Materials**
 
-理想石核模型，基于Lin et al (2024)。
+Ideal core models: one ideal model per core type, sourced from Lin et al. (2024).
 
-打制实验模型by Clarkson，基于Lin et al (2024)（等待邮件回信）。
+Experimental knapping models by Clarkson: 1–22 specimens per core type, 59 specimens in total, sourced from Lin et al. (2024) (awaiting email confirmation).
 
-考古标本，Sandinggai遗址，基于Li et al (2022)。
+Archaeological specimens from the Sandinggai site: after excluding incomplete cores and tested cores, 55 specimens remain. Specimens derive from Layers 2, 3, and 4 of the site; however, as only two specimens come from Layer 2, statistical analyses in this study are restricted to Layers 3 and 4. Data sourced from Li et al. (2022).
 
-2.2 研究方法
+**2.2 Methods**
 
-2.2.1 数据提取
+**2.2.1 Data Extraction**
 
-在Geomagic Wrap2021软件中标定片疤方向，然后直接导出其向量坐标。由于本研究所涉及计算指标均具备旋转不变特征，因此是否进行旋转对齐不影响分析。
+Scar orientations were digitized in Geomagic Wrap 2021, and their vector coordinates were exported directly. Since all metrics employed in this study are rotationally invariant, rotational alignment of the specimens does not affect the analyses.
 
-2.2.2 球谐函数分析
+**2.2.2 Spherical Harmonic Analysis**
 
-球谐函数是椭圆傅里叶分析在三维空间的推广。其数学原理...。目前，已有部分案例在石器分析中应用了球谐函数方法，如Sholts et al (2017)使用球谐函数方法量化Clovis尖状器的三维不对称性，Muller et al (2023)和Ye et al (2026)使用球谐函数方法研究石球形态。
+Spherical harmonic analysis represents the three-dimensional extension of elliptic Fourier analysis. Its mathematical foundations... Several studies have already applied spherical harmonic methods to lithic analysis: Sholts et al. (2017) used spherical harmonics to quantify three-dimensional asymmetry in Clovis points, while Muller et al. (2023) and Ye et al. (2026, in reviewed) applied the method to investigate the morphology of spheroids.
 
-在本研究中，我们首次在石核上使用该方法，并同时对形态数据和片疤方向数据进行球谐分析。对于形态数据...。对于方向数据，基于方向统计学的von Miss-Fisher球面核密度估计拟合连续密度，再进行球谐展开。而后，计算球谐方差和能量谱。而后，通过查看方差选择合适的能量谱阶数。
+In the present study, we apply this method to cores for the first time, performing spherical harmonic analysis on both morphological data and scar orientation data. For morphological data... For orientation data, a continuous density surface is first fitted using von Mises–Fisher spherical kernel density estimation based on directional statistics, which is then decomposed into spherical harmonics. The spherical harmonic variance and power spectrum are subsequently computed, and an appropriate spectral degree is selected by inspecting the variance contribution across degrees.
 
-2.2.3 数据分析
+**2.2.3 Data Analysis**
 
-**方法对比** 为确认球谐函数方法对片疤模式分析的有效性，我们在理想标本上对不同方法（SPI, Fabric analysis和球谐函数）的分类有效性进行对比。由于每个理想模型只有一件，因此我们使用配对欧氏距离进行判断，即在标准化特征空间中，不同类型的理想模型之间的距离有多远。配对距离越远，则说明类型之间的差异越大，进而判断不同方法的有效性。我们采用热图展示配对距离结果。
+*Method comparison.* To evaluate the effectiveness of spherical harmonic analysis for characterizing scar patterns, we compare the classificatory performance of three methods — SPI, Lin's fabric analysis, and spherical harmonics — using the ideal models. Since only one ideal model exists per type, we assess performance using pairwise Euclidean distances: specifically, how far apart different ideal model types are in a standardized feature space. Greater pairwise distances indicate stronger differentiation between types, thereby serving as a measure of each method's discriminatory power. Results are visualized as heatmaps, and mean pairwise distances are calculated for each method.
 
-**数据降维** 由于球谐函数属于非线性流形，因此PCA等线性方法难以识别球谐数据的全局结构。因此我们使用UMAP方法对球谐能量谱进行降维。
+*Dimensionality reduction.* Because spherical harmonics describe a nonlinear manifold, linear methods such as PCA are ill-suited to recovering the global structure of spherical harmonic data. We therefore apply UMAP to reduce the dimensionality of the spherical harmonic power spectra.
 
-**相关性分析和Mantel检验** 使用斯皮尔曼等级相关系数和Mantel检验探索石核在技术和形态上是否存在系统关联。
+*Correlation analysis and Mantel test.* Spearman rank correlation coefficients and Mantel tests are used to explore whether systematic associations exist between the technological and morphological characteristics of cores.
 
-**核Co-inertia分析** 本质上为对两个数据矩阵进行联合降维，用于解读技术和形态的整体变化模式。
+*Co-inertia analysis.* This method performs joint dimensionality reduction on two data matrices simultaneously, and is used here to interpret the overall covariation between technological and morphological patterns across cores.
 
 # Results
 
-3.1 片疤模式分析方法有效性
+**3.1 Validity of Scar Pattern Analysis Methods**
 
-3.2 片疤模式球谐分析
+Using the ideal core models, we computed results for all three methods and compared their classificatory effectiveness. The heatmaps clearly present the discriminatory power of each method across ideal model types, which increases progressively from Clarkson's SPI → Lin's Fabric analysis → SPHARM. This pattern is corroborated by mean pairwise distances: the SPHARM method yields a substantially higher mean distance (mean distance = 2.48) than both the SPI method (mean distance = 1.09) and fabric analysis (mean distance = 1.66). These results demonstrate that the SPHARM method extracts scar pattern information most completely.
 
-3.3 石核形态球谐分析
+**3.2 Joint Analysis of Scar Patterns and Core Morphology in Experimental Knapping Specimens**
 
-3.4 技术和形态联合分析结果
+Based on the experimental knapping specimens, morphological spherical harmonic analysis reveals...; spherical harmonic analysis of scar patterns yields.... Degree-by-degree correlation analysis and Mantel tests indicate.... Co-inertia analysis shows....
 
-3.5 考古学案例：Sandinggai遗址的石核分析
+**3.3 Archaeological Case Study: Core Analysis from Sandinggai**
+
+Applying the analytical framework established in section 3.2, we analyzed a sample of cores excavated at Sandinggai in 2019.
+
+At the global level, no systematic covariation is found between technology and morphology (Mantel r = 0.036, p = 0.117), indicating that variation in core morphology and scar patterns is largely independent.
+
+Examined by cultural layer, significant / no significant variation is observed in both flaking technology and core morphology. Examined by raw material type, significant / no significant variation is observed in flaking technology and core morphology.
 
 # Discussion
 

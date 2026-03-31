@@ -1,0 +1,103 @@
+---
+--- title: "New methods based on SPHARM in lithic analysis" author:   - Peiyuan Xiao:       correspondence: "no"       orcid: 0009-0000-9733-5875       institute:         - ALPHA         - UCAS   - Hao Li:       correspondence: "no"       orcid:        institute:         - ALPHA         - UCAS   - Ben Marwick:       correspondence: "yes"       email: bmarwick@uw.edu       orcid: 0000-0001-7879-4531       institute:         - uw institute:   - UCAS: University of Chinese Academy of Sciences, Beijing 100049, China   - ALPHA: Group of Alpine Paleoecology and Human Adaptation (ALPHA), Institute of Tibetan Plateau Research, Chinese Academy of Sciences, Beijing 100101;    - TPESRE: State Key Laboratory of Tibetan Plateau Earth System, Resources and Environment (TPESRE), Beijing 100101   - uw: Department of Anthropology, University of Washington, Seattle, WA, USA title-block-published: "Last updated"   date: now date-format: long format:    docx:     reference-doc: "../templates/template.docx" # Insert path for the DOCX file crossref:   fig-title: "Fig."   fig-prefix: "Fig." number-sections: true execute:   echo: true   warning: false   message: false   comment: "#>"   fig-dpi: 1000 filters:   - ../templates/scholarly-metadata.lua   - ../templates/author-info-blocks.lua   - ../templates/pagebreak.lua bibliography: references.bib csl: "../templates/journal-of-archaeological-science.csl" # Insert path for the bib-style abstract: |    editor_options:    chunk_output_type: console ---
+---
+
+<!-- This is the format for text comments that will be ignored during renderings. Do not put R code in these comments because it will not be ignored. -->
+
+<!-- With the following code you can access and display values from the yml header above. -->
+
+Keywords: `r rmarkdown::metadata$keywords`
+
+Highlights: `r rmarkdown::metadata$highlights`
+
+<!-- The actual document text starts here: -->
+
+# Introduction
+
+石核是保留剥坯策略信息最多的石制品类型，对理解古人类的技术行为具有相当重要的地位。传统分析主要基于操作链方法，通过定性观察判断片疤模式和石核形态，进而理解剥坯策略。近二十年来，越来越多的石制品分析转向定量方法，极大拓展了石制品分析的科学性和可重复性。这些成果包括对多元统计分析的应用、基于地标点或傅里叶级数的2D几何形态计量分析、以及基于三维模型的分析等。但是，目前这些分析多针对于形态，而缺少对剥坯方向的系统研究，仅有研究来自Clarkson (2006)和Lin et al. (2024)，但这两种方法基于一个或两个变量描述整体片疤模式，不可避免的会产生信息损失，这在其区分某些石核片疤模式的有效性上得以体现（如，SPI方法难以区分盘状石核和勒瓦娄哇石核、Lin方法难以区分单极和两极模式）；此外，多数研究的方法主要是碎片式的，即针对传统的技术定义选择测量值，这会大大限制方法对不同石核类型或不同年代组合石制品的分析能力，因而缺乏可推广性。
+
+基于此，本研究旨在提出一套新的石核定量分析框架，以解决两个问题：1.提升石核片疤方向分析方法；2.基于统一的数学框架统合片疤分析和形态分析，并采用专门多元统计方法。本文希望通过提出这一完整的分析框架，以期为石核定量分析做出贡献。
+
+# Material and Methods
+
+2.1 研究材料
+
+理想石核模型，每种石核类型均有一件理想模型，数据来源于Lin et al. (2024)。
+
+打制实验模型by Clarkson，每种石核类型有1-22件不等，共59件标本，数据来源于Lin et al. (2024)（等待邮件回信）。
+
+考古标本，Sandinggai遗址，排除掉不完整石核和tested cores后，共55件标本。标本来源于遗址第2/3/4层，但第2层仅两件，因此本文的统计分析仅针对第3和第4层。数据来源于Li et al. (2022)。
+
+2.2 研究方法
+
+2.2.1 数据提取
+
+在Geomagic Wrap2021软件中标定片疤方向，然后直接导出其向量坐标。由于本研究所涉及计算指标均具备旋转不变特征，因此是否进行旋转对齐不影响分析。
+
+2.2.2 球谐函数分析
+
+球谐函数是椭圆傅里叶分析在三维空间的推广。其数学原理...。目前，已有部分案例在石器分析中应用了球谐函数方法，如Sholts et al. (2017)使用球谐函数方法量化Clovis尖状器的三维不对称性，Muller et al. (2023)和Ye et al. (2026)使用球谐函数方法研究石球形态。
+
+在本研究中，我们首次在石核上使用该方法，并同时对形态数据和片疤方向数据进行球谐分析。对于形态数据...。对于方向数据，基于方向统计学的von Miss-Fisher球面核密度估计拟合连续密度，再进行球谐展开。而后，计算球谐方差和能量谱。而后，通过查看方差选择合适的能量谱阶数。
+
+2.2.3 数据分析
+
+**方法对比** 为确认球谐函数方法对片疤模式分析的有效性，我们在理想标本上对不同方法（SPI, Fabric analysis和球谐函数）的分类有效性进行对比。由于每个理想模型只有一件，因此我们使用配对欧氏距离进行判断，即在标准化特征空间中，不同类型的理想模型之间的距离有多远。配对距离越远，则说明类型之间的差异越大，进而判断不同方法的有效性。我们采用热图展示配对距离结果，并计算不同方法的平均距离。
+
+**数据降维** 由于球谐函数属于非线性流形，因此PCA等线性方法难以识别球谐数据的全局结构。因此我们使用UMAP方法对球谐能量谱进行降维。
+
+**相关性分析和Mantel检验** 使用斯皮尔曼等级相关系数和Mantel检验探索石核在技术和形态上是否存在系统关联。
+
+**核Co-inertia分析** 本质上为对两个数据矩阵进行联合降维，用于解读技术和形态的整体变化模式。
+
+# Results
+
+3.1 片疤模式分析方法有效性
+
+基于理想模型，我们计算了三种方法的的结果，并进行有效性对比。通过热图，可以明显看出不同方法对理想模型的区分度，该区分度从SPI→Fabric→SPHARM依次增加。通过平均距离也可以看出来，SPHARM方法的平均距离(Mean distance = 2.48)远高于SPI方法(Mean distance = 1.09)和Fabric方法(Mean distance = 1.66)。因此，SPHARM方法能够最大限度地提取片疤模式信息。
+
+3.2 打制实验标本的片疤模式和石核形态联合分析
+
+基于打制实验标本，形态球谐分析结果...；片疤模式球谐分析结果...。逐阶相关性分析和Mantel检验显示...。核Co-inertia分析显示...。
+
+3.3 考古案例：Sandinggai遗址的石核分析
+
+使用3.2的分析框架，对Sandinggai遗址2019年发掘出土的部分石核进行分析。对于全局结构来说，技术和形态不存在系统性的协变关系(Mantel r = 0.036，P = 0.117)，即石核形态和片疤模式的变化是相对独立的。
+
+从不同层位来看，剥片技术和石核形态存在/不存在显著变化。对于不同原料，剥片技术和石核形态存在/不存在显著变化。
+
+# Discussion
+
+# Conclusion
+
+# CRediT authorship contribution statement
+
+# Data availability statement
+
+# Funding
+
+# Declaration of competing interest
+
+The authors declare that they have no known competing financial interests or personal relationships that could have appeared to influence the work reported in this paper.
+
+# Acknowledgements
+
+<!-- The following line inserts a page break  -->
+
+\newpage
+
+# References
+
+<!-- The following line ensures the references appear here for the MS Word or HTML output files, rather than right at the end of the document (this will not work for PDF files):  -->
+
+::: {#refs}
+:::
+
+\newpage
+
+### Colophon
+
+This report was generated on `r Sys.time()` using the following computational environment and dependencies:
+
+```{r} #| label: colophon #| cache: false  # which R packages and versions? if ("devtools" %in% installed.packages()) devtools::session_info()}
+```

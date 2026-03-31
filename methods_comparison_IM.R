@@ -372,7 +372,7 @@ dist_all <- bind_rows(
     method = factor(method, levels = c("R", "E + I", "Power l1–l4"))
   )
 
-# 每种方法的平均类间距离（对角线除外）
+# 每种方法的平均类间距离
 avg_dist <- dist_all %>%
   filter(From != To) %>%
   group_by(method) %>%
