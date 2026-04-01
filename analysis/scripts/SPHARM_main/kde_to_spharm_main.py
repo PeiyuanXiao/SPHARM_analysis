@@ -1,26 +1,36 @@
 """
 kde_to_spharm_main.py
 =====================
-Pipeline:
-    1. Load raw scar orientation data from Excel
-    2. Align direction vectors (SVD normal → Z-axis, PCA main axis → X-axis)
-    3. Run spherical KDE on aligned unit vectors
-    4. Export results
+完整流水线：R 导出的方向向量 CSV → KDE → SPHARM → 功率谱 CSV
 
-Output files (all in /project/analysis/data/derived_data/):
-    kde_matrix.npy      — (n_specimens, n_grid) density matrix
-    kde_grid.npy        — (n_grid, 3) sphere grid unit vectors
-    kde_metadata.csv    — specimen ID, typology, n_scars
-    kde_results.csv     — long-format KDE densities (optional, for R)
+对齐步骤已移至 R 端（align_svd.R / align_lin2024.R），
+本脚本读取 R 导出的方向向量，完成 KDE + SPHARM 两步。
+
+两种使用模式：
+
+  【日常生产】python kde_to_spharm_main.py
+      默认 --source svd，输出到 derived_data/SPHARM_direction.csv
+      与 R 脚本（spharm_analysis.R）的读取路径完全兼容
+
+  【旋转不变性验证】python kde_to_spharm_main.py --source all
+      依次处理 raw / svd / lin2024 三份数据
+      各自输出到 derived_data/validation/{source}/SPHARM_direction.csv
+
+Input CSVs (由 R 导出，位于 derived_data/):
+    directions_raw.csv              — 原始数据（未对齐）
+    directions_aligned_svd.csv      — SVD 法对齐
+    directions_aligned_lin2024.csv  — Lin 2024 法对齐
 """
 
 # ── 标准库 ──────────────────────────────────────
 import os
 import sys
+import argparse
 from pathlib import Path
 
 # ── 路径设置 ─────────────────────────────────────
-sys.path.insert(0, str(Path(__file__).parent.parent))
+sys.path.insert(0, str(Path(__file__).parent.parent))  # → SPHARM_modules/
+sys.path.insert(0, str(Path(__file__).parent))          # → kde_to_spharm.py
 
 # ── 第三方库 ─────────────────────────────────────
 import numpy as np
@@ -28,203 +38,156 @@ import pandas as pd
 
 # ── 本地模块 ─────────────────────────────────────
 from SPHARM_modules.spherical_kde import batch_spherical_kde
+from kde_to_spharm import kde_vector_to_dh_grid, compute_spharm_features
+
 
 # =============================================================================
 # Config
 # =============================================================================
 
-INPUT_XLSX  = "/project/analysis/data/raw_data/Scar_orientation_data.xlsx"
-OUTPUT_DIR  = "/project/analysis/data/derived_data"
+DERIVED_DIR = "/project/analysis/data/derived_data"
 BANDWIDTH   = 0.35
 N_BEARING   = 72
 N_PLUNGE    = 36
+LMAX        = 20
+DH_SIZE     = 64
+
+# R 导出的方向向量 CSV 路径
+SOURCE_CSV = {
+    "raw"     : f"{DERIVED_DIR}/directions_raw.csv",
+    "svd"     : f"{DERIVED_DIR}/directions_aligned_svd.csv",
+    "lin2024" : f"{DERIVED_DIR}/directions_aligned_lin2024.csv",
+}
+
+# 日常生产模式的输出路径（svd 与 R 脚本兼容）
+PRODUCTION_OUT = {
+    "raw"     : f"{DERIVED_DIR}/SPHARM_direction_raw.csv",
+    "svd"     : f"{DERIVED_DIR}/SPHARM_direction.csv",
+    "lin2024" : f"{DERIVED_DIR}/SPHARM_direction_lin2024.csv",
+}
+
+# 验证模式（--source all）的输出路径，三组结果存入子目录互不干扰
+VALIDATION_OUT = {
+    "raw"     : f"{DERIVED_DIR}/validation/raw/SPHARM_direction.csv",
+    "svd"     : f"{DERIVED_DIR}/validation/svd/SPHARM_direction.csv",
+    "lin2024" : f"{DERIVED_DIR}/validation/lin2024/SPHARM_direction.csv",
+}
 
 
 # =============================================================================
-# Step 1: Load data
+# Step 1: 读取 R 导出的方向向量 CSV
 # =============================================================================
 
-def load_data(path: str) -> pd.DataFrame:
-    if path.endswith(".xlsx"):
-        # [修改] 读取所有 sheet 并合并，支持理想模型和考古标本分 sheet 存放
-        all_sheets = pd.read_excel(path, sheet_name=None)
-        df = pd.concat(all_sheets.values(), ignore_index=True)
-        print(f"Loaded {len(df)} rows from {os.path.basename(path)} "
-              f"({len(all_sheets)} sheets: {list(all_sheets.keys())})")
-        # [修改结束]
-    else:
-        df = pd.read_csv(path)
-    print(f"Columns: {list(df.columns)}\n")
+def load_directions(source: str) -> pd.DataFrame:
+    csv_path = SOURCE_CSV[source]
+    if not os.path.exists(csv_path):
+        raise FileNotFoundError(
+            f"找不到 R 导出的 CSV：{csv_path}\n"
+            f"请先在 R 中运行对应的对齐脚本生成该文件。"
+        )
+
+    df = pd.read_csv(csv_path)
+
+    missing = {"ID", "ux", "uy", "uz"} - set(df.columns)
+    if missing:
+        raise ValueError(f"CSV 缺少必要列：{missing}")
+
+    if "Typology" not in df.columns:
+        df["Typology"] = "unknown"
+
+    print(f"  Loaded: {df['ID'].nunique()} specimens, "
+          f"{len(df)} direction vectors")
     return df
 
 
 # =============================================================================
-# Step 2: Alignment (SVD normal → Z, PCA main axis → X)
+# Step 2: KDE → SPHARM 完整流水线
 # =============================================================================
 
-def get_rot_matrix(a: np.ndarray, b: np.ndarray) -> np.ndarray:
-    """Rodrigues rotation matrix that rotates unit vector a onto unit vector b."""
-    a = a / np.linalg.norm(a)
-    b = b / np.linalg.norm(b)
-    cos_theta = np.clip(np.dot(a, b), -1.0, 1.0)
-
-    if cos_theta < -1 + 1e-10:
-        perp = np.array([1, 0, 0]) if abs(a[0]) < 0.9 else np.array([0, 1, 0])
-        v = perp - np.dot(perp, a) * a
-        v /= np.linalg.norm(v)
-        return 2 * np.outer(v, v) - np.eye(3)
-
-    if cos_theta > 1 - 1e-10:
-        return np.eye(3)
-
-    v = np.cross(a, b)
-    vx = np.array([
-        [ 0,    -v[2],  v[1]],
-        [ v[2],  0,    -v[0]],
-        [-v[1],  v[0],  0   ]
-    ])
-    return np.eye(3) + vx + vx @ vx * ((1 - cos_theta) / np.dot(v, v))
-
-
-def align_group(df_group: pd.DataFrame) -> pd.DataFrame:
+def run_pipeline(source: str,
+                 validation: bool = False,
+                 lmax: int = LMAX,
+                 dh_size: int = DH_SIZE) -> pd.DataFrame:
     """
-    Align one specimen:
-      Step 1 — SVD normal → Z-axis
-      Step 2 — Translate plane centre to origin
-      Step 3 — SVD main axis in XY plane → X-axis
+    对单个 source 运行完整流水线：
+        方向向量 CSV → KDE → DH 网格 → SPHARM → 功率谱 CSV
+
+    Parameters
+    ----------
+    source     : 'raw' | 'svd' | 'lin2024'
+    validation : True  → 输出到 validation/ 子目录（用于旋转不变性验证）
+                 False → 输出到生产路径（默认，与 R 脚本兼容）
     """
-    df = df_group.copy()
+    out_path = VALIDATION_OUT[source] if validation else PRODUCTION_OUT[source]
 
-    # --- Direction vectors ---
-    dx  = df["End_X"].values - df["Start_X"].values
-    dy  = df["End_Y"].values - df["Start_Y"].values
-    dz  = df["End_Z"].values - df["Start_Z"].values
-    length = np.sqrt(dx**2 + dy**2 + dz**2)
-    valid  = length > 1e-10
+    print(f"\n{'='*60}")
+    print(f"  Source : {source}")
+    print(f"  Mode   : {'validation' if validation else 'production'}")
+    print(f"  Output : {out_path}")
+    print(f"{'='*60}")
 
-    if valid.sum() < 3:
-        print(f"  Warning: {df['ID'].iloc[0]} has fewer than 3 valid scars, skipping.")
-        return None
+    # --- 1. 读取方向向量 ---
+    df = load_directions(source)
 
-    # Step 1: SVD normal → Z-axis
-    U = np.column_stack([
-        dx[valid] / length[valid],
-        dy[valid] / length[valid],
-        dz[valid] / length[valid],
-    ])
-    normal = np.linalg.svd(U)[2][-1]           # last right singular vector
-    normal = normal / np.linalg.norm(normal)
-    if normal[2] < 0:
-        normal = -normal
+    # --- 2. KDE ---
+    print(f"\n[KDE] bandwidth={BANDWIDTH}, grid={N_BEARING}×{N_PLUNGE}")
+    kde_result = batch_spherical_kde(
+        df,
+        bandwidth    = BANDWIDTH,
+        n_bearing    = N_BEARING,
+        n_plunge     = N_PLUNGE,
+        id_col       = "ID",
+        ux_col       = "ux",
+        uy_col       = "uy",
+        uz_col       = "uz",
+        typology_col = "Typology",
+    )
 
-    R1 = get_rot_matrix(normal, np.array([0, 0, 1]))
+    kde_matrix  = kde_result["kde_matrix"]
+    sphere_grid = pd.DataFrame(kde_result["G"], columns=["x", "y", "z"])
+    sphere_grid["bearing"] = np.arctan2(kde_result["G"][:, 1],
+                                        kde_result["G"][:, 0])
+    sphere_grid["plunge"]  = np.arcsin(np.clip(kde_result["G"][:, 2], -1, 1))
 
-    S1 = df[["Start_X", "Start_Y", "Start_Z"]].values @ R1.T
-    E1 = df[["End_X",   "End_Y",   "End_Z"  ]].values @ R1.T
-
-    # ============================================================
-    # [修改] Direct_X/Y/Z 已从数据表删除，改为从端点坐标重建单位方向向量
-    # ============================================================
-    dv_raw = df[["End_X","End_Y","End_Z"]].values - df[["Start_X","Start_Y","Start_Z"]].values
-    dv_len = np.linalg.norm(dv_raw, axis=1, keepdims=True)
-    dv_len = np.where(dv_len < 1e-10, 1.0, dv_len)
-    D1 = (dv_raw / dv_len) @ R1.T
-    # ============================================================
-    # [修改结束]
-    # ============================================================
-
-    # Step 2: Translate centre to origin
-    centre    = df[["Pos_X", "Pos_Y", "Pos_Z"]].iloc[0].values
-    centre_r1 = R1 @ centre
-
-    S1 -= centre_r1
-    E1 -= centre_r1
-
-    # Step 3: SVD main axis in XY → X-axis
-    d2     = E1 - S1
-    len2   = np.linalg.norm(d2, axis=1)
-    valid2 = len2 > 1e-10
-
-    xy_dirs  = d2[valid2, :2]
-    main_dir = np.linalg.svd(xy_dirs)[2][0]     # first right singular vector
-    mean_dir = xy_dirs.mean(axis=0)
-    if np.dot(main_dir, mean_dir) < 0:
-        main_dir = -main_dir
-
-    theta = np.arctan2(main_dir[1], main_dir[0])
-    c, s  = np.cos(-theta), np.sin(-theta)
-    R2    = np.array([
-        [ c, -s, 0],
-        [ s,  c, 0],
-        [ 0,  0, 1],
-    ])
-
-    S2 = S1 @ R2.T
-    E2 = E1 @ R2.T
-    D2 = D1 @ R2.T
-
-    # Write aligned columns
-    df[["s_x","s_y","s_z"]] = S2
-    df[["e_x","e_y","e_z"]] = E2
-    df[["d_x","d_y","d_z"]] = D2
-
-    # Normalised direction unit vectors for KDE
-    dv   = E2 - S2
-    norm = np.linalg.norm(dv, axis=1, keepdims=True)
-    norm = np.where(norm < 1e-10, 1.0, norm)
-    uv   = dv / norm
-    df["ux"] = uv[:, 0]
-    df["uy"] = uv[:, 1]
-    df["uz"] = uv[:, 2]
-
-    return df
-
-
-def align_all(raw: pd.DataFrame) -> pd.DataFrame:
-    print("Aligning specimens...")
-    aligned_parts = []
-    for id_i, grp in raw.groupby("ID", sort=False):
-        result = align_group(grp)
-        if result is not None:
-            aligned_parts.append(result)
-    aligned = pd.concat(aligned_parts, ignore_index=True)
-    print(f"  {aligned['ID'].nunique()} specimens aligned, "
-          f"{len(aligned)} scars total.\n")
-    return aligned
-
-
-# =============================================================================
-# Step 3 & 4: KDE + Export
-# =============================================================================
-
-def export_results(kde_result: dict, output_dir: str) -> None:
-    os.makedirs(output_dir, exist_ok=True)
-
-    # Binary arrays (fast, used by Python downstream)
-    np.save(os.path.join(output_dir, "kde_matrix.npy"), kde_result["kde_matrix"])
-    np.save(os.path.join(output_dir, "kde_grid.npy"),   kde_result["G"])
-    print(f"  Saved kde_matrix.npy  {kde_result['kde_matrix'].shape}")
-    print(f"  Saved kde_grid.npy    {kde_result['G'].shape}")
-
-    # Metadata CSV
-    meta = pd.DataFrame({
-        "ID":       kde_result["ids"],
-        "Typology": kde_result["typologies"],
-        "n_scars":  kde_result["n_scars"],
-    })
-    meta_path = os.path.join(output_dir, "kde_metadata.csv")
-    meta.to_csv(meta_path, index=False)
-    print(f"  Saved kde_metadata.csv  ({len(meta)} rows)")
-
-    # Long-format CSV (optional, for R / manual inspection)
+    # --- 3. KDE → DH 网格 → SPHARM ---
+    print(f"\n[SPHARM] lmax={lmax}, DH grid={dh_size}×{dh_size*2}")
     rows = []
-    for i, id_i in enumerate(kde_result["ids"]):
-        for j, dens in enumerate(kde_result["kde_matrix"][i]):
-            rows.append({"ID": id_i, "grid_point": j, "density": dens})
-    long_df   = pd.DataFrame(rows)
-    long_path = os.path.join(output_dir, "kde_results_long.csv")
-    long_df.to_csv(long_path, index=False)
-    print(f"  Saved kde_results_long.csv  ({len(long_df)} rows)")
+
+    for i, specimen_id in enumerate(kde_result["ids"]):
+        typology = kde_result["typologies"][i]
+        print(f"  [{i+1:>3}/{len(kde_result['ids'])}] {specimen_id}", end="  ")
+
+        try:
+            grid_2d = kde_vector_to_dh_grid(kde_matrix[i],
+                                            sphere_grid,
+                                            dh_size=dh_size)
+            feats   = compute_spharm_features(grid_2d, lmax=lmax)
+
+            row = {
+                "ID"               : specimen_id,
+                "Typology"         : typology,
+                "spectral_entropy" : round(feats["spectral_entropy"], 6),
+                "SHE"              : round(feats["she"], 6),
+            }
+            for l, p in enumerate(feats["norm_power"]):
+                row[f"power_l{l}"] = round(float(p), 8)
+
+            rows.append(row)
+            print(f"H={feats['spectral_entropy']:.4f}  ✓")
+
+        except Exception as e:
+            print(f"✗  {e}")
+            rows.append({"ID": specimen_id, "Typology": typology})
+
+    df_out = pd.DataFrame(rows)
+
+    # --- 4. 保存 ---
+    os.makedirs(os.path.dirname(out_path), exist_ok=True)
+    df_out.to_csv(out_path, index=False)
+    print(f"\n✓ Saved → {out_path}")
+    print(f"  {len(df_out)} specimens, power_l0–power_l{lmax}")
+
+    return df_out
 
 
 # =============================================================================
@@ -232,41 +195,36 @@ def export_results(kde_result: dict, output_dir: str) -> None:
 # =============================================================================
 
 if __name__ == "__main__":
-    import argparse
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(
+        description="KDE → SPHARM pipeline，读取 R 导出的方向向量 CSV"
+    )
     parser.add_argument(
         "--source",
-        choices=["xlsx", "lin2024"],
-        default="xlsx",
-        help="data source：xlsx = raw data，lin2024 = Lin 2024 pipeline"
+        choices=["raw", "svd", "lin2024", "all"],
+        default="svd",
+        help=(
+            "raw     — 原始数据（未对齐）\n"
+            "svd     — R SVD 法对齐（默认，日常生产使用）\n"
+            "lin2024 — R Lin 2024 法对齐\n"
+            "all     — 依次运行三种，用于旋转不变性验证"
+        )
     )
     args = parser.parse_args()
 
-    print("=" * 60)
-    print("Spherical KDE Pipeline")
-    print("=" * 60)
+    # --source all → 验证模式，三组结果存入 validation/ 子目录
+    # 其他      → 生产模式，输出到标准路径
+    validation_mode = (args.source == "all")
+    sources = ["raw", "svd", "lin2024"] if validation_mode else [args.source]
 
-    LIN2024_CSV = "/project/analysis/data/raw_data/Lin_2024_scar_data/Scar_Vectors_Lin2024_pipeline.csv"
+    for src in sources:
+        run_pipeline(src, validation=validation_mode)
 
-    raw     = load_data(LIN2024_CSV if args.source == "lin2024" else INPUT_XLSX)
-    aligned = align_all(raw)
-
-    kde_result = batch_spherical_kde(
-        aligned,
-        bandwidth = BANDWIDTH,
-        n_bearing = N_BEARING,
-        n_plunge  = N_PLUNGE,
-    )
-
-    out_dir = os.path.join(OUTPUT_DIR, "lin2024") \
-              if args.source == "lin2024" else OUTPUT_DIR
-
-    print("Exporting results...")
-    export_results(kde_result, out_dir)
-
-    print("\n" + "=" * 60)
-    print("Done!")
-    print(f"  Specimens : {len(kde_result['ids'])}")
-    print(f"  Grid size : {len(kde_result['G'])} points")
-    print(f"  Output    : {OUTPUT_DIR}")
-    print("=" * 60)
+    print(f"\n{'='*60}")
+    if validation_mode:
+        print("验证模式完成。三组结果：")
+        for src in sources:
+            print(f"  {VALIDATION_OUT[src]}")
+        print("\nNext: 运行 validate_rotation_spharm.py 比较三组功率谱")
+    else:
+        print(f"完成。输出：{PRODUCTION_OUT[args.source]}")
+    print(f"{'='*60}")

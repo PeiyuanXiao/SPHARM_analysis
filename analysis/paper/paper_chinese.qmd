@@ -99,5 +99,4 @@ The authors declare that they have no known competing financial interests or per
 
 This report was generated on `r Sys.time()` using the following computational environment and dependencies:
 
-```{r} #| label: colophon #| cache: false  # which R packages and versions? if ("devtools" %in% installed.packages()) devtools::session_info()}
-```
+`{r} #| label: colophon #| cache: false  # which R packages and versions? if ("devtools" %in% installed.packages()) devtools::session_info()}`
