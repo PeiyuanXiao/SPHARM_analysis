@@ -62,6 +62,8 @@ Highlights: `r rmarkdown::metadata$highlights`
 
 基于理想模型，我们计算了三种方法的的结果，并进行有效性对比。通过热图，可以明显看出不同方法对理想模型的区分度，该区分度从SPI→Fabric→SPHARM依次增加。通过平均距离也可以看出来，SPHARM方法的平均距离(Mean distance = 2.48)远高于SPI方法(Mean distance = 1.09)和Fabric方法(Mean distance = 1.66)。因此，SPHARM方法能够最大限度地提取片疤模式信息。
 
+增加：打制实验数据验证，留一法交叉验证分析。
+
 3.2 打制实验标本的片疤模式和石核形态联合分析
 
 基于打制实验标本，形态球谐分析结果...；片疤模式球谐分析结果...。逐阶相关性分析和Mantel检验显示...。核Co-inertia分析显示...。
