@@ -54,23 +54,26 @@ DH_SIZE     = 64
 
 # R 导出的方向向量 CSV 路径
 SOURCE_CSV = {
-    "raw"     : f"{DERIVED_DIR}/directions_raw.csv",
-    "svd"     : f"{DERIVED_DIR}/directions_aligned_svd.csv",
-    "lin2024" : f"{DERIVED_DIR}/directions_aligned_lin2024.csv",
+    "raw"         : f"{DERIVED_DIR}/directions_raw.csv",
+    "svd"         : f"{DERIVED_DIR}/directions_aligned_svd.csv",
+    "lin2024"     : f"{DERIVED_DIR}/directions_aligned_lin2024.csv",
+    "svd_rotated" : f"{DERIVED_DIR}/directions_aligned_svd_rotated.csv",
 }
 
 # 日常生产模式的输出路径（svd 与 R 脚本兼容）
 PRODUCTION_OUT = {
-    "raw"     : f"{DERIVED_DIR}/SPHARM_direction_raw.csv",
-    "svd"     : f"{DERIVED_DIR}/SPHARM_direction.csv",
-    "lin2024" : f"{DERIVED_DIR}/SPHARM_direction_lin2024.csv",
+    "raw"         : f"{DERIVED_DIR}/SPHARM_direction_raw.csv",
+    "svd"         : f"{DERIVED_DIR}/SPHARM_direction.csv",
+    "lin2024"     : f"{DERIVED_DIR}/SPHARM_direction_lin2024.csv",
+    "svd_rotated" : f"{DERIVED_DIR}/SPHARM_direction_svd_rotated.csv",
 }
 
-# 验证模式（--source all）的输出路径，三组结果存入子目录互不干扰
+# 验证模式（--source all）的输出路径，各组结果存入子目录互不干扰
 VALIDATION_OUT = {
-    "raw"     : f"{DERIVED_DIR}/validation/raw/SPHARM_direction.csv",
-    "svd"     : f"{DERIVED_DIR}/validation/svd/SPHARM_direction.csv",
-    "lin2024" : f"{DERIVED_DIR}/validation/lin2024/SPHARM_direction.csv",
+    "raw"         : f"{DERIVED_DIR}/validation/raw/SPHARM_direction.csv",
+    "svd"         : f"{DERIVED_DIR}/validation/svd/SPHARM_direction.csv",
+    "lin2024"     : f"{DERIVED_DIR}/validation/lin2024/SPHARM_direction.csv",
+    "svd_rotated" : f"{DERIVED_DIR}/validation/svd_rotated/SPHARM_direction.csv",
 }
 
 
@@ -81,10 +84,13 @@ VALIDATION_OUT = {
 def load_directions(source: str) -> pd.DataFrame:
     csv_path = SOURCE_CSV[source]
     if not os.path.exists(csv_path):
-        raise FileNotFoundError(
-            f"找不到 R 导出的 CSV：{csv_path}\n"
-            f"请先在 R 中运行对应的对齐脚本生成该文件。"
-        )
+        hint = {
+            "raw"         : "请先在 R 中运行 align_svd.R",
+            "svd"         : "请先在 R 中运行 align_svd.R",
+            "lin2024"     : "请先在 R 中运行 align_lin2024.R",
+            "svd_rotated" : "请先运行：python rotate_svd_directions.py",
+        }.get(source, "请先生成该文件")
+        raise FileNotFoundError(f"找不到：{csv_path}\n{hint}")
 
     df = pd.read_csv(csv_path)
 
@@ -200,31 +206,33 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "--source",
-        choices=["raw", "svd", "lin2024", "all"],
+        choices=["raw", "svd", "lin2024", "svd_rotated", "all"],
         default="svd",
         help=(
-            "raw     — 原始数据（未对齐）\n"
-            "svd     — R SVD 法对齐（默认，日常生产使用）\n"
-            "lin2024 — R Lin 2024 法对齐\n"
-            "all     — 依次运行三种，用于旋转不变性验证"
+            "raw         — 原始数据（未对齐）\n"
+            "svd         — R SVD 法对齐（默认，日常生产使用）\n"
+            "lin2024     — R Lin 2024 法对齐\n"
+            "svd_rotated — SVD 对齐 + 随机 Z 轴旋转（实证验证用）\n"
+            "all         — 依次运行四种，用于完整旋转不变性验证"
         )
     )
     args = parser.parse_args()
 
-    # --source all → 验证模式，三组结果存入 validation/ 子目录
-    # 其他      → 生产模式，输出到标准路径
+    # --source all → 验证模式，四组结果存入 validation/ 子目录
+    # 其他         → 生产模式，输出到标准路径
     validation_mode = (args.source == "all")
-    sources = ["raw", "svd", "lin2024"] if validation_mode else [args.source]
+    sources = ["raw", "svd", "lin2024", "svd_rotated"] \
+              if validation_mode else [args.source]
 
     for src in sources:
         run_pipeline(src, validation=validation_mode)
 
     print(f"\n{'='*60}")
     if validation_mode:
-        print("验证模式完成。三组结果：")
+        print("验证模式完成。四组结果：")
         for src in sources:
             print(f"  {VALIDATION_OUT[src]}")
-        print("\nNext: 运行 validate_rotation_spharm.py 比较三组功率谱")
+        print("\nNext: 运行 validate_rotation_all.R 比较各组功率谱")
     else:
         print(f"完成。输出：{PRODUCTION_OUT[args.source]}")
     print(f"{'='*60}")

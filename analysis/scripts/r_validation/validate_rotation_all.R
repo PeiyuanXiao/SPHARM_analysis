@@ -134,16 +134,16 @@ dirs <- dirs %>%
 rei <- dirs %>%
   group_by(ID, source) %>%
   summarise(
-    SPI = compute_R(ux, uy, uz),
-    Elongation = compute_EI(ux, uy, uz)$E,
-    Isotropy = compute_EI(ux, uy, uz)$I,
+    R = compute_R(ux, uy, uz),
+    E = compute_EI(ux, uy, uz)$E,
+    I = compute_EI(ux, uy, uz)$I,
     .groups = "drop"
   )
 
 # 宽格式（每行一个标本，三列分别对应三个 source）
 rei_wide <- rei %>%
   pivot_wider(names_from = source,
-              values_from = c(SPI, Elongation, Isotropy),
+              values_from = c(R, E, I),
               names_glue = "{.value}_{source}")
 
 common_ids_rei <- rei_wide %>%
@@ -163,7 +163,7 @@ pairs_label <- list(
 ba_plots_rei <- list()
 summary_table <- tibble()
 
-for (metric in c("SPI", "Elongation", "Isotropy")) {
+for (metric in c("R", "E", "I")) {
   for (pair in pairs_label) {
     src_a <- pair[1]; src_b <- pair[2]
     col_a <- glue("{metric}_{src_a}")
@@ -185,7 +185,8 @@ for (metric in c("SPI", "Elongation", "Isotropy")) {
 # 拼图：3 行（指标）× 3 列（对比组）
 p_rei <- wrap_plots(ba_plots_rei, ncol = 3) +
   plot_annotation(
-    title    = "Bland-Altman test: SPI / Elongation / Isotropy across alignment methods",
+    title    = "Bland-Altman: R / E / I Across Alignment Methods",
+    subtitle = "Pink dashed = bias，Blue dotted = 95% LoA",
     theme    = theme(
       plot.title    = element_text(face = "bold", size = 13, hjust = 0.5),
       plot.subtitle = element_text(size = 9, hjust = 0.5, color = "grey40")
@@ -358,6 +359,7 @@ write_csv(
 )
 cat("\n汇总表已保存：validation_ba_summary.csv\n")
 
+
 # ==============================================================================
 # 具体数值汇总：三种方法并排输出
 # ==============================================================================
@@ -437,3 +439,248 @@ write_csv(power_all_compare,
           here("analysis/data/derived_data/validation_values_power_all.csv"))
 cat("已保存：validation_values_power_all.csv\n")
 
+
+# ==============================================================================
+# Part D：实证验证 — SVD 对齐 vs SVD 对齐 + 随机 Z 轴旋转
+#
+# 逻辑：
+#   SVD 对齐固定了 Z 轴，但 XY 平面内的旋转角度对每个标本是任意的。
+#   对每个标本施加随机 Z 轴旋转后，如果功率谱保持一致，
+#   说明固定 SVD 坐标系后，坐标系内的随机扰动不影响分析结果。
+# ==============================================================================
+
+cat("\n====== Part D: SVD vs SVD + 随机 Z 轴旋转 ======\n\n")
+
+# --- 读取 svd_rotated 功率谱 ---
+path_rotated <- here("analysis/data/derived_data/validation/svd_rotated/SPHARM_direction.csv")
+
+if (!file.exists(path_rotated)) {
+  stop(glue(
+    "找不到：{path_rotated}\n",
+    "请先运行：\n",
+    "  1. python rotate_svd_directions.py\n",
+    "  2. python kde_to_spharm_main.py --source svd_rotated"
+  ))
+}
+
+df_svd_rotated <- read_csv(path_rotated, show_col_types = FALSE) %>%
+  mutate(source = "svd_rotated")
+
+# 确保 df_svd 存在（若单独运行 Part D 则重新读取）
+if (!exists("df_svd")) {
+  path_svd <- here("analysis/data/derived_data/validation/svd/SPHARM_direction.csv")
+  if (!file.exists(path_svd)) {
+    stop(glue(
+      "找不到：{path_svd}\n",
+      "请先运行：python kde_to_spharm_main.py --source svd"
+    ))
+  }
+  df_svd <- read_csv(path_svd, show_col_types = FALSE) %>%
+    mutate(source = "svd")
+  cat("已重新读取 df_svd\n")
+}
+
+# 确保 power_cols 存在（若单独运行 Part D 则重新提取）
+if (!exists("power_cols")) {
+  power_cols <- df_svd %>%
+    select(starts_with("power_l")) %>%
+    colnames()
+}
+
+# 确保 ba_power_summary 存在（用于 D-1 对比图，若不存在则跳过叠加）
+has_intermethod <- exists("ba_power_summary") && nrow(ba_power_summary) > 0
+
+# 取与 svd 共有的标本
+common_ids_rot <- intersect(
+  df_svd %>% pull(ID),
+  df_svd_rotated %>% pull(ID)
+)
+cat(sprintf("svd vs svd_rotated 验证：%d 个标本\n\n", length(common_ids_rot)))
+
+# 宽格式合并
+spharm_rot_wide <- bind_rows(
+  df_svd         %>% filter(ID %in% common_ids_rot),
+  df_svd_rotated %>% filter(ID %in% common_ids_rot)
+) %>%
+  select(ID, source, all_of(power_cols), spectral_entropy) %>%
+  pivot_wider(
+    names_from  = source,
+    values_from = c(all_of(power_cols), spectral_entropy),
+    names_glue  = "{.value}__{source}"
+  )
+
+
+# ------------------------------------------------------------------------------
+# D-1：各阶功率谱 Bland-Altman
+# ------------------------------------------------------------------------------
+
+ba_rot_summary <- tibble()
+
+for (pcol in power_cols) {
+  col_svd <- glue("{pcol}__svd")
+  col_rot <- glue("{pcol}__svd_rotated")
+  ba      <- bland_altman_calc(spharm_rot_wide[[col_svd]],
+                               spharm_rot_wide[[col_rot]])
+  degree  <- as.integer(str_remove(pcol, "power_l"))
+  
+  ba_rot_summary <- bind_rows(ba_rot_summary, tibble(
+    degree    = degree,
+    bias      = ba$bias,
+    loa_upper = ba$loa_upper,
+    loa_lower = ba$loa_lower,
+    sd_diff   = ba$sd_diff
+  ))
+  
+  # summary_table 若不存在（单独运行 Part D）则初始化
+  if (!exists("summary_table")) summary_table <- tibble()
+  summary_table <- bind_rows(summary_table,
+                             summary_row(pcol, "svd vs svd_rotated", ba))
+}
+
+# 与原有三对比较叠加在同一张图上，方便对比量级
+ba_rot_plot_df <- ba_rot_summary %>%
+  mutate(pair = "svd vs svd_rotated")
+
+# 若 ba_power_summary 不存在（单独运行 Part D），只画坐标系内扰动
+if (has_intermethod) {
+  ba_combined <- bind_rows(
+    ba_power_summary %>% mutate(group = "方法间差异（参考）"),
+    ba_rot_plot_df   %>% mutate(group = "坐标系内扰动（实证）")
+  )
+} else {
+  ba_combined <- ba_rot_plot_df %>%
+    mutate(group = "坐标系内扰动（实证）")
+  cat("注：ba_power_summary 不存在，图中仅显示坐标系内扰动。\n")
+}
+
+p_rot_spharm <- ggplot(ba_combined, aes(x = degree)) +
+  geom_ribbon(aes(ymin = loa_lower, ymax = loa_upper,
+                  fill = pair, alpha = group)) +
+  geom_line(aes(y = bias, color = pair, linewidth = group)) +
+  geom_hline(yintercept = 0, linetype = "dashed",
+             color = "grey50", linewidth = 0.4) +
+  scale_color_manual(
+    values = c(
+      "raw vs svd"         = "#D4619A",
+      "raw vs lin2024"     = "#4A9A4A",
+      "svd vs lin2024"     = "#3B8BD4",
+      "svd vs svd_rotated" = "#E8A000"
+    ),
+    name = "Comparison"
+  ) +
+  scale_fill_manual(
+    values = c(
+      "raw vs svd"         = "#D4619A",
+      "raw vs lin2024"     = "#4A9A4A",
+      "svd vs lin2024"     = "#3B8BD4",
+      "svd vs svd_rotated" = "#E8A000"
+    ),
+    name = "Comparison"
+  ) +
+  scale_alpha_manual(
+    values = c("方法间差异（参考）" = 0.10,
+               "坐标系内扰动（实证）" = 0.25),
+    name = "类型"
+  ) +
+  scale_linewidth_manual(
+    values = c("方法间差异（参考）" = 0.7,
+               "坐标系内扰动（实证）" = 1.3),
+    name = "类型"
+  ) +
+  scale_x_continuous(breaks = seq(0, max(ba_combined$degree), by = 2)) +
+  theme_bw(base_size = 10) +
+  labs(
+    title    = "Bland-Altman: SPHARM Power — Inter-method vs Intra-method Variation",
+    subtitle = "橙色（粗）= SVD 坐标系内随机扰动；其余细线 = 不同对齐方法间差异（参考基线）",
+    x        = "Spherical Harmonic Degree (l)",
+    y        = "Difference (bias ± 95% LoA)"
+  ) +
+  theme(
+    plot.title      = element_text(face = "bold", size = 11, hjust = 0.5),
+    plot.subtitle   = element_text(size = 8.5, hjust = 0.5, color = "grey40"),
+    legend.position = "bottom"
+  )
+
+ggsave(here("analysis/output/figures/validation_ba_svd_rotated_spharm.png"),
+       plot = p_rot_spharm, width = 12, height = 6, dpi = 300, bg = "white")
+cat("图已保存：validation_ba_svd_rotated_spharm.png\n\n")
+
+
+# ------------------------------------------------------------------------------
+# D-2：谱熵 Bland-Altman
+# ------------------------------------------------------------------------------
+
+ba_rot_entropy <- bland_altman_calc(
+  spharm_rot_wide[["spectral_entropy__svd"]],
+  spharm_rot_wide[["spectral_entropy__svd_rotated"]]
+)
+
+p_rot_entropy <- plot_ba(
+  ba_rot_entropy,
+  title_str = "svd vs svd_rotated",
+  x_label   = "Mean spectral entropy",
+  y_label   = "Δ entropy (svd − svd_rotated)"
+)
+
+ggsave(here("analysis/output/figures/validation_ba_svd_rotated_entropy.png"),
+       plot = p_rot_entropy, width = 5, height = 4, dpi = 300, bg = "white")
+cat("图已保存：validation_ba_svd_rotated_entropy.png\n\n")
+
+summary_table <- bind_rows(summary_table,
+                           summary_row("spectral_entropy",
+                                       "svd vs svd_rotated",
+                                       ba_rot_entropy))
+
+
+# ------------------------------------------------------------------------------
+# D-3：数值汇总与结论
+# ------------------------------------------------------------------------------
+
+cat("==== Part D 数值汇总 ====\n")
+
+# 坐标系内扰动 vs 方法间差异：最大 LoA 宽度对比
+loa_width_intermethod <- ba_power_summary %>%
+  group_by(pair) %>%
+  summarise(max_loa_width = max(loa_upper - loa_lower), .groups = "drop")
+
+loa_width_intramethod <- ba_rot_summary %>%
+  summarise(max_loa_width = max(loa_upper - loa_lower)) %>%
+  mutate(pair = "svd vs svd_rotated")
+
+cat("\n各对比组最大 LoA 宽度（越小说明一致性越高）：\n")
+bind_rows(loa_width_intermethod, loa_width_intramethod) %>%
+  mutate(max_loa_width = formatC(max_loa_width, format = "e", digits = 3)) %>%
+  print()
+
+cat("\n谱熵 Bland-Altman（svd vs svd_rotated）：\n")
+cat(sprintf("  Bias      = %.4e\n", ba_rot_entropy$bias))
+cat(sprintf("  +1.96 SD  = %.4e\n", ba_rot_entropy$loa_upper))
+cat(sprintf("  -1.96 SD  = %.4e\n", ba_rot_entropy$loa_lower))
+
+# 判断坐标系内扰动是否小于方法间差异
+max_intra <- max(ba_rot_summary$loa_upper - ba_rot_summary$loa_lower)
+max_inter <- max(ba_power_summary$loa_upper - ba_power_summary$loa_lower)
+
+cat(sprintf(
+  "\n坐标系内扰动 LoA 宽度（%.2e）%s 方法间差异 LoA 宽度（%.2e）\n",
+  max_intra,
+  ifelse(max_intra < max_inter, "<", "≥"),
+  max_inter
+))
+
+if (max_intra < max_inter * 0.1) {
+  cat("结论：坐标系内随机扰动远小于方法间系统差异（< 10%），\n")
+  cat("      固定 SVD 对齐坐标系后，分析结果不受坐标系内随机误差影响。✓\n")
+} else if (max_intra < max_inter) {
+  cat("结论：坐标系内随机扰动小于方法间系统差异，\n")
+  cat("      固定 SVD 对齐坐标系后，分析结果基本不受影响。\n")
+} else {
+  cat("结论：坐标系内随机扰动不可忽略，建议检查对齐质量或 KDE 参数。\n")
+}
+
+# 更新汇总表
+write_csv(
+  summary_table %>% arrange(metric, pair),
+  here("analysis/data/derived_data/validation_ba_summary.csv")
+)
+cat("\n完整汇总表已更新：validation_ba_summary.csv\n")

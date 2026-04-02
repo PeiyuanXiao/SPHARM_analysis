@@ -18,6 +18,8 @@ library(plotly)
 library(htmltools)
 library(jsonlite)
 
+conflicted::conflicts_prefer(plotly::layout)
+
 source(here("analysis/scripts/r_utils/geometry_utils.R"))
 source(here("analysis/scripts/r_utils/viz3d_utils.R"))
 
@@ -352,3 +354,38 @@ grid <- browsable(
 out_path <- here("analysis/output/html/scar_alignment_svd.html")
 htmltools::save_html(grid, out_path)
 browseURL(out_path)
+
+# ==============================================================================
+# 7. 导出对齐数据供 Python SPHARM 使用
+# ==============================================================================
+
+library(readr)
+
+# --- 原始数据：从端点坐标计算单位方向向量 ---
+raw_export <- raw_data %>%
+  mutate(
+    dx  = End_X - Start_X,
+    dy  = End_Y - Start_Y,
+    dz  = End_Z - Start_Z,
+    len = sqrt(dx^2 + dy^2 + dz^2)
+  ) %>%
+  filter(len > 1e-10) %>%
+  mutate(
+    ux = dx / len,
+    uy = dy / len,
+    uz = dz / len
+  ) %>%
+  select(ID, any_of("Typology"), ux, uy, uz)
+
+write_csv(raw_export,
+          here("analysis/data/derived_data/directions_raw.csv"))
+cat("已保存：directions_raw.csv\n")
+
+# --- SVD 对齐数据：d_x/d_y/d_z 重命名为 ux/uy/uz ---
+aligned_svd_export <- aligned_data %>%
+  select(ID, any_of("Typology"),
+         ux = d_x, uy = d_y, uz = d_z)
+
+write_csv(aligned_svd_export,
+          here("analysis/data/derived_data/directions_aligned_svd.csv"))
+cat("已保存：directions_aligned_svd.csv\n")
