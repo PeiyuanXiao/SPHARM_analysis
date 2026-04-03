@@ -1,49 +1,52 @@
 # ==============================================================================
-# silhouette_analysis.R
-# 实验石核片疤模式分析方法有效性对比
-# 方法：轮廓系数（Silhouette Score）
+# mantel_information_retention.R
+# 片疤模式信息保留度分析
+# 方法：Mantel 检验（方法距离矩阵 × KDE 真实距离矩阵）
 #
-# 研究问题：
-#   三种方法（SPI、Fabric、SPHARM）能否使同类石核的片疤模式
-#   在特征空间中彼此接近、与异类石核保持距离？
-#   → 轮廓系数直接量化类内凝聚度与类间分离度的比值
+# 修正说明（基于方法论审查）：
+#   修正1：统一距离度量
+#     原版：SPI 用欧氏，Fabric 用马氏，SPHARM 用余弦
+#     修正：三种方法全部用余弦距离（特征 z-score 标准化后）
+#     原因：马氏距离对 E/I 做了去相关变换，可能碰巧让 Fabric 的秩序
+#           结构更接近 ground truth，混淆了"信息量"与"距离度量选择"
 #
-# 与理想模型分析的关系：
-#   理想模型（每类 n=1）→ 成对类间距离热图（无法计算类内距离）
-#   实验标本（每类 n≥2）→ 轮廓系数（同时量化类内和类间距离）
-#   两者互补，共同构成完整的方法有效性论证
+#   修正2：诊断性分析——全系数 SPHARM
+#     除能量谱（power_l1–l5）外，额外用完整球谐系数向量做 Mantel 检验
+#     原因：能量谱为换取旋转不变性丢弃了相位信息，全系数保留相位
+#     预期：全系数 SPHARM 的 Mantel r 应显著高于能量谱
+#     意义：精确量化能量谱为旋转不变性付出的信息代价
 #
-# 距离度量：
-#   SPI           → 欧氏距离（标准化后）
-#   Fabric（E+I） → 马氏距离（处理 E/I 强负相关 r = −0.731）
-#   SPHARM        → 余弦距离
+# 全程使用 SVD 对齐。
 #
 # 输入：
-#   - analysis/data/raw_data/Scar_orientation_data.xlsx（sheet 3：实验石核）
-#   - analysis/data/derived_data/SPHARM_direction_lin2024.csv
+#   - analysis/data/raw_data/Scar_orientation_data.xlsx（sheet 3）
+#   - analysis/data/derived_data/directions_aligned_svd.csv
+#   - analysis/data/derived_data/SPHARM_direction.csv
 # 输出：
-#   - analysis/output/figures/silhouette_overall.png   总体轮廓系数柱状图
-#   - analysis/output/figures/silhouette_bytype.png    各类型轮廓系数热图
-#   - analysis/output/figures/silhouette_violin.png    各标本轮廓系数分布图
-#   - analysis/data/derived_data/silhouette_results.csv
+#   - analysis/output/figures/mantel_main.png         主分析（统一余弦距离）
+#   - analysis/output/figures/mantel_diagnostic.png   诊断分析（全系数 SPHARM）
+#   - analysis/data/derived_data/mantel_retention_results.csv
 # ==============================================================================
 
 library(here)
 library(tidyverse)
 library(readxl)
+library(vegan)
 library(patchwork)
 library(glue)
-library(MASS)   # ginv()，马氏距离协方差矩阵求逆备用
 
-exp_data             <- read_excel(
+exp_data           <- read_excel(
   here("analysis/data/raw_data/Scar_orientation_data.xlsx"), sheet = 3)
-exp_SPHARM_direction <- read_csv(
-  here("analysis/data/derived_data/SPHARM_direction_lin2024.csv"),
+directions_aligned <- read_csv(
+  here("analysis/data/derived_data/directions_aligned_svd.csv"),
+  show_col_types = FALSE)
+spharm_all         <- read_csv(
+  here("analysis/data/derived_data/SPHARM_direction.csv"),
   show_col_types = FALSE)
 
 
 # ==============================================================================
-# 公共函数：方向统计量计算
+# 公共函数
 # ==============================================================================
 
 compute_R <- function(ux, uy, uz) {
@@ -62,109 +65,55 @@ compute_EI <- function(ux, uy, uz) {
   )
 }
 
-
-# ==============================================================================
-# 距离矩阵计算函数
-# ==============================================================================
-
-# 欧氏距离（z-score 标准化后）
-dist_euclidean <- function(X) {
-  X_scaled <- scale(X)
-  as.matrix(dist(X_scaled, method = "euclidean"))
-}
-
-# 余弦距离：1 - cos(x, y)
-dist_cosine <- function(X) {
-  X   <- as.matrix(X)
+# 余弦距离（z-score 标准化后）
+# 统一用于所有方法，消除距离度量差异的混淆
+dist_cosine_scaled <- function(X) {
+  X   <- scale(as.matrix(X))          # z-score 标准化
   sim <- X %*% t(X) /
     (sqrt(rowSums(X^2)) %o% sqrt(rowSums(X^2)))
   sim <- pmin(pmax(sim, -1), 1)
   1 - sim
 }
 
-# 马氏距离（用全局协方差矩阵）
-dist_mahalanobis <- function(X) {
-  X     <- as.matrix(X)
-  S     <- cov(X)
-  S_inv <- tryCatch(solve(S), error = function(e) MASS::ginv(S))
-  n     <- nrow(X)
-  D     <- matrix(0, n, n)
-  for (i in seq_len(n)) {
-    for (j in seq_len(n)) {
-      d        <- X[i, ] - X[j, ]
-      D[i, j]  <- sqrt(max(0, t(d) %*% S_inv %*% d))
-    }
-  }
-  D
+# vMF-KDE（用于 KDE 真实距离矩阵）
+fit_vmf_kde <- function(ux, uy, uz, G, bandwidth = 0.35) {
+  X     <- cbind(ux, uy, uz)
+  kappa <- 1 / bandwidth^2
+  dot   <- G %*% t(X)
+  dens  <- rowMeans(exp(kappa * dot))
+  dens  / sum(dens)
 }
 
-
-# ==============================================================================
-# 轮廓系数计算函数
-# ==============================================================================
-
-# 对每件标本计算轮廓系数
-# s(i) = (b(i) - a(i)) / max(a(i), b(i))
-#   a(i)：与同类其他标本的平均距离（类内凝聚度）
-#   b(i)：与最近异类所有标本的平均距离（类间分离度）
-
-compute_silhouette <- function(D, labels) {
-  n      <- nrow(D)
-  types  <- unique(labels)
-  s      <- numeric(n)
-  a      <- numeric(n)
-  b      <- numeric(n)
-  
-  for (i in seq_len(n)) {
-    same_class  <- which(labels == labels[i] & seq_len(n) != i)
-    other_types <- types[types != labels[i]]
-    
-    # a(i)：类内平均距离
-    if (length(same_class) == 0) {
-      # 单件类型无法计算，设为 NA
-      s[i] <- NA_real_
-      a[i] <- NA_real_
-      b[i] <- NA_real_
-      next
-    }
-    a[i] <- mean(D[i, same_class])
-    
-    # b(i)：最近异类的平均距离
-    b_candidates <- sapply(other_types, function(t) {
-      idx <- which(labels == t)
-      mean(D[i, idx])
-    })
-    b[i] <- min(b_candidates)
-    
-    # 轮廓系数
-    s[i] <- (b[i] - a[i]) / max(a[i], b[i])
-  }
-  
-  data.frame(
-    label = labels,
-    a     = a,
-    b     = b,
-    s     = s
+make_sphere_grid <- function(n_bearing = 72, n_plunge = 36) {
+  eps     <- pi / 180 * 0.01
+  bearing <- seq(0, 2 * pi, length.out = n_bearing + 1)[-(n_bearing + 1)]
+  plunge  <- seq(-pi/2 + eps, pi/2 - eps, length.out = n_plunge)
+  grid    <- expand.grid(bearing = bearing, plunge = plunge)
+  cbind(
+    x = cos(grid$plunge) * cos(grid$bearing),
+    y = cos(grid$plunge) * sin(grid$bearing),
+    z = sin(grid$plunge)
   )
 }
 
 
 # ==============================================================================
-# 1. 计算 SPI 和 Fabric
+# 1. 过滤实验石核的 SVD 对齐方向向量
 # ==============================================================================
 
-raw_dirs <- exp_data %>%
-  mutate(
-    dx  = End_X - Start_X,
-    dy  = End_Y - Start_Y,
-    dz  = End_Z - Start_Z,
-    len = sqrt(dx^2 + dy^2 + dz^2)
-  ) %>%
-  filter(len > 1e-10) %>%
-  mutate(ux = dx / len, uy = dy / len, uz = dz / len)
+exp_ids        <- unique(exp_data$ID)
+directions_exp <- directions_aligned %>% filter(ID %in% exp_ids)
 
-rei_exp <- raw_dirs %>%
-  group_by(ID, Typology) %>%
+cat(sprintf("实验石核：%d 件标本，%d 条刮痕\n\n",
+            n_distinct(directions_exp$ID), nrow(directions_exp)))
+
+
+# ==============================================================================
+# 2. 计算 SPI 和 Fabric
+# ==============================================================================
+
+rei_exp <- directions_exp %>%
+  group_by(ID) %>%
   summarise(
     SPI = compute_R(ux, uy, uz),
     E   = compute_EI(ux, uy, uz)$E,
@@ -172,279 +121,279 @@ rei_exp <- raw_dirs %>%
     .groups = "drop"
   )
 
-cat(sprintf("E 与 I 的相关系数：%.3f（Fabric 使用马氏距离）\n\n",
+cat(sprintf("E 与 I 的相关系数：%.3f\n\n",
             cor(rei_exp$E, rei_exp$I, use = "complete.obs")))
 
 
 # ==============================================================================
-# 2. 合并 SPHARM 数据
+# 3. 合并 SPHARM 数据（能量谱 + 全系数）
 # ==============================================================================
 
-spharm_exp <- exp_SPHARM_direction %>%
-  select(ID, power_l1:power_l5)
+power_cols <- paste0("power_l", 1:5)
+coeff_cols <- grep("^coeff_", colnames(spharm_all), value = TRUE)
+
+spharm_exp <- spharm_all %>%
+  filter(ID %in% exp_ids) %>%
+  .[, c("ID", power_cols, coeff_cols)]
 
 all_data <- rei_exp %>%
   left_join(spharm_exp, by = "ID") %>%
   filter(!is.na(power_l1))
 
+common_ids <- intersect(all_data$ID, unique(directions_exp$ID))
+df         <- all_data %>% filter(ID %in% common_ids) %>% arrange(ID)
 
-# ==============================================================================
-# 3. 剔除单件类型（轮廓系数需要每类至少 2 件）
-# ==============================================================================
-
-single_types <- all_data %>% count(Typology) %>%
-  filter(n < 2) %>% pull(Typology)
-
-cat("剔除单件类型：", paste(single_types, collapse = ", "), "\n\n")
-
-df <- all_data %>% filter(!Typology %in% single_types)
-
-cat(sprintf("最终：%d 件标本，%d 种类型\n\n",
-            nrow(df), n_distinct(df$Typology)))
-df %>% count(Typology, sort = TRUE) %>% print()
+cat(sprintf("最终分析标本数：%d\n", nrow(df)))
+cat(sprintf("全系数维度：%d\n\n", length(coeff_cols)))
 
 
 # ==============================================================================
-# 4. 计算三种方法的距离矩阵
+# 4. 计算 KDE 真实距离矩阵（SVD 对齐，余弦距离）
 # ==============================================================================
 
-labels <- df$Typology
+cat("计算 KDE 真实距离矩阵...\n")
 
-X_spi <- df %>% select(SPI)           %>% as.matrix()
-X_fab <- df %>% select(E, I)          %>% as.matrix()
-X_sph <- df %>% select(power_l1:power_l5) %>% as.matrix()
+G          <- make_sphere_grid(n_bearing = 72, n_plunge = 36)
+n          <- nrow(df)
+kde_matrix <- matrix(0, nrow = n, ncol = nrow(G))
 
-cat("\n计算距离矩阵...\n")
-D_spi <- dist_euclidean(X_spi)
-cat("  SPI（欧氏）：完成\n")
-D_fab <- dist_mahalanobis(X_fab)
-cat("  Fabric（马氏）：完成\n")
-D_sph <- dist_cosine(X_sph)
-cat("  SPHARM（余弦）：完成\n\n")
+for (i in seq_len(n)) {
+  id_i   <- df$ID[i]
+  dirs_i <- directions_exp %>%
+    filter(ID == id_i, sqrt(ux^2 + uy^2 + uz^2) > 1e-10)
+  if (nrow(dirs_i) == 0) next
+  kde_matrix[i, ] <- fit_vmf_kde(dirs_i$ux, dirs_i$uy, dirs_i$uz,
+                                 G, bandwidth = 0.35)
+  if (i %% 10 == 0 || i == n) cat(sprintf("  [%d/%d]\n", i, n))
+}
 
-
-# ==============================================================================
-# 5. 计算轮廓系数
-# ==============================================================================
-
-sil_spi <- compute_silhouette(D_spi, labels) %>%
-  mutate(method = "SPI",            ID = df$ID)
-sil_fab <- compute_silhouette(D_fab, labels) %>%
-  mutate(method = "Fabric (E + I)", ID = df$ID)
-sil_sph <- compute_silhouette(D_sph, labels) %>%
-  mutate(method = "SPHARM (l1–l5)", ID = df$ID)
-
-sil_all <- bind_rows(sil_spi, sil_fab, sil_sph)
+# KDE 距离矩阵用未标准化的余弦距离（密度向量已归一化，直接算）
+X_kde <- kde_matrix
+sim   <- X_kde %*% t(X_kde) /
+  (sqrt(rowSums(X_kde^2)) %o% sqrt(rowSums(X_kde^2)))
+D_kde <- as.dist(1 - pmin(pmax(sim, -1), 1))
+cat("KDE 距离矩阵完成。\n\n")
 
 
 # ==============================================================================
-# 6. 数值汇总
+# 5. 计算方法距离矩阵（全部使用余弦距离 + z-score 标准化）
 # ==============================================================================
 
-# 总体轮廓系数（各标本的均值，忽略单件类型 NA）
-overall_sil <- sil_all %>%
-  group_by(method) %>%
-  summarise(
-    mean_s   = round(mean(s, na.rm = TRUE), 4),
-    median_s = round(median(s, na.rm = TRUE), 4),
-    n_pos    = sum(s > 0, na.rm = TRUE),
-    n_total  = sum(!is.na(s)),
-    pct_pos  = round(mean(s > 0, na.rm = TRUE) * 100, 1),
-    .groups  = "drop"
-  ) %>%
-  arrange(desc(mean_s))
+cat("计算方法距离矩阵（统一余弦距离）...\n")
 
-cat("====== 总体轮廓系数汇总 ======\n\n")
-overall_sil %>%
-  mutate(
-    dist_used = case_when(
-      method == "SPI"            ~ "euclidean",
-      method == "Fabric (E + I)" ~ "mahalanobis",
-      TRUE                       ~ "cosine"
-    )
-  ) %>%
-  select(method, dist_used, mean_s, median_s, n_pos, n_total, pct_pos) %>%
-  print()
+X_spi       <- df %>% select(SPI)                %>% as.matrix()
+X_fab       <- df %>% select(E, I)               %>% as.matrix()
+X_sph_power <- df[, power_cols]                  %>% as.matrix()
+X_sph_coeff <- df[, coeff_cols]                  %>% as.matrix()
 
-cat("\n说明：\n")
-cat("  mean_s   = 平均轮廓系数（越高越好，>0 表示类内紧凑度优于类间分离度）\n")
-cat("  median_s = 中位轮廓系数（对异常值更稳健）\n")
-cat("  pct_pos  = 轮廓系数 > 0 的标本比例（越高越好）\n\n")
-
-# 各类型平均轮廓系数
-cat("====== 各类型平均轮廓系数 ======\n\n")
-sil_all %>%
-  group_by(method, label) %>%
-  summarise(mean_s = round(mean(s, na.rm = TRUE), 3),
-            n = n(), .groups = "drop") %>%
-  pivot_wider(names_from = method, values_from = mean_s,
-              names_sort = TRUE) %>%
-  arrange(label) %>%
-  print(n = Inf)
+D_spi       <- as.dist(dist_cosine_scaled(X_spi));       cat("  SPI 完成\n")
+D_fab       <- as.dist(dist_cosine_scaled(X_fab));       cat("  Fabric 完成\n")
+D_sph_power <- as.dist(dist_cosine_scaled(X_sph_power)); cat("  SPHARM 能量谱完成\n")
+D_sph_coeff <- as.dist(dist_cosine_scaled(X_sph_coeff)); cat("  SPHARM 全系数完成\n\n")
 
 
 # ==============================================================================
-# 7. 可视化 A：总体轮廓系数柱状图
+# 6. Mantel 检验（Spearman，999 次置换）
 # ==============================================================================
 
-method_order  <- c("SPI", "Fabric (E + I)", "SPHARM (l1–l5)")
-method_colors <- c(
-  "SPI"            = "#A1C2E6",
-  "Fabric (E + I)" = "#FFBAE0",
-  "SPHARM (l1–l5)" = "#D4619A"
+cat("====== Mantel 检验（999 次置换，Spearman，统一余弦距离）======\n\n")
+
+set.seed(42)
+m_spi       <- mantel(D_kde, D_spi,       method = "spearman", permutations = 999)
+m_fab       <- mantel(D_kde, D_fab,       method = "spearman", permutations = 999)
+m_sph_power <- mantel(D_kde, D_sph_power, method = "spearman", permutations = 999)
+m_sph_coeff <- mantel(D_kde, D_sph_coeff, method = "spearman", permutations = 999)
+
+make_sig <- function(p) case_when(
+  p < 0.001 ~ "***", p < 0.01 ~ "**", p < 0.05 ~ "*", TRUE ~ "ns"
 )
 
-p_overall <- overall_sil %>%
-  mutate(method = factor(method, levels = method_order)) %>%
-  ggplot(aes(x = method, y = mean_s, fill = method)) +
-  geom_hline(yintercept = 0, linetype = "dashed",
-             color = "grey50", linewidth = 0.7) +
+results_main <- tibble(
+  method    = c("SPI", "Fabric (E + I)", "SPHARM power (l1–l5)"),
+  r         = c(m_spi$statistic, m_fab$statistic, m_sph_power$statistic),
+  p_value   = c(m_spi$signif,   m_fab$signif,   m_sph_power$signif),
+  dist_used = "cosine (z-score)"
+) %>% mutate(sig = make_sig(p_value)) %>% arrange(desc(r))
+
+results_diag <- tibble(
+  method    = c("SPHARM power (l1–l5)", "SPHARM full coefficients"),
+  r         = c(m_sph_power$statistic, m_sph_coeff$statistic),
+  p_value   = c(m_sph_power$signif,   m_sph_coeff$signif),
+  dist_used = "cosine (z-score)"
+) %>% mutate(sig = make_sig(p_value)) %>% arrange(desc(r))
+
+cat("【主分析】三种方法（统一余弦距离）：\n")
+cat("方法                      r        p        显著性\n")
+cat("----------------------------------------------------\n")
+for (i in seq_len(nrow(results_main))) {
+  cat(sprintf("%-26s  %6.4f   %6.4f   %s\n",
+              results_main$method[i], results_main$r[i],
+              results_main$p_value[i], results_main$sig[i]))
+}
+
+cat("\n【诊断分析】SPHARM 能量谱 vs 全系数：\n")
+cat("方法                           r        p        显著性\n")
+cat("----------------------------------------------------------\n")
+for (i in seq_len(nrow(results_diag))) {
+  cat(sprintf("%-30s  %6.4f   %6.4f   %s\n",
+              results_diag$method[i], results_diag$r[i],
+              results_diag$p_value[i], results_diag$sig[i]))
+}
+
+delta_r <- results_diag$r[results_diag$method == "SPHARM full coefficients"] -
+  results_diag$r[results_diag$method == "SPHARM power (l1–l5)"]
+cat(sprintf(
+  "\n全系数 vs 能量谱 Δr = %.4f\n",
+  delta_r
+))
+cat("解读：Δr 反映能量谱为换取旋转不变性所丢弃的相位信息量\n\n")
+
+
+# ==============================================================================
+# 7. 可视化
+# ==============================================================================
+
+method_order_main <- c("SPI", "Fabric (E + I)", "SPHARM power (l1–l5)")
+colors_main <- c(
+  "SPI"                  = "#A1C2E6",
+  "Fabric (E + I)"       = "#FFBAE0",
+  "SPHARM power (l1–l5)" = "#D4619A"
+)
+
+# --- 主分析柱状图 ---
+p_main <- results_main %>%
+  mutate(method = factor(method, levels = method_order_main)) %>%
+  ggplot(aes(x = method, y = r, fill = method)) +
   geom_col(width = 0.55, alpha = 0.9) +
-  geom_text(aes(label = sprintf("%.4f", mean_s),
-                vjust = ifelse(mean_s >= 0, -0.4, 1.4)),
+  geom_text(aes(label = glue("r = {round(r, 4)}\n{sig}"),
+                vjust = ifelse(r >= 0, -0.3, 1.3)),
             size = 3.8, fontface = "bold") +
-  scale_fill_manual(values = method_colors, guide = "none") +
-  scale_y_continuous(breaks = seq(-1, 1, 0.05)) +
-  theme_bw(base_size = 11) +
-  labs(
-    title    = "Mean Silhouette Score by Method",
-    subtitle = paste("SPI: Euclidean | Fabric: Mahalanobis | SPHARM: Cosine",
-                     "\nPositive = intra-class distance < inter-class distance"),
-    x        = NULL,
-    y        = "Mean silhouette score"
-  ) +
-  theme(
-    plot.title    = element_text(face = "bold", size = 11, hjust = 0.5),
-    plot.subtitle = element_text(size = 8.5, hjust = 0.5, color = "grey40"),
-    axis.text.x   = element_text(size = 10)
-  )
-
-
-# ==============================================================================
-# 8. 可视化 B：各类型轮廓系数热图
-# ==============================================================================
-
-type_sil <- sil_all %>%
-  group_by(method, label) %>%
-  summarise(mean_s = round(mean(s, na.rm = TRUE), 3),
-            .groups = "drop") %>%
-  mutate(method = factor(method, levels = method_order))
-
-p_bytype <- ggplot(type_sil,
-                   aes(x = method, y = fct_rev(label), fill = mean_s)) +
-  geom_tile(color = "white", linewidth = 0.5) +
-  geom_text(aes(label  = sprintf("%.3f", mean_s),
-                color  = ifelse(abs(mean_s) > 0.3, "white", "grey20")),
-            size = 3, fontface = "bold") +
-  scale_fill_gradient2(
-    low      = "#3B8BD4",
-    mid      = "white",
-    high     = "#D4619A",
-    midpoint = 0,
-    limits   = c(-1, 1),
-    name     = "Silhouette\nscore"
-  ) +
-  scale_color_identity() +
-  theme_bw(base_size = 10) +
-  labs(
-    title    = "Silhouette Score by Type and Method",
-    subtitle = "Pink = intra-class compact (good) | Blue = inter-class closer (poor)",
-    x        = NULL,
-    y        = NULL
-  ) +
-  theme(
-    plot.title    = element_text(face = "bold", size = 11, hjust = 0.5),
-    plot.subtitle = element_text(size = 8.5, hjust = 0.5, color = "grey40"),
-    axis.text.x   = element_text(size = 10, face = "bold"),
-    axis.text.y   = element_text(size = 9)
-  )
-
-
-# ==============================================================================
-# 9. 可视化 C：各标本轮廓系数分布（小提琴图 + 抖动点）
-# ==============================================================================
-
-p_violin <- sil_all %>%
-  filter(!is.na(s)) %>%
-  mutate(method = factor(method, levels = method_order)) %>%
-  ggplot(aes(x = method, y = s, fill = method, color = method)) +
   geom_hline(yintercept = 0, linetype = "dashed",
-             color = "grey50", linewidth = 0.7) +
-  geom_violin(alpha = 0.3, linewidth = 0.6) +
-  geom_jitter(width = 0.12, size = 2, alpha = 0.7) +
-  stat_summary(fun = mean, geom = "crossbar",
-               width = 0.4, linewidth = 0.8,
-               color = "grey20") +
-  scale_fill_manual(values  = method_colors, guide = "none") +
-  scale_color_manual(values = method_colors, guide = "none") +
-  scale_y_continuous(limits = c(-1, 1), breaks = seq(-1, 1, 0.25)) +
+             color = "grey50", linewidth = 0.6) +
+  scale_fill_manual(values = colors_main, guide = "none") +
+  scale_y_continuous(limits = c(-0.05, 1), breaks = seq(0, 1, 0.2)) +
   theme_bw(base_size = 11) +
   labs(
-    title    = "Distribution of Silhouette Scores (per specimen)",
-    subtitle = "Crossbar = mean | Points = individual specimens",
-    x        = NULL,
-    y        = "Silhouette score"
+    title    = "Information Retention — Main Analysis",
+    subtitle = paste(
+      "All methods: cosine distance after z-score standardization",
+      "\nGround truth: SVD-aligned → vMF-KDE (bandwidth = 0.35) → cosine distance",
+      "\n*** p < 0.001  ** p < 0.01  * p < 0.05  ns p ≥ 0.05"
+    ),
+    x = NULL, y = "Mantel r (Spearman)"
   ) +
   theme(
     plot.title    = element_text(face = "bold", size = 11, hjust = 0.5),
-    plot.subtitle = element_text(size = 8.5, hjust = 0.5, color = "grey40"),
-    axis.text.x   = element_text(size = 10)
+    plot.subtitle = element_text(size = 8, hjust = 0.5, color = "grey40"),
+    axis.text.x   = element_text(size = 9)
   )
 
+# --- 诊断分析柱状图 ---
+colors_diag <- c(
+  "SPHARM power (l1–l5)"     = "#D4619A",
+  "SPHARM full coefficients"  = "#8B1A6B"
+)
+
+p_diag <- results_diag %>%
+  mutate(method = factor(method,
+                         levels = c("SPHARM power (l1–l5)",
+                                    "SPHARM full coefficients"))) %>%
+  ggplot(aes(x = method, y = r, fill = method)) +
+  geom_col(width = 0.45, alpha = 0.9) +
+  geom_text(aes(label = glue("r = {round(r, 4)}\n{sig}")),
+            vjust = -0.3, size = 3.8, fontface = "bold") +
+  geom_hline(yintercept = 0, linetype = "dashed",
+             color = "grey50", linewidth = 0.6) +
+  annotate("text", x = 1.5,
+           y = max(results_diag$r) * 0.5,
+           label = glue("Δr = {round(delta_r, 4)}\n(phase information cost)"),
+           size = 3.5, color = "grey30", hjust = 0.5) +
+  scale_fill_manual(values = colors_diag, guide = "none") +
+  scale_y_continuous(limits = c(-0.05, 1), breaks = seq(0, 1, 0.2)) +
+  theme_bw(base_size = 11) +
+  labs(
+    title    = "Diagnostic Analysis — Phase Information Cost",
+    subtitle = paste(
+      "Power spectrum: rotation-invariant (phase discarded)",
+      "\nFull coefficients: phase retained (SVD-aligned coordinate frame)",
+      "\nΔr quantifies information lost by discarding phase"
+    ),
+    x = NULL, y = "Mantel r (Spearman)"
+  ) +
+  theme(
+    plot.title    = element_text(face = "bold", size = 11, hjust = 0.5),
+    plot.subtitle = element_text(size = 8, hjust = 0.5, color = "grey40"),
+    axis.text.x   = element_text(size = 9)
+  )
+
+# --- 散点图（主分析）---
+plot_scatter <- function(D_method, method_name, color) {
+  kde_vec    <- as.vector(D_kde)
+  method_vec <- as.vector(D_method)
+  ggplot(data.frame(kde = kde_vec, method = method_vec),
+         aes(x = kde, y = method)) +
+    geom_point(size = 1, alpha = 0.3, color = color) +
+    geom_smooth(method = "lm", se = TRUE,
+                color = "grey30", linewidth = 0.8) +
+    theme_bw(base_size = 9) +
+    labs(title = method_name,
+         x = "KDE distance", y = "Method distance") +
+    theme(plot.title = element_text(face = "bold", size = 9, hjust = 0.5))
+}
+
+p_scatter <- (
+  plot_scatter(D_spi,       "SPI",                    "#A1C2E6") |
+    plot_scatter(D_fab,       "Fabric (E + I)",          "#FFBAE0") |
+    plot_scatter(D_sph_power, "SPHARM power (l1–l5)",   "#D4619A") |
+    plot_scatter(D_sph_coeff, "SPHARM full coefficients","#8B1A6B")
+) +
+  plot_annotation(
+    title = "Pairwise Distance: Method vs KDE Ground Truth",
+    theme = theme(plot.title = element_text(face = "bold", size = 10,
+                                            hjust = 0.5))
+  )
+
+p_main_full  <- p_main  / p_scatter + plot_layout(heights = c(1.5, 1))
+p_diag_final <- p_diag
+
 
 # ==============================================================================
-# 10. 保存图片
+# 8. 保存
 # ==============================================================================
 
-ggsave(here("analysis/output/figures/silhouette_overall.png"),
-       plot = p_overall, width = 7, height = 5, dpi = 300, bg = "white")
-cat("图已保存：silhouette_overall.png\n")
+ggsave(here("analysis/output/figures/mantel_main.png"),
+       plot = p_main_full, width = 12, height = 9, dpi = 300, bg = "white")
+cat("图已保存：mantel_main.png\n")
 
-ggsave(here("analysis/output/figures/silhouette_bytype.png"),
-       plot = p_bytype, width = 8, height = 6, dpi = 300, bg = "white")
-cat("图已保存：silhouette_bytype.png\n")
+ggsave(here("analysis/output/figures/mantel_diagnostic.png"),
+       plot = p_diag_final, width = 6, height = 5, dpi = 300, bg = "white")
+cat("图已保存：mantel_diagnostic.png\n")
 
-ggsave(here("analysis/output/figures/silhouette_violin.png"),
-       plot = p_violin, width = 7, height = 5, dpi = 300, bg = "white")
-cat("图已保存：silhouette_violin.png\n")
-
-
-# ==============================================================================
-# 11. 保存详细结果
-# ==============================================================================
-
-sil_all %>%
-  select(method, ID, label, a, b, s) %>%
-  arrange(method, label, ID) %>%
-  write_csv(here("analysis/data/derived_data/silhouette_results.csv"))
-cat("详细结果已保存：silhouette_results.csv\n")
+bind_rows(
+  results_main %>% mutate(analysis = "main"),
+  results_diag %>% mutate(analysis = "diagnostic")
+) %>%
+  select(analysis, method, dist_used, r, p_value, sig) %>%
+  write_csv(here("analysis/data/derived_data/mantel_retention_results.csv"))
+cat("结果已保存：mantel_retention_results.csv\n")
 
 
 # ==============================================================================
-# 12. 结论
+# 9. 结论
 # ==============================================================================
 
 cat("\n====== 结论 ======\n\n")
-best <- overall_sil %>% slice_max(mean_s, n = 1)
-worst <- overall_sil %>% slice_min(mean_s, n = 1)
+best_main <- results_main %>% slice_max(r, n = 1)
+cat(sprintf("主分析（统一余弦距离）信息保留度最高：%s（r = %.4f，%s）\n",
+            best_main$method, best_main$r, best_main$sig))
+cat("方法排序：",
+    paste(results_main$method, sprintf("r=%.4f", results_main$r),
+          sep="=", collapse=" > "), "\n\n")
 
-cat(sprintf(
-  "平均轮廓系数最高：%s（%.4f）\n",
-  best$method, best$mean_s
-))
-cat(sprintf(
-  "平均轮廓系数最低：%s（%.4f）\n",
-  worst$method, worst$mean_s
-))
-cat("\n方法排序（均值轮廓系数）：\n")
-cat(paste(overall_sil$method,
-          sprintf("%.4f", overall_sil$mean_s),
-          sep = " = ", collapse = " > "), "\n\n")
-
-# 各方法轮廓系数 > 0 的标本比例
-cat("轮廓系数 > 0 的标本比例（类内距离 < 类间距离）：\n")
-overall_sil %>%
-  select(method, pct_pos, n_pos, n_total) %>%
-  mutate(result = glue("{pct_pos}% ({n_pos}/{n_total})")) %>%
-  select(method, result) %>%
-  print()
+r_power <- results_diag$r[results_diag$method == "SPHARM power (l1–l5)"]
+r_coeff <- results_diag$r[results_diag$method == "SPHARM full coefficients"]
+cat(sprintf("诊断分析：全系数 r = %.4f，能量谱 r = %.4f，Δr = %.4f\n",
+            r_coeff, r_power, delta_r))
+cat("解读：SPHARM 全系数保留的信息远高于能量谱，\n")
+cat(sprintf("      差值 Δr = %.4f 量化了能量谱为换取旋转不变性丢弃的相位信息代价。\n",
+            delta_r))
