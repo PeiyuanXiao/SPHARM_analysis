@@ -177,6 +177,8 @@ def run_pipeline(source: str,
             }
             for l, p in enumerate(feats["norm_power"]):
                 row[f"power_l{l}"] = round(float(p), 8)
+            for j, c in enumerate(feats["coeffs_flat"]):
+                row[f"coeff_{j}"] = round(float(np.real(c)), 8)
 
             rows.append(row)
             print(f"H={feats['spectral_entropy']:.4f}  ✓")

@@ -1,31 +1,30 @@
 # ==============================================================================
-# mantel_information_retention.R
-# 片疤模式信息保留度分析
-# 方法：Mantel 检验（方法距离矩阵 × KDE 真实距离矩阵）
+# mantel_pairwise_angle_retention.R
+# 片疤方向信息保留度分析
 #
-# 修正说明（基于方法论审查）：
-#   修正1：统一距离度量
-#     原版：SPI 用欧氏，Fabric 用马氏，SPHARM 用余弦
-#     修正：三种方法全部用余弦距离（特征 z-score 标准化后）
-#     原因：马氏距离对 E/I 做了去相关变换，可能碰巧让 Fabric 的秩序
-#           结构更接近 ground truth，混淆了"信息量"与"距离度量选择"
+# 核心思想：
+#   1) 对每件标本，计算片疤方向向量两两之间的夹角分布
+#   2) 将角度分布离散化为直方图，作为 rotation-invariant ground truth
+#   3) 比较 SPI / Fabric / SPHARM 的特征距离矩阵与该 ground truth 的对应程度
 #
-#   修正2：诊断性分析——全系数 SPHARM
-#     除能量谱（power_l1–l5）外，额外用完整球谐系数向量做 Mantel 检验
-#     原因：能量谱为换取旋转不变性丢弃了相位信息，全系数保留相位
-#     预期：全系数 SPHARM 的 Mantel r 应显著高于能量谱
-#     意义：精确量化能量谱为旋转不变性付出的信息代价
+# 主分析：
+#   - ground truth: pairwise-angle histogram
+#   - 方法距离：统一使用 z-score 后的欧氏距离
 #
-# 全程使用 SVD 对齐。
+# 敏感性分析：
+#   - SPI: 欧氏距离
+#   - Fabric: 马氏距离
+#   - SPHARM power / full coeff: 余弦距离
 #
 # 输入：
 #   - analysis/data/raw_data/Scar_orientation_data.xlsx（sheet 3）
 #   - analysis/data/derived_data/directions_aligned_svd.csv
 #   - analysis/data/derived_data/SPHARM_direction.csv
+#
 # 输出：
-#   - analysis/output/figures/mantel_main.png         主分析（统一余弦距离）
-#   - analysis/output/figures/mantel_diagnostic.png   诊断分析（全系数 SPHARM）
-#   - analysis/data/derived_data/mantel_retention_results.csv
+#   - analysis/output/figures/pairwise_angle_main.png
+#   - analysis/output/figures/pairwise_angle_sensitivity.png
+#   - analysis/data/derived_data/pairwise_angle_retention_results.csv
 # ==============================================================================
 
 library(here)
@@ -35,15 +34,32 @@ library(vegan)
 library(patchwork)
 library(glue)
 
-exp_data           <- read_excel(
-  here("analysis/data/raw_data/Scar_orientation_data.xlsx"), sheet = 3)
+# ==============================================================================
+# 参数
+# ==============================================================================
+
+n_angle_bins <- 36
+permutations <- 999
+set.seed(42)
+
+# ==============================================================================
+# 读取数据
+# ==============================================================================
+
+exp_data <- read_excel(
+  here("analysis/data/raw_data/Scar_orientation_data.xlsx"),
+  sheet = 3
+)
+
 directions_aligned <- read_csv(
   here("analysis/data/derived_data/directions_aligned_svd.csv"),
-  show_col_types = FALSE)
-spharm_all         <- read_csv(
-  here("analysis/data/derived_data/SPHARM_direction.csv"),
-  show_col_types = FALSE)
+  show_col_types = FALSE
+)
 
+spharm_all <- read_csv(
+  here("analysis/data/derived_data/SPHARM_direction.csv"),
+  show_col_types = FALSE
+)
 
 # ==============================================================================
 # 公共函数
@@ -65,48 +81,146 @@ compute_EI <- function(ux, uy, uz) {
   )
 }
 
-# 余弦距离（z-score 标准化后）
-# 统一用于所有方法，消除距离度量差异的混淆
+prepare_scaled_matrix <- function(X) {
+  X <- as.matrix(X)
+  if (ncol(X) == 0) stop("输入矩阵没有可用列。")
+  col_sd <- apply(X, 2, sd, na.rm = TRUE)
+  keep   <- is.finite(col_sd) & col_sd > 1e-10
+  X      <- X[, keep, drop = FALSE]
+  if (ncol(X) == 0) stop("所有列都是常数列，无法标准化。")
+  scale(X)
+}
+
+dist_euclidean_scaled <- function(X) {
+  X <- prepare_scaled_matrix(X)
+  as.dist(stats::dist(X, method = "euclidean"))
+}
+
 dist_cosine_scaled <- function(X) {
-  X   <- scale(as.matrix(X))          # z-score 标准化
+  X <- prepare_scaled_matrix(X)
   sim <- X %*% t(X) /
     (sqrt(rowSums(X^2)) %o% sqrt(rowSums(X^2)))
   sim <- pmin(pmax(sim, -1), 1)
-  1 - sim
+  as.dist(1 - sim)
 }
 
-# vMF-KDE（用于 KDE 真实距离矩阵）
-fit_vmf_kde <- function(ux, uy, uz, G, bandwidth = 0.35) {
-  X     <- cbind(ux, uy, uz)
-  kappa <- 1 / bandwidth^2
-  dot   <- G %*% t(X)
-  dens  <- rowMeans(exp(kappa * dot))
-  dens  / sum(dens)
+dist_mahalanobis <- function(X, ridge = 1e-6) {
+  X <- as.matrix(X)
+  if (ncol(X) < 2) {
+    # 单变量时，马氏距离退化为欧氏距离
+    return(as.dist(stats::dist(scale(X), method = "euclidean")))
+  }
+  S <- stats::cov(X, use = "pairwise.complete.obs")
+  S <- S + diag(ridge, ncol(S))
+  Sinv <- solve(S)
+  
+  n <- nrow(X)
+  D <- matrix(0, n, n)
+  for (i in seq_len(n - 1)) {
+    for (j in (i + 1):n) {
+      d <- X[i, ] - X[j, ]
+      D[i, j] <- sqrt(drop(t(d) %*% Sinv %*% d))
+    }
+  }
+  as.dist(D)
 }
 
-make_sphere_grid <- function(n_bearing = 72, n_plunge = 36) {
-  eps     <- pi / 180 * 0.01
-  bearing <- seq(0, 2 * pi, length.out = n_bearing + 1)[-(n_bearing + 1)]
-  plunge  <- seq(-pi/2 + eps, pi/2 - eps, length.out = n_plunge)
-  grid    <- expand.grid(bearing = bearing, plunge = plunge)
-  cbind(
-    x = cos(grid$plunge) * cos(grid$bearing),
-    y = cos(grid$plunge) * sin(grid$bearing),
-    z = sin(grid$plunge)
+# 计算每件标本的 pairwise-angle 直方图（概率分布）
+compute_pairwise_angle_hist <- function(ux, uy, uz, breaks) {
+  U <- cbind(ux, uy, uz)
+  U <- U / sqrt(rowSums(U^2))
+  
+  if (nrow(U) < 2) return(rep(NA_real_, length(breaks) - 1))
+  
+  dot <- U %*% t(U)
+  dot <- pmin(pmax(dot, -1), 1)
+  theta <- acos(dot)
+  theta_vec <- theta[upper.tri(theta)]
+  
+  if (length(theta_vec) == 0) return(rep(NA_real_, length(breaks) - 1))
+  
+  h <- hist(
+    theta_vec,
+    breaks = breaks,
+    plot = FALSE,
+    include.lowest = TRUE,
+    right = FALSE
   )
+  
+  p <- h$counts / sum(h$counts)
+  as.numeric(p)
 }
 
+dist_hellinger <- function(P) {
+  P <- as.matrix(P)
+  rs <- rowSums(P)
+  if (any(rs <= 0 | !is.finite(rs))) stop("存在无法构造概率分布的行。")
+  P <- P / rs
+  
+  sp <- sqrt(P)
+  n  <- nrow(sp)
+  D  <- matrix(0, n, n)
+  
+  for (i in seq_len(n - 1)) {
+    for (j in (i + 1):n) {
+      D[i, j] <- sqrt(sum((sp[i, ] - sp[j, ])^2)) / sqrt(2)
+    }
+  }
+  as.dist(D)
+}
+
+make_sig <- function(p) case_when(
+  p < 0.001 ~ "***",
+  p < 0.01  ~ "**",
+  p < 0.05  ~ "*",
+  TRUE      ~ "ns"
+)
+
+run_mantel_suite <- function(D_truth, method_dists, permutations = 999) {
+  out <- map_dfr(names(method_dists), function(nm) {
+    m <- mantel(D_truth, method_dists[[nm]],
+                method = "spearman",
+                permutations = permutations)
+    
+    tibble(
+      method    = nm,
+      r         = as.numeric(m$statistic),
+      p_value   = as.numeric(m$signif),
+      sig       = make_sig(as.numeric(m$signif))
+    )
+  })
+  
+  out %>% arrange(desc(r))
+}
+
+plot_distance_scatter <- function(D_truth, D_method, title, color) {
+  dfp <- tibble(
+    truth  = as.vector(D_truth),
+    method = as.vector(D_method)
+  )
+  
+  ggplot(dfp, aes(x = truth, y = method)) +
+    geom_point(size = 1, alpha = 0.28, color = color) +
+    geom_smooth(method = "lm", se = TRUE,
+                color = "grey30", linewidth = 0.8) +
+    theme_bw(base_size = 9) +
+    labs(title = title, x = "Ground truth distance", y = "Method distance") +
+    theme(
+      plot.title = element_text(face = "bold", size = 9, hjust = 0.5)
+    )
+}
 
 # ==============================================================================
-# 1. 过滤实验石核的 SVD 对齐方向向量
+# 1. 过滤实验石核
 # ==============================================================================
 
-exp_ids        <- unique(exp_data$ID)
+exp_ids <- unique(exp_data$ID)
 directions_exp <- directions_aligned %>% filter(ID %in% exp_ids)
 
-cat(sprintf("实验石核：%d 件标本，%d 条刮痕\n\n",
-            n_distinct(directions_exp$ID), nrow(directions_exp)))
-
+cat(sprintf(
+  "实验石核：%d 件标本，%d 条刮痕\n\n",
+  n_distinct(directions_exp$ID), nrow(directions_exp)
+))
 
 # ==============================================================================
 # 2. 计算 SPI 和 Fabric
@@ -121,166 +235,220 @@ rei_exp <- directions_exp %>%
     .groups = "drop"
   )
 
-cat(sprintf("E 与 I 的相关系数：%.3f\n\n",
-            cor(rei_exp$E, rei_exp$I, use = "complete.obs")))
-
+cat(sprintf(
+  "E 与 I 的相关系数：%.3f\n\n",
+  cor(rei_exp$E, rei_exp$I, use = "complete.obs")
+))
 
 # ==============================================================================
-# 3. 合并 SPHARM 数据（能量谱 + 全系数）
+# 3. 合并 SPHARM 数据
 # ==============================================================================
 
 power_cols <- paste0("power_l", 1:5)
-coeff_cols <- grep("^coeff_", colnames(spharm_all), value = TRUE)
+
+if (!all(power_cols %in% colnames(spharm_all))) {
+  stop("SPHARM 文件中缺少 power_l1~power_l5 列。")
+}
+
+# 尝试自动识别全系数列
+coeff_patterns <- c("^coeff_", "^coef_", "^shc_", "^Y_", "^real_", "^imag_", "^re_", "^im_")
+coeff_cols <- unique(unlist(lapply(coeff_patterns, function(p) {
+  grep(p, colnames(spharm_all), value = TRUE)
+})))
+coeff_cols <- setdiff(coeff_cols, c("ID", power_cols))
+
+has_coeff <- length(coeff_cols) > 0
+
+if (has_coeff) {
+  cat(sprintf("检测到全系数列：%d 个\n\n", length(coeff_cols)))
+} else {
+  cat("未检测到可用的全系数列；将跳过全系数诊断分析。\n\n")
+}
 
 spharm_exp <- spharm_all %>%
   filter(ID %in% exp_ids) %>%
-  .[, c("ID", power_cols, coeff_cols)]
+  select(ID, all_of(power_cols), any_of(coeff_cols))
 
 all_data <- rei_exp %>%
   left_join(spharm_exp, by = "ID") %>%
   filter(!is.na(power_l1))
 
 common_ids <- intersect(all_data$ID, unique(directions_exp$ID))
-df         <- all_data %>% filter(ID %in% common_ids) %>% arrange(ID)
+df <- all_data %>% filter(ID %in% common_ids) %>% arrange(ID)
 
-cat(sprintf("最终分析标本数：%d\n", nrow(df)))
-cat(sprintf("全系数维度：%d\n\n", length(coeff_cols)))
-
+cat(sprintf("初始合并后标本数：%d\n", nrow(df)))
 
 # ==============================================================================
-# 4. 计算 KDE 真实距离矩阵（SVD 对齐，余弦距离）
+# 4. 构造 rotation-invariant ground truth：pairwise-angle 直方图
 # ==============================================================================
 
-cat("计算 KDE 真实距离矩阵...\n")
+cat("计算 pairwise-angle ground truth ...\n")
 
-G          <- make_sphere_grid(n_bearing = 72, n_plunge = 36)
-n          <- nrow(df)
-kde_matrix <- matrix(0, nrow = n, ncol = nrow(G))
+angle_breaks <- seq(0, pi, length.out = n_angle_bins + 1)
+angle_breaks[length(angle_breaks)] <- pi + 1e-8
 
-for (i in seq_len(n)) {
-  id_i   <- df$ID[i]
+angle_mat <- matrix(NA_real_, nrow = nrow(df), ncol = n_angle_bins)
+
+for (i in seq_len(nrow(df))) {
+  id_i <- df$ID[i]
   dirs_i <- directions_exp %>%
     filter(ID == id_i, sqrt(ux^2 + uy^2 + uz^2) > 1e-10)
-  if (nrow(dirs_i) == 0) next
-  kde_matrix[i, ] <- fit_vmf_kde(dirs_i$ux, dirs_i$uy, dirs_i$uz,
-                                 G, bandwidth = 0.35)
-  if (i %% 10 == 0 || i == n) cat(sprintf("  [%d/%d]\n", i, n))
+  
+  if (nrow(dirs_i) < 2) next
+  
+  angle_mat[i, ] <- compute_pairwise_angle_hist(
+    dirs_i$ux, dirs_i$uy, dirs_i$uz,
+    breaks = angle_breaks
+  )
+  
+  if (i %% 10 == 0 || i == nrow(df)) {
+    cat(sprintf("  [%d/%d]\n", i, nrow(df)))
+  }
 }
 
-# KDE 距离矩阵用未标准化的余弦距离（密度向量已归一化，直接算）
-X_kde <- kde_matrix
-sim   <- X_kde %*% t(X_kde) /
-  (sqrt(rowSums(X_kde^2)) %o% sqrt(rowSums(X_kde^2)))
-D_kde <- as.dist(1 - pmin(pmax(sim, -1), 1))
-cat("KDE 距离矩阵完成。\n\n")
+keep <- complete.cases(angle_mat)
+dropped <- sum(!keep)
 
+df <- df[keep, ] %>% arrange(ID)
+angle_mat <- angle_mat[keep, , drop = FALSE]
 
-# ==============================================================================
-# 5. 计算方法距离矩阵（全部使用余弦距离 + z-score 标准化）
-# ==============================================================================
+cat(sprintf("最终进入分析的标本数：%d\n", nrow(df)))
+cat(sprintf("因 angle 分布无法构造而剔除的标本数：%d\n\n", dropped))
 
-cat("计算方法距离矩阵（统一余弦距离）...\n")
-
-X_spi       <- df %>% select(SPI)                %>% as.matrix()
-X_fab       <- df %>% select(E, I)               %>% as.matrix()
-X_sph_power <- df[, power_cols]                  %>% as.matrix()
-X_sph_coeff <- df[, coeff_cols]                  %>% as.matrix()
-
-D_spi       <- as.dist(dist_cosine_scaled(X_spi));       cat("  SPI 完成\n")
-D_fab       <- as.dist(dist_cosine_scaled(X_fab));       cat("  Fabric 完成\n")
-D_sph_power <- as.dist(dist_cosine_scaled(X_sph_power)); cat("  SPHARM 能量谱完成\n")
-D_sph_coeff <- as.dist(dist_cosine_scaled(X_sph_coeff)); cat("  SPHARM 全系数完成\n\n")
-
+D_truth <- dist_hellinger(angle_mat)
+cat("Rotation-invariant ground truth 距离矩阵完成。\n\n")
 
 # ==============================================================================
-# 6. Mantel 检验（Spearman，999 次置换）
+# 5. 方法距离矩阵
+#    主分析：统一使用 z-score 后的欧氏距离
+#    敏感性分析：SPI=欧氏，Fabric=马氏，SPHARM=余弦
 # ==============================================================================
 
-cat("====== Mantel 检验（999 次置换，Spearman，统一余弦距离）======\n\n")
+X_spi       <- df %>% select(SPI)          %>% as.matrix()
+X_fab       <- df %>% select(E, I)         %>% as.matrix()
+X_sph_power <- df %>% select(all_of(power_cols)) %>% as.matrix()
 
-set.seed(42)
-m_spi       <- mantel(D_kde, D_spi,       method = "spearman", permutations = 999)
-m_fab       <- mantel(D_kde, D_fab,       method = "spearman", permutations = 999)
-m_sph_power <- mantel(D_kde, D_sph_power, method = "spearman", permutations = 999)
-m_sph_coeff <- mantel(D_kde, D_sph_coeff, method = "spearman", permutations = 999)
+D_spi_main       <- dist_euclidean_scaled(X_spi)
+D_fab_main       <- dist_euclidean_scaled(X_fab)
+D_sph_power_main <- dist_euclidean_scaled(X_sph_power)
 
-make_sig <- function(p) case_when(
-  p < 0.001 ~ "***", p < 0.01 ~ "**", p < 0.05 ~ "*", TRUE ~ "ns"
+method_dists_main <- list(
+  "SPI"                  = D_spi_main,
+  "Fabric (E + I)"       = D_fab_main,
+  "SPHARM power (l1–l5)" = D_sph_power_main
 )
 
-results_main <- tibble(
-  method    = c("SPI", "Fabric (E + I)", "SPHARM power (l1–l5)"),
-  r         = c(m_spi$statistic, m_fab$statistic, m_sph_power$statistic),
-  p_value   = c(m_spi$signif,   m_fab$signif,   m_sph_power$signif),
-  dist_used = "cosine (z-score)"
-) %>% mutate(sig = make_sig(p_value)) %>% arrange(desc(r))
-
-results_diag <- tibble(
-  method    = c("SPHARM power (l1–l5)", "SPHARM full coefficients"),
-  r         = c(m_sph_power$statistic, m_sph_coeff$statistic),
-  p_value   = c(m_sph_power$signif,   m_sph_coeff$signif),
-  dist_used = "cosine (z-score)"
-) %>% mutate(sig = make_sig(p_value)) %>% arrange(desc(r))
-
-cat("【主分析】三种方法（统一余弦距离）：\n")
-cat("方法                      r        p        显著性\n")
-cat("----------------------------------------------------\n")
-for (i in seq_len(nrow(results_main))) {
-  cat(sprintf("%-26s  %6.4f   %6.4f   %s\n",
-              results_main$method[i], results_main$r[i],
-              results_main$p_value[i], results_main$sig[i]))
+if (has_coeff) {
+  X_sph_coeff <- df %>% select(all_of(coeff_cols)) %>% as.matrix()
+  D_sph_coeff_main <- dist_euclidean_scaled(X_sph_coeff)
+  method_dists_main[["SPHARM full coefficients"]] <- D_sph_coeff_main
 }
 
-cat("\n【诊断分析】SPHARM 能量谱 vs 全系数：\n")
+# 敏感性分析：每种方法用其更“自然”的度量
+D_spi_nat       <- dist_euclidean_scaled(X_spi)  # 一维下就是标准化绝对差
+D_fab_nat       <- dist_mahalanobis(X_fab)
+D_sph_power_nat <- dist_cosine_scaled(X_sph_power)
+
+method_dists_nat <- list(
+  "SPI"                  = D_spi_nat,
+  "Fabric (Mahalanobis)" = D_fab_nat,
+  "SPHARM power (cosine)"= D_sph_power_nat
+)
+
+if (has_coeff) {
+  X_sph_coeff <- df %>% select(all_of(coeff_cols)) %>% as.matrix()
+  D_sph_coeff_nat <- dist_cosine_scaled(X_sph_coeff)
+  method_dists_nat[["SPHARM full coefficients"]] <- D_sph_coeff_nat
+}
+
+# ==============================================================================
+# 6. Mantel 检验
+# ==============================================================================
+
+cat("====== Mantel 检验：主分析（统一 z-score 欧氏距离）======\n\n")
+results_main <- run_mantel_suite(D_truth, method_dists_main, permutations = permutations)
+results_main <- results_main %>%
+  mutate(
+    analysis  = "main",
+    dist_used = "ground truth: Hellinger(pairwise-angle hist); methods: euclidean(z-score)"
+  )
+
 cat("方法                           r        p        显著性\n")
-cat("----------------------------------------------------------\n")
-for (i in seq_len(nrow(results_diag))) {
-  cat(sprintf("%-30s  %6.4f   %6.4f   %s\n",
-              results_diag$method[i], results_diag$r[i],
-              results_diag$p_value[i], results_diag$sig[i]))
+cat("---------------------------------------------------------------\n")
+for (i in seq_len(nrow(results_main))) {
+  cat(sprintf(
+    "%-30s  %6.4f   %6.4f   %s\n",
+    results_main$method[i], results_main$r[i],
+    results_main$p_value[i], results_main$sig[i]
+  ))
 }
 
-delta_r <- results_diag$r[results_diag$method == "SPHARM full coefficients"] -
-  results_diag$r[results_diag$method == "SPHARM power (l1–l5)"]
-cat(sprintf(
-  "\n全系数 vs 能量谱 Δr = %.4f\n",
-  delta_r
-))
-cat("解读：Δr 反映能量谱为换取旋转不变性所丢弃的相位信息量\n\n")
+cat("\n====== Mantel 检验：敏感性分析（自然距离）======\n\n")
+results_nat <- run_mantel_suite(D_truth, method_dists_nat, permutations = permutations)
+results_nat <- results_nat %>%
+  mutate(
+    analysis  = "sensitivity",
+    dist_used = "ground truth: Hellinger(pairwise-angle hist); methods: mixed natural metrics"
+  )
 
+cat("方法                           r        p        显著性\n")
+cat("---------------------------------------------------------------\n")
+for (i in seq_len(nrow(results_nat))) {
+  cat(sprintf(
+    "%-30s  %6.4f   %6.4f   %s\n",
+    results_nat$method[i], results_nat$r[i],
+    results_nat$p_value[i], results_nat$sig[i]
+  ))
+}
+
+# 如果有 full coefficients，给一个诊断性 Δr
+if (has_coeff && "SPHARM full coefficients" %in% results_main$method) {
+  r_power_main <- results_main$r[results_main$method == "SPHARM power (l1–l5)"]
+  r_coeff_main <- results_main$r[results_main$method == "SPHARM full coefficients"]
+  delta_main <- r_coeff_main - r_power_main
+  
+  r_power_nat <- results_nat$r[results_nat$method == "SPHARM power (cosine)"]
+  r_coeff_nat <- results_nat$r[results_nat$method == "SPHARM full coefficients"]
+  delta_nat <- r_coeff_nat - r_power_nat
+  
+  cat(sprintf("\n主分析：全系数 vs 能量谱 Δr = %.4f\n", delta_main))
+  cat(sprintf("敏感性分析：全系数 vs 能量谱 Δr = %.4f\n\n", delta_nat))
+}
 
 # ==============================================================================
 # 7. 可视化
 # ==============================================================================
 
-method_order_main <- c("SPI", "Fabric (E + I)", "SPHARM power (l1–l5)")
-colors_main <- c(
+method_order_main <- names(method_dists_main)
+palette_main <- c(
   "SPI"                  = "#A1C2E6",
   "Fabric (E + I)"       = "#FFBAE0",
-  "SPHARM power (l1–l5)" = "#D4619A"
+  "SPHARM power (l1–l5)" = "#D4619A",
+  "SPHARM full coefficients" = "#8B1A6B"
 )
 
-# --- 主分析柱状图 ---
 p_main <- results_main %>%
   mutate(method = factor(method, levels = method_order_main)) %>%
   ggplot(aes(x = method, y = r, fill = method)) +
-  geom_col(width = 0.55, alpha = 0.9) +
-  geom_text(aes(label = glue("r = {round(r, 4)}\n{sig}"),
-                vjust = ifelse(r >= 0, -0.3, 1.3)),
-            size = 3.8, fontface = "bold") +
+  geom_col(width = 0.6, alpha = 0.9) +
+  geom_text(
+    aes(label = glue("r = {round(r, 4)}\n{sig}")),
+    vjust = -0.35, size = 3.6, fontface = "bold"
+  ) +
   geom_hline(yintercept = 0, linetype = "dashed",
              color = "grey50", linewidth = 0.6) +
-  scale_fill_manual(values = colors_main, guide = "none") +
-  scale_y_continuous(limits = c(-0.05, 1), breaks = seq(0, 1, 0.2)) +
+  scale_fill_manual(values = palette_main, guide = "none") +
+  scale_y_continuous(limits = c(0, max(results_main$r, na.rm = TRUE) + 0.15)) +
   theme_bw(base_size = 11) +
   labs(
-    title    = "Information Retention — Main Analysis",
+    title = "Information Retention — Pairwise-Angle Ground Truth",
     subtitle = paste(
-      "All methods: cosine distance after z-score standardization",
-      "\nGround truth: SVD-aligned → vMF-KDE (bandwidth = 0.35) → cosine distance",
+      "Ground truth = Hellinger distance between pairwise-angle histograms",
+      "\nMethods = z-score standardized Euclidean distance",
       "\n*** p < 0.001  ** p < 0.01  * p < 0.05  ns p ≥ 0.05"
     ),
-    x = NULL, y = "Mantel r (Spearman)"
+    x = NULL,
+    y = "Mantel r (Spearman)"
   ) +
   theme(
     plot.title    = element_text(face = "bold", size = 11, hjust = 0.5),
@@ -288,37 +456,27 @@ p_main <- results_main %>%
     axis.text.x   = element_text(size = 9)
   )
 
-# --- 诊断分析柱状图 ---
-colors_diag <- c(
-  "SPHARM power (l1–l5)"     = "#D4619A",
-  "SPHARM full coefficients"  = "#8B1A6B"
-)
-
-p_diag <- results_diag %>%
-  mutate(method = factor(method,
-                         levels = c("SPHARM power (l1–l5)",
-                                    "SPHARM full coefficients"))) %>%
+p_nat <- results_nat %>%
+  mutate(method = factor(method, levels = names(method_dists_nat))) %>%
   ggplot(aes(x = method, y = r, fill = method)) +
-  geom_col(width = 0.45, alpha = 0.9) +
-  geom_text(aes(label = glue("r = {round(r, 4)}\n{sig}")),
-            vjust = -0.3, size = 3.8, fontface = "bold") +
+  geom_col(width = 0.6, alpha = 0.9) +
+  geom_text(
+    aes(label = glue("r = {round(r, 4)}\n{sig}")),
+    vjust = -0.35, size = 3.6, fontface = "bold"
+  ) +
   geom_hline(yintercept = 0, linetype = "dashed",
              color = "grey50", linewidth = 0.6) +
-  annotate("text", x = 1.5,
-           y = max(results_diag$r) * 0.5,
-           label = glue("Δr = {round(delta_r, 4)}\n(phase information cost)"),
-           size = 3.5, color = "grey30", hjust = 0.5) +
-  scale_fill_manual(values = colors_diag, guide = "none") +
-  scale_y_continuous(limits = c(-0.05, 1), breaks = seq(0, 1, 0.2)) +
+  scale_fill_manual(values = palette_main, guide = "none") +
+  scale_y_continuous(limits = c(0, max(results_nat$r, na.rm = TRUE) + 0.15)) +
   theme_bw(base_size = 11) +
   labs(
-    title    = "Diagnostic Analysis — Phase Information Cost",
+    title = "Sensitivity Analysis — Method-Specific Distances",
     subtitle = paste(
-      "Power spectrum: rotation-invariant (phase discarded)",
-      "\nFull coefficients: phase retained (SVD-aligned coordinate frame)",
-      "\nΔr quantifies information lost by discarding phase"
+      "SPI: Euclidean   Fabric: Mahalanobis   SPHARM: Cosine",
+      "\nGround truth still = Hellinger(pairwise-angle hist)"
     ),
-    x = NULL, y = "Mantel r (Spearman)"
+    x = NULL,
+    y = "Mantel r (Spearman)"
   ) +
   theme(
     plot.title    = element_text(face = "bold", size = 11, hjust = 0.5),
@@ -326,74 +484,128 @@ p_diag <- results_diag %>%
     axis.text.x   = element_text(size = 9)
   )
 
-# --- 散点图（主分析）---
-plot_scatter <- function(D_method, method_name, color) {
-  kde_vec    <- as.vector(D_kde)
-  method_vec <- as.vector(D_method)
-  ggplot(data.frame(kde = kde_vec, method = method_vec),
-         aes(x = kde, y = method)) +
-    geom_point(size = 1, alpha = 0.3, color = color) +
-    geom_smooth(method = "lm", se = TRUE,
-                color = "grey30", linewidth = 0.8) +
-    theme_bw(base_size = 9) +
-    labs(title = method_name,
-         x = "KDE distance", y = "Method distance") +
-    theme(plot.title = element_text(face = "bold", size = 9, hjust = 0.5))
+# 散点图：主分析
+p_scatter_main <- (
+  plot_distance_scatter(D_truth, D_spi_main,       "SPI",                  "#A1C2E6") |
+    plot_distance_scatter(D_truth, D_fab_main,       "Fabric (E + I)",       "#FFBAE0") |
+    plot_distance_scatter(D_truth, D_sph_power_main, "SPHARM power (l1–l5)", "#D4619A")
+)
+
+if (has_coeff) {
+  p_scatter_main <- p_scatter_main |
+    plot_distance_scatter(D_truth, D_sph_coeff_main, "SPHARM full coefficients", "#8B1A6B")
 }
 
-p_scatter <- (
-  plot_scatter(D_spi,       "SPI",                    "#A1C2E6") |
-    plot_scatter(D_fab,       "Fabric (E + I)",          "#FFBAE0") |
-    plot_scatter(D_sph_power, "SPHARM power (l1–l5)",   "#D4619A") |
-    plot_scatter(D_sph_coeff, "SPHARM full coefficients","#8B1A6B")
-) +
+p_scatter_main <- p_scatter_main +
   plot_annotation(
-    title = "Pairwise Distance: Method vs KDE Ground Truth",
-    theme = theme(plot.title = element_text(face = "bold", size = 10,
-                                            hjust = 0.5))
+    title = "Pairwise Distances: Methods vs Rotation-Invariant Ground Truth",
+    theme = theme(plot.title = element_text(face = "bold", size = 10, hjust = 0.5))
   )
 
-p_main_full  <- p_main  / p_scatter + plot_layout(heights = c(1.5, 1))
-p_diag_final <- p_diag
-
+p_main_full <- p_main / p_scatter_main + plot_layout(heights = c(1.2, 1))
+p_nat_full  <- p_nat
 
 # ==============================================================================
 # 8. 保存
 # ==============================================================================
 
-ggsave(here("analysis/output/figures/mantel_main.png"),
-       plot = p_main_full, width = 12, height = 9, dpi = 300, bg = "white")
-cat("图已保存：mantel_main.png\n")
+ggsave(
+  here("analysis/output/figures/pairwise_angle_main.png"),
+  plot = p_main_full, width = 12, height = 9, dpi = 300, bg = "white"
+)
+cat("图已保存：pairwise_angle_main.png\n")
 
-ggsave(here("analysis/output/figures/mantel_diagnostic.png"),
-       plot = p_diag_final, width = 6, height = 5, dpi = 300, bg = "white")
-cat("图已保存：mantel_diagnostic.png\n")
+ggsave(
+  here("analysis/output/figures/pairwise_angle_sensitivity.png"),
+  plot = p_nat_full, width = 7, height = 5, dpi = 300, bg = "white"
+)
+cat("图已保存：pairwise_angle_sensitivity.png\n")
 
-bind_rows(
-  results_main %>% mutate(analysis = "main"),
-  results_diag %>% mutate(analysis = "diagnostic")
-) %>%
+bind_rows(results_main, results_nat) %>%
   select(analysis, method, dist_used, r, p_value, sig) %>%
-  write_csv(here("analysis/data/derived_data/mantel_retention_results.csv"))
-cat("结果已保存：mantel_retention_results.csv\n")
+  write_csv(here("analysis/data/derived_data/pairwise_angle_retention_results.csv"))
 
+cat("结果已保存：pairwise_angle_retention_results.csv\n")
 
 # ==============================================================================
 # 9. 结论
 # ==============================================================================
 
 cat("\n====== 结论 ======\n\n")
-best_main <- results_main %>% slice_max(r, n = 1)
-cat(sprintf("主分析（统一余弦距离）信息保留度最高：%s（r = %.4f，%s）\n",
-            best_main$method, best_main$r, best_main$sig))
-cat("方法排序：",
-    paste(results_main$method, sprintf("r=%.4f", results_main$r),
-          sep="=", collapse=" > "), "\n\n")
 
-r_power <- results_diag$r[results_diag$method == "SPHARM power (l1–l5)"]
-r_coeff <- results_diag$r[results_diag$method == "SPHARM full coefficients"]
-cat(sprintf("诊断分析：全系数 r = %.4f，能量谱 r = %.4f，Δr = %.4f\n",
-            r_coeff, r_power, delta_r))
-cat("解读：SPHARM 全系数保留的信息远高于能量谱，\n")
-cat(sprintf("      差值 Δr = %.4f 量化了能量谱为换取旋转不变性丢弃的相位信息代价。\n",
-            delta_r))
+best_main <- results_main %>% slice_max(r, n = 1)
+cat(sprintf(
+  "主分析（rotation-invariant ground truth）信息保留度最高：%s（r = %.4f，%s）\n",
+  best_main$method, best_main$r, best_main$sig
+))
+cat("主分析排序：",
+    paste(results_main$method, sprintf("r=%.4f", results_main$r),
+          sep = "=", collapse = " > "), "\n\n")
+
+best_nat <- results_nat %>% slice_max(r, n = 1)
+cat(sprintf(
+  "敏感性分析信息保留度最高：%s（r = %.4f，%s）\n",
+  best_nat$method, best_nat$r, best_nat$sig
+))
+cat("敏感性分析排序：",
+    paste(results_nat$method, sprintf("r=%.4f", results_nat$r),
+          sep = "=", collapse = " > "), "\n\n")
+
+cat("解读：pairwise-angle 直方图提供了一个完全旋转不变、且不依赖任何摘要方法的参考空间。\n")
+cat("主分析回答的是：谁最能保留原始方向分布的内部角结构。\n")
+cat("敏感性分析回答的是：当使用各方法更自然的距离度量时，结论是否稳定。\n")
+
+
+
+
+
+
+df_analysis <- df %>%
+  select(ID, SPI, E, I, starts_with("power_l")) %>%
+  drop_na()
+
+# SPHARM PCA
+X_sph <- df_analysis %>%
+  select(starts_with("power_l")) %>%
+  scale()
+
+pca <- prcomp(X_sph, center = FALSE, scale. = FALSE)
+
+# 取前2个主成分（解释大部分方差）
+df_analysis <- df_analysis %>%
+  mutate(
+    PC1 = pca$x[,1],
+    PC2 = pca$x[,2]
+  )
+
+m_spi_1 <- lm(PC1 ~ SPI, data = df_analysis)
+m_spi_2 <- lm(PC2 ~ SPI, data = df_analysis)
+
+m_fab_1 <- lm(PC1 ~ E + I, data = df_analysis)
+m_fab_2 <- lm(PC2 ~ E + I, data = df_analysis)
+
+m_all_1 <- lm(PC1 ~ SPI + E + I, data = df_analysis)
+m_all_2 <- lm(PC2 ~ SPI + E + I, data = df_analysis)
+
+summary(m_spi_1)$r.squared
+summary(m_fab_1)$r.squared
+summary(m_all_1)$r.squared
+
+
+df_analysis <- df_analysis %>%
+  mutate(
+    res_PC1 = resid(m_all_1),
+    res_PC2 = resid(m_all_2)
+  )
+
+ggplot(df_analysis, aes(x = res_PC1, y = res_PC2)) +
+  geom_point(size = 2, alpha = 0.7) +
+  theme_bw() +
+  labs(
+    title = "Residual structure (SPHARM not explained by SPI + Fabric)",
+    x = "Residual PC1",
+    y = "Residual PC2"
+  )
+
+
+
