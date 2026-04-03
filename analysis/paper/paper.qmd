@@ -74,7 +74,7 @@ Against this background, the present study proposes a new quantitative analytica
 
 **2.1 Materials**
 
-Ideal core models: one ideal model per core type, sourced from Lin et al. (2024).
+Ideal core models: one ideal model per core type, sourced from @lin2024.
 
 Experimental knapping models by Clarkson: 1–22 specimens per core type, 59 specimens in total, sourced from Lin et al. (2024) (awaiting email confirmation).
 
@@ -84,11 +84,11 @@ Archaeological specimens from the Sandinggai site: after excluding incomplete co
 
 **2.2.1 Data Extraction**
 
-Scar orientations were digitized in Geomagic Wrap 2021, and their vector coordinates were exported directly. Since all metrics employed in this study are rotationally invariant, rotational alignment of the specimens does not affect the analyses.
+Scar orientations were digitized in Geomagic Wrap 2021, and their vector coordinates were exported directly.
 
 **2.2.2 Spherical Harmonic Analysis**
 
-Spherical harmonic analysis represents the three-dimensional extension of elliptic Fourier analysis. Its mathematical foundations... Several studies have already applied spherical harmonic methods to lithic analysis: Sholts et al. (2017) used spherical harmonics to quantify three-dimensional asymmetry in Clovis points, while Muller et al. (2023) and Ye et al. (2026, in reviewed) applied the method to investigate the morphology of spheroids.
+Spherical harmonic analysis represents the three-dimensional extension of elliptic Fourier analysis. Its mathematical foundations... Several studies have already applied spherical harmonic methods to lithic analysis: @sholts2017used spherical harmonics to quantify three-dimensional asymmetry in Clovis points, while @muller2023 and Ye et al. (2026, in reviewed) applied the method to investigate the morphology of spheroids.
 
 In the present study, we apply this method to scar orientation data for the first time, performing spherical harmonic analysis on core scars. For morphological data... For orientation data, a continuous density surface is first fitted using von Mises–Fisher spherical kernel density estimation based on directional statistics, which is then decomposed into spherical harmonics. The spherical harmonic variance and power spectrum are subsequently computed, and an appropriate spectral degree is selected by inspecting the variance contribution across degrees.
 
