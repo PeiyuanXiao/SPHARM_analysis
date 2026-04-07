@@ -88,13 +88,25 @@ Scar orientations were digitized in Geomagic Wrap 2021, and their vector coordin
 
 **2.2.2 Spherical Harmonic Analysis**
 
-Spherical harmonic analysis represents the three-dimensional extension of elliptic Fourier analysis. Its mathematical foundations... Several studies have already applied spherical harmonic methods to lithic analysis: @sholts2017used spherical harmonics to quantify three-dimensional asymmetry in Clovis points, while @muller2023 and Ye et al. (2026, in reviewed) applied the method to investigate the morphology of spheroids.
+Spherical harmonic analysis represents the three-dimensional extension of elliptic Fourier analysis. Its mathematical foundations... Several studies have already applied spherical harmonic methods to lithic analysis: @sholts2017 used spherical harmonics to quantify three-dimensional asymmetry in Clovis points, while @muller2023 and Ye et al. (2026, in reviewed) applied the method to investigate the morphology of spheroids.
 
 In the present study, we apply this method to scar orientation data for the first time, performing spherical harmonic analysis on core scars. For morphological data... For orientation data, a continuous density surface is first fitted using von Mises–Fisher spherical kernel density estimation based on directional statistics, which is then decomposed into spherical harmonics. The spherical harmonic variance and power spectrum are subsequently computed, and an appropriate spectral degree is selected by inspecting the variance contribution across degrees.
 
 **2.2.3 Data Analysis**
 
+*Rotation Invariance Assessment.* To evaluate whether different scar pattern metrics are rotation-invariant, we employed the Bland–Altman approach. The Bland–Altman analysis is widely used to assess agreement between two sets of measurements and provides a quantitative evaluation through the Bland–Altman plot. In this plot, the x-axis represents the mean of the two measurements, while the y-axis represents their difference. The mean difference is defined as the bias, and the 95% limits of agreement (LoA) are calculated based on this bias. A high level of agreement is inferred when the limits of agreement are narrow, approximately 95% of the data points fall within these limits, and the differences are randomly distributed without systematic trends.
+
+In this study, the Bland–Altman framework was used to test the rotation invariance of three metrics: SPI, fabric analysis (Elongation and Isotropy), and the SPHARM power spectrum. Specifically, each metric was computed under three conditions: (1) using the original scar-vector data, (2) using morphological plane aligned data, and (3) using technological plane aligned data. Pairwise Bland–Altman comparisons were then conducted among these conditions. High agreement between the paired measurements was interpreted as evidence of rotation invariance for the corresponding metric.
+
 *Method comparison.* To evaluate the effectiveness of spherical harmonic analysis for characterizing scar patterns, we compare the classificatory performance of three methods — SPI, Lin's fabric analysis, and spherical harmonics — using the ideal models. Since only one ideal model exists per type, we assess performance using pairwise Euclidean distances: specifically, how far apart different ideal model types are in a standardized feature space. Greater pairwise distances indicate stronger differentiation between types, thereby serving as a measure of each method's discriminatory power. Results are visualized as heatmaps, and mean pairwise distances are calculated for each method.
+
+To evaluate the differences in information captured by each method, we applied Multiple Regression on Distance Matrices (MRM). Conceptually, MRM is equivalent to standard multiple linear regression; however, it operates on the lower-triangular elements of distance matrices as observational units and employs permutation tests instead of parametric inference to account for the non-independence among matrix entries.
+
+The analytical procedure consisted of four steps. First, distance matrices for the three scar pattern metrics were constructed using standardized Euclidean distance. Second, each method was treated in turn as the dependent variable, with the remaining two distance matrices used as predictors, resulting in three separate MRM models. The coefficient of determination (R²) from each model represents the proportion of variance in the focal method’s distance structure explained jointly by the other two methods, whereas 1 − R² reflects the proportion of method-specific (unique) information.
+
+Third, with the SPHARM power spectrum distance matrix as the dependent variable, we constructed a full model including both SPI and Fabric as predictors, along with two reduced models each containing a single predictor. Based on standard variance partitioning, the total variance in SPHARM was decomposed into four components: the unique contribution of SPI, the unique contribution of Fabric, the shared contribution of both predictors, and the unexplained variance. The latter component represents the proportion of information uniquely captured by SPHARM relative to SPI and Fabric.
+
+Finally, the residual matrix was extracted from the full model. Positive residuals indicate specimen pairs for which dissimilarity in SPHARM space exceeds the joint prediction from SPI and Fabric, suggesting that SPHARM captures additional directional distribution differences for these pairs; negative residuals indicate the opposite pattern. By ranking standardized residuals, specimen pairs that most strongly reflect the unique discriminative capacity of SPHARM were identified and subsequently visualized.
 
 *Dimensionality reduction.* Because spherical harmonics describe a nonlinear manifold, linear methods such as PCA are ill-suited to recovering the global structure of spherical harmonic data. We therefore apply UMAP to reduce the dimensionality of the spherical harmonic power spectra.
 
@@ -104,9 +116,29 @@ In the present study, we apply this method to scar orientation data for the firs
 
 # Results
 
-**3.1 Validity of Scar Pattern Analysis Methods**
+**3.1 Validity Analysis**
+
+**3.1.1 Test of Rotation Invariance of Scar Pattern Metrics**
+
+To assess the rotation invariance of scar pattern metrics, we performed Bland–Altman analyses on results obtained under three coordinate conditions: the original coordinate data, coordinates aligned to the morphological fitted plane, and coordinates aligned to the technological fitted plane.
+
+The results indicate that SPI and Fabric metrics are highly consistent across all three coordinate conditions. Bland–Altman analysis showed that all biases and 95% LoA were on the order of R’s double-precision machine epsilon(approximately 2.2 × 10⁻¹⁶), i.e., within the numerical precision of the computations. This demonstrates that these metrics exhibit robust rotation invariance. In practical analysis, neither rotation alignment nor coordinate normalization of the core models affects the calculation of SPI and Fabric.
+
+SPHARM power spectra exhibited a slightly different pattern. Bland–Altman analysis revealed limited systematic deviations in low-order spectral coefficients (l = 1–2; 95% LoA ≈ ±0.02) across alignment methods, while deviations converged rapidly at higher orders (l ≥ 3), with no substantial differences among methods. To further validate this observation, we applied random Z-axis rotations to the technological aligned data and recalculated the SPHARM spectra. The differences remained within machine precision, confirming that orientation uncertainty within the coordinate system does not influence the SPHARM power spectrum.
+
+Overall, SPHARM power spectra are mathematically rotation-invariant. The systematic deviations observed in low-order spectra arise from preprocessing rather than the spherical harmonic expansion itself. Specifically, different alignment procedures shift sparse direction vectors across the Driscoll–Healy grid, introducing coordinate-dependent interpolation errors during discretization, which predominantly affect low-order coefficients. Importantly, when a single alignment method is consistently applied across specimens, these systematic biases impact all specimens uniformly, preserving inter-specimen relative differences and maintaining the validity of subsequent statistical analyses.
+
+Based on these considerations, all subsequent analyses employed coordinate alignment based on the technologial fitted plane.
+
+**3.1.2 Test of Scar Pattern Analysis Methods**
 
 Using the ideal core models, we computed results for all three methods and compared their classificatory effectiveness. The heatmaps clearly present the discriminatory power of each method across ideal model types, which increases progressively from Clarkson's SPI → Lin's Fabric analysis → SPHARM. This pattern is corroborated by mean pairwise distances: the SPHARM method yields a substantially higher mean distance (mean distance = 2.48) than both the SPI method (mean distance = 1.09) and fabric analysis (mean distance = 1.66). These results demonstrate that the SPHARM method extracts scar pattern information most completely.
+
+To further evaluate the independence of information captured by different metrics, we applied Multiple Regression on Distance Matrices (MRM) to decompose variance among the three scar pattern analysis methods. Because the ideal model contains only a single specimen per category and thus cannot provide within-group variation, the following analysis was conducted on experimental specimens.
+
+The results indicate that 93.5% of the variance in SPHARM could not be jointly explained by SPI and Fabric (R² = 0.0651, P = 0.007), whereas the unique information proportions of SPI and Fabric were 69.3% (R² = 0.3069, P = 0.001) and 72.3% (R² = 0.2772, P = 0.001), respectively. Further variance partitioning revealed that SPI uniquely explained 4.1% of SPHARM variance, Fabric uniquely explained 0.1%, and their shared contribution accounted for 2.4%. These results indicate that SPHARM captures scar pattern information that is more comprehensive than that captured by SPI and Fabric indices.
+
+Residual analysis further demonstrated that SPHARM contributes uniquely across different scar pattern specimens. Among 76 extreme specimen pairs with standardized residuals exceeding an absolute value of 2, the largest positive residuals were observed between Levallois preferential and Levallois convergent, as well as Levallois recurrent and Discoid types. This indicates that these specimen pairs exhibit substantial differences in SPHARM feature space that are not well predicted by SPI and Fabric. Notably, these types are often collectively categorized as “centripetal scar patterns” in traditional analyses, suggesting that SPHARM can capture structural variations in scar patterns that go beyond conventional descriptions, overall concentration (SPI), and anisotropy (Fabric indices).
 
 **3.2 Joint Analysis of Scar Patterns and Core Morphology in Experimental Knapping Specimens**
 
@@ -114,11 +146,21 @@ Based on the experimental knapping specimens, morphological spherical harmonic a
 
 **3.3 Archaeological Case Study: Core Analysis from Sandinggai**
 
-Applying the analytical framework established in section 3.2, we analyzed a sample of cores excavated at Sandinggai in 2019.
+Based on the analytical framework established in Section 3.2, we conducted a joint analysis of core morphology and scar patterns on 55 cores excavated from Sandinggai.
 
-At the global level, no systematic covariation is found between technology and morphology (Mantel r = 0.036, p = 0.117), indicating that variation in core morphology and scar patterns is largely independent.
+At the global level, no significant systematic covariation was observed between core morphology and scar patterns (Mantel r = 0.009, P = 0.375; RV = 0.047, P = 0.500), indicating that variations in morphology and scar patterns are largely independent. Cross-frequency Mantel tests also yielded non-significant results after FDR correction, suggesting that this independence is consistent across all frequency bands rather than being masked by specific frequency signals.
 
-Examined by cultural layer, significant / no significant variation is observed in both flaking technology and core morphology. Examined by raw material type, significant / no significant variation is observed in flaking technology and core morphology.
+To assess whether this independence holds under different conditions, the dataset was stratified by layer, raw material, and core type, and Mantel tests were conducted within each subgroup. Results showed that none of both subgroups exhibited significant covariation after FDR correction, indicating that the independence between morphology and scar patterns is robust across different time periods, raw materials, and core types. Notably, the Unifacial unidirectional cores exhibited the highest Mantel r value (r = 0.192) among the subgroups; although non-significant due to a small sample size (n = 8), this may suggest a potential morphology–technology covariation that warrants further investigation with larger samples.
+
+To further explore the factors driving variation in morphology and scar patterns, PERMANOVA tests were conducted for the three grouping variables. The results revealed a differential pattern of influence across the two dimensions. Raw material significantly affected morphology (R² = 0.036, P \< 0.001) but not scar pattern (R² = 0.016, P = 0.966), indicating systematic three-dimensional differences between chert and sandstone cores, while the reduction strategies employed by knappers remained consistent across materials. This suggests that the physical properties of raw materials constrain core morphology, whereas knappers’ reduction strategies are stable and independent of raw material characteristics.
+
+Core type also had a significant effect on morphology (R² = 0.135, P = 0.003), but its influence on scar patterns did not reach significance (R² = 0.119, P = 0.198). Although the effect size for scar patterns is not negligible and is close to that observed for morphology, the multiple core type groups and limited sample sizes in some categories may reduce statistical power, and thus differences in scar pattern among core types cannot yet be fully excluded. Layer had no significant effect on either morphology (R² = 0.017, P = 0.951) or scar patterns (R² = 0.019, P = 0.309), indicating continuity in reduction strategies between Layers 3 and 4 with no apparent technological shifts.
+
+Further, to investigate variation in arrow features derived from CoIA dimensionality reduction under different grouping conditions, we examined arrow length and direction separately. Kruskal–Wallis tests on arrow length showed no significant differences among core types, raw materials, or layers (core type: χ² = 4.7392, df = 6, P = 0.5777; raw material: χ² = 0.1978, df = 1, P = 0.6565; layer: χ² = 0.9104, df = 1, P = 0.3400), indicating overall consistency in arrow length across groups.
+
+Analysis of arrow direction using Rayleigh and Watson tests revealed no significant differences between raw materials or layers, and most core types also showed no directional variation. The exception was the Unifacial unidirectional cores, which exhibited a significantly concentrated directionality (Rayleigh P = 0.0036), suggesting more focused variation within this type. Notably, this core type also displayed a relatively high Mantel effect size (r = 0.192), it indicates a potential morphology–technology covariation that warrants verification in larger samples.
+
+Overall, the core assemblage from Sandinggai demonstrates a systematic decoupling between morphology and reduction strategy. This decoupling is not restricted to specific conditions but appears to be a general pattern across different time periods, raw materials, and core types. Morphological variation is primarily associated with raw material and core type, whereas variation in scar pattern does not show a significant response to these factors. These results suggest that reduction strategies may be relatively stable and partly independent of raw material or core type variation, potentially reflecting a consistent technological strategy pattern adopted by knappers during core reduction.
 
 # Discussion
 

@@ -31,7 +31,7 @@ library(patchwork)
 conflicted::conflict_prefer("select", "dplyr")
 conflicted::conflicts_prefer(dplyr::filter)
 conflicted::conflicts_prefer(base::`%*%`)
-
+conflicted::conflicts_prefer(var::stats)
 
 # ==============================================================================
 # 公共函数（整个脚本共用，避免重复定义）
