@@ -151,7 +151,7 @@ aligned_data %>%
     len = sqrt(dx^2 + dy^2 + dz^2),
     uz  = dz / len
   ) %>%
-  filter(len > 1e-10) %>%
+  dplyr::filter(len > 1e-10) %>%
   group_by(ID) %>%
   summarise(
     N       = n(),

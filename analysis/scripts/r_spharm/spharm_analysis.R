@@ -98,15 +98,15 @@ ggsave(
 # ==============================================================================
 
 SPHARM_direction_filter <- SPHARM_direction %>%
-  select(ID, SHE, spectral_entropy, power_l1:power_l5) %>%
+  select(ID, SHE, spectral_entropy, power_l1:power_l4) %>%
   left_join(metric_data, by = "ID")
 
 SPHARM_morphology_filter <- SPHARM_morphology %>%
-  select(ID, SHE, spectral_entropy, power_l1:power_l5) %>%
+  select(ID, SHE, spectral_entropy, power_l1:power_l4) %>%
   left_join(metric_data, by = "ID")
 
 print(SPHARM_direction_filter)
-print(SPHARM_morphology_filter)
+# print(SPHARM_morphology_filter)
 
 
 # ==============================================================================
@@ -116,7 +116,7 @@ print(SPHARM_morphology_filter)
 run_umap_pair <- function(morph_filter, scar_filter, color_var, color_title) {
   
   # ── Morphology ──────────────────────────────────────────────────────────────
-  morph_features <- morph_filter %>% select(power_l1:power_l5) %>% as.matrix()
+  morph_features <- morph_filter %>% select(power_l1:power_l4) %>% as.matrix()
   umap_morph     <- umap(morph_features, n_neighbors = 5, random_state = 42)
   
   df_umap_morph <- data.frame(
@@ -127,7 +127,7 @@ run_umap_pair <- function(morph_filter, scar_filter, color_var, color_title) {
   )
   
   # ── Scar Direction ───────────────────────────────────────────────────────────
-  scar_features <- scar_filter %>% select(power_l1:power_l5) %>% as.matrix()
+  scar_features <- scar_filter %>% select(power_l1:power_l4) %>% as.matrix()
   umap_scar     <- umap(scar_features, n_neighbors = 5, random_state = 42)
   
   df_umap_scar <- data.frame(

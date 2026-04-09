@@ -186,7 +186,7 @@ id_order <- c(
   "Cylindrical unipolar cortical", "Cylindrical unipolar scarred",
   "Cylindrical bipolar",
   "Conical unipolar cortical",     "Conical unipolar scarred",
-  "Discoid",
+  "Discoid",                       "Discoid unifacial",
   "Levallois preferential",        "Levallois convergent",
   "Levallois laminar",
   "Biface",                        "Multiplatform"
