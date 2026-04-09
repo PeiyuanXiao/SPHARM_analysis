@@ -1,6 +1,6 @@
 # ==============================================================================
 # align_svd.R
-# 刮痕方向数据对齐 — SVD 法
+# 片疤方向数据对齐 — SVD 法
 #
 # 算法逻辑（三步）：
 #   Step 1: 旋转 — 用 SVD 从刮痕向量中提取最优拟合平面法线，将其对齐到 Z 轴
@@ -26,6 +26,7 @@ library(jsonlite)
 library(readr)
 
 conflicted::conflicts_prefer(plotly::layout)
+conflicted::conflicts_prefer(dplyr::filter)
 
 source(here("analysis/scripts/r_utils/geometry_utils.R"))
 source(here("analysis/scripts/r_utils/viz3d_utils.R"))
