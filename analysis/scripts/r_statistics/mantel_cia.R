@@ -137,13 +137,13 @@ cat("共有标本：", length(common_ids), "；ID 完全匹配：",
     all(df_morph$ID == df_scar$ID), "\n\n")
 
 morph_power <- df_morph %>%
-  select(power_l1:power_l5) %>%
-  rename_with(~ paste0("M", 1:5)) %>%
+  select(power_l1:power_l4) %>%
+  rename_with(~ paste0("M", 1:4)) %>%
   as.data.frame()
 scar_power <- df_scar %>%
-  select(power_l1:power_l5) %>%
-  rename_with(~ paste0("S", 1:5)) %>%
-  as.data.frame()
+  select(power_l1:power_l4) %>%
+  rename_with(~ paste0("S", 1:4)) %>%
+  as.data.frame()A
 rownames(morph_power) <- df_morph$ID
 rownames(scar_power)  <- df_scar$ID
 
