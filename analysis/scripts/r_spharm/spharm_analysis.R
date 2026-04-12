@@ -59,7 +59,7 @@ set.seed(42)
 # 全局参数
 # ==============================================================================
 
-POWER_COLS      <- paste0("power_l", 1:4)
+POWER_COLS      <- paste0("power_l", 1:5)
 N_NEIGHBORS     <- 10
 EXCLUDE_TYPES   <- c("Biface")
 LEVALLOIS_MERGE <- c("Levallois convergent", "Levallois laminar",

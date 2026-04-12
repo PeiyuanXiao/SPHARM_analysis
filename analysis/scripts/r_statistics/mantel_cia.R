@@ -143,7 +143,7 @@ morph_power <- df_morph %>%
 scar_power <- df_scar %>%
   select(power_l1:power_l4) %>%
   rename_with(~ paste0("S", 1:4)) %>%
-  as.data.frame()A
+  as.data.frame()
 rownames(morph_power) <- df_morph$ID
 rownames(scar_power)  <- df_scar$ID
 

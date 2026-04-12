@@ -17,6 +17,7 @@
 # 输出（figures/）：
 #   EXP_L1_Mantel_Network.png
 #   EXP_L1_CIA_Biplot.png
+#   EXP_L1_CIA_Diagnostics.png
 #   EXP_L2_Mantel_Grouped_dumbbell.png
 #   EXP_L2_Mantel_Grouped_heatmap.png
 #   EXP_L2_Arrow_Length_typology.png
@@ -30,6 +31,8 @@
 #   EXP_L2_arrow_stats.csv
 #   EXP_L2_circular_stats.csv
 #   EXP_CIA_scores_full.csv
+#   EXP_CIA_coords_full.csv
+#   EXP_PCA_CoIA_contribution.csv
 #   EXP_L2D_SE_desc_stats.csv                    # 新增
 #   EXP_L2D_SE_dunn_results.csv                  # 新增
 # ==============================================================================
@@ -194,17 +197,27 @@ rownames(scar_power_all)  <- df_scar_all$ID
 morph_power_clean <- morph_power_all[, sapply(morph_power_all, sd, na.rm = TRUE) > 0]
 scar_power_clean  <- scar_power_all[,  sapply(scar_power_all,  sd, na.rm = TRUE) > 0]
 
-D_morph_all <- cosine_dist(morph_power_clean)
-D_scar_all  <- cosine_dist(scar_power_clean)
+# ---------- ILR 变换（全集，含 IM_）→ 欧氏距离矩阵 ----------
+# 功率谱为成分数据（各频段能量之和恒定），ILR 变换消除加和约束
+# 与 CoIA 部分保持完全一致的距离空间
+morph_ilr_all <- as.data.frame(ilr(replace_zeros(as.matrix(morph_power_clean))))
+scar_ilr_all  <- as.data.frame(ilr(replace_zeros(as.matrix(scar_power_clean))))
+rownames(morph_ilr_all) <- rownames(morph_power_clean)
+rownames(scar_ilr_all)  <- rownames(scar_power_clean)
+
+D_morph_all <- dist(morph_ilr_all)   # ILR 欧氏距离（全集）
+D_scar_all  <- dist(scar_ilr_all)    # ILR 欧氏距离（全集）
 
 # 纯实验标本（排除 IM_）
 exp_ids <- rownames(morph_power_clean)[!str_starts(rownames(morph_power_clean), "IM_")]
 cat("纯实验标本数量（不含 IM_）：", length(exp_ids), "\n")
 
-morph_exp <- morph_power_clean[exp_ids, ]
+morph_exp <- morph_power_clean[exp_ids, ]   # 原始功率谱（供描述/网络图用）
 scar_exp  <- scar_power_clean[exp_ids, ]
+morph_ilr_exp <- morph_ilr_all[exp_ids, ]   # ILR 变换后（供 Mantel/CoIA 用）
+scar_ilr_exp  <- scar_ilr_all[exp_ids, ]
 
-D_morph_exp <- extract_subdist(D_morph_all, exp_ids)
+D_morph_exp <- extract_subdist(D_morph_all, exp_ids)   # ILR 欧氏子集距离
 D_scar_exp  <- extract_subdist(D_scar_all,  exp_ids)
 
 # 元数据（实验标本）
@@ -240,9 +253,9 @@ meta_typology <- safe_filter_groups(meta_exp, "Typology")
 typology_levels <- sort(unique(meta_exp$Typology[!is.na(meta_exp$Typology)]))
 set.seed(42)
 default_pal <- setNames(
-  colorRampPalette(c("#7EB8C9", "#E6B89C", "#FFBAE0",
-                     "#A1C2E6", "#6271A1", "#C6DEA4",
-                     "#90C49A", "#D4A5A3", "#D6D6D6"))(length(typology_levels)),
+  colorRampPalette(c("#7EB8C9", "#E6B89C", "#C8DAE0",
+                     "#A1C2E6", "#6271A1", "#C9DEA4",
+                     "#FFBAE0", "#D4A5A3", "#D6D6D6"))(length(typology_levels)),
   typology_levels
 )
 # 如需手动指定，取消注释并填写：
@@ -330,10 +343,9 @@ cat("图已保存：EXP_L1_Mantel_Network.png\n")
 
 cat("\n==== L1-2：CoIA ====\n")
 
-morph_exp_ilr <- as.data.frame(ilr(replace_zeros(as.matrix(morph_exp))))
-scar_exp_ilr  <- as.data.frame(ilr(replace_zeros(as.matrix(scar_exp))))
-rownames(morph_exp_ilr) <- exp_ids
-rownames(scar_exp_ilr)  <- exp_ids
+# 直接复用数据准备区已完成的 ILR 变换（避免重复计算，确保距离空间完全一致）
+morph_exp_ilr <- morph_ilr_exp
+scar_exp_ilr  <- scar_ilr_exp
 colnames(morph_exp_ilr) <- paste0("M_ilr", seq_len(ncol(morph_exp_ilr)))
 colnames(scar_exp_ilr)  <- paste0("S_ilr", seq_len(ncol(scar_exp_ilr)))
 
@@ -341,6 +353,78 @@ dudi_morph <- dudi.pca(morph_exp_ilr, center = TRUE, scale = TRUE,
                        scannf = FALSE, nf = ncol(morph_exp_ilr))
 dudi_scar  <- dudi.pca(scar_exp_ilr,  center = TRUE, scale = TRUE,
                        scannf = FALSE, nf = ncol(scar_exp_ilr))
+
+# ==============================================================================
+# ---- PCA 详细报告（形态端 & 方向端）----
+# 在 CoIA 之前输出，为载荷图提供解读依据
+# ==============================================================================
+
+report_pca <- function(dudi_obj, label) {
+  
+  n_ax <- length(dudi_obj$eig)
+  eig  <- dudi_obj$eig
+  pct  <- eig / sum(eig) * 100
+  cum  <- cumsum(pct)
+  
+  cat(sprintf("\n====== %s PCA 报告 ======\n", label))
+  
+  # ---- 特征值与方差解释 ----
+  cat("\n-- 特征值与方差解释 --\n")
+  eig_df <- tibble(
+    Axis       = paste0("PC", seq_len(n_ax)),
+    Eigenvalue = round(eig, 4),
+    Pct_var    = round(pct, 2),
+    Cumul_pct  = round(cum, 2)
+  )
+  print(as.data.frame(eig_df))
+  
+  # ---- 变量载荷（dudi$c1：ILR 变量 → PCA 轴）----
+  cat("\n-- 变量载荷（c1：ILR 变量在各 PCA 轴上的载荷）--\n")
+  load_df <- as.data.frame(dudi_obj$c1)
+  colnames(load_df) <- paste0("PC", seq_len(ncol(load_df)))
+  n_ilr <- nrow(load_df)
+  # ILR 变量的物理含义：ilr_k 对比前 k 个频段 vs 第 k+1 个频段
+  load_df$ILR_meaning <- sapply(seq_len(n_ilr), function(k) {
+    num_ids <- paste0("l", seq_len(k))
+    den_id  <- paste0("l", k + 1)
+    sprintf("log(geomean(%s) / %s)",
+            paste(num_ids, collapse = "+"), den_id)
+  })
+  print(load_df)
+  
+  # ---- 样本得分描述统计（前2轴）----
+  cat("\n-- 样本得分描述统计（前2轴）--\n")
+  score_df <- as.data.frame(dudi_obj$li)[, 1:min(2, n_ax), drop = FALSE]
+  colnames(score_df) <- paste0("PC", seq_len(ncol(score_df)))
+  score_stats <- score_df %>%
+    pivot_longer(everything(), names_to = "Axis", values_to = "Score") %>%
+    group_by(Axis) %>%
+    summarise(
+      mean = round(mean(Score), 4),
+      sd   = round(sd(Score),   4),
+      min  = round(min(Score),  4),
+      max  = round(max(Score),  4),
+      .groups = "drop"
+    )
+  print(as.data.frame(score_stats))
+  
+  # ---- 各主轴主导变量 ----
+  cat("\n-- 各主轴主导变量（|载荷| 最大）--\n")
+  load_num <- as.data.frame(dudi_obj$c1)
+  for (ax in seq_len(min(2, n_ax))) {
+    col <- load_num[[ax]]
+    idx <- which.max(abs(col))
+    cat(sprintf("  PC%d (%.1f%% var)：主导 ILR%d（载荷 %+.4f）→ %s\n",
+                ax, pct[ax], idx, col[idx], load_df$ILR_meaning[idx]))
+  }
+  
+  invisible(list(eig_df = eig_df, load_df = load_df))
+}
+
+pca_report_morph <- report_pca(dudi_morph, "形态谱")
+pca_report_scar  <- report_pca(dudi_scar,  "方向谱")
+
+# ==============================================================================
 
 coin_exp   <- coinertia(dudi_morph, dudi_scar, scannf = FALSE, nf = 2)
 cia_inertia <- coin_exp$eig / sum(coin_exp$eig) * 100
@@ -366,61 +450,347 @@ scores_combined <- left_join(
   ) %>%
   left_join(meta_exp %>% select(ID, Typology), by = "ID")
 
-# CIA 双标图
-p_cia_biplot <- ggplot() +
-  geom_segment(
-    data = scores_combined,
-    aes(x = Axis1_M, y = Axis2_M,
-        xend = Axis1_S, yend = Axis2_S,
-        color = arrow_length),
-    linewidth = 0.7, alpha = 0.75,
-    arrow = arrow(length = unit(0.10, "cm"), type = "closed")
-  ) +
-  geom_point(data = scores_combined,
-             aes(x = Axis1_M, y = Axis2_M, shape = Typology),
-             size = 2.8, fill = "white", color = "grey25",
-             stroke = 1.1, alpha = 0.9) +
-  geom_point(data = scores_combined,
-             aes(x = Axis1_S, y = Axis2_S, shape = Typology),
-             size = 2.8, alpha = 0.85, color = "grey55") +
-  geom_text_repel(
-    data = scores_combined %>% slice_max(arrow_length, n = 5),
-    aes(x = (Axis1_M + Axis1_S) / 2,
-        y = (Axis2_M + Axis2_S) / 2,
-        label = ID),
-    size = 2.3, color = "grey30", max.overlaps = 15
-  ) +
-  geom_hline(yintercept = 0, linetype = "dashed",
-             color = "grey60", linewidth = 0.35) +
-  geom_vline(xintercept = 0, linetype = "dashed",
-             color = "grey60", linewidth = 0.35) +
-  scale_color_viridis_c(option = "C", name = "Decoupling\n(arrow length)",
-                        direction = -1) +
-  scale_shape_manual(
-    values = setNames(c(21, 22, 24, 23, 25, 20, 15, 17, 16, 18)[
-      seq_along(typology_levels)], typology_levels),
-    name = "Typology\n(open = morph / grey = scar)"
+# ==============================================================================
+# ---- 输出1：各标本 CoIA 坐标（形态端 + 方向端）----
+# ==============================================================================
+
+cat("
+==== CoIA 样本坐标 ====
+")
+cia_coords <- scores_combined %>%
+  select(ID, Typology,
+         Morph_Axis1 = Axis1_M, Morph_Axis2 = Axis2_M,
+         Scar_Axis1  = Axis1_S, Scar_Axis2  = Axis2_S,
+         arrow_length, arrow_angle)
+
+print(cia_coords %>%
+        mutate(across(where(is.numeric), ~ round(.x, 4))) %>%
+        as.data.frame())
+
+write_csv(cia_coords,
+          here("analysis/data/derived_data/EXP_CIA_coords_full.csv"))
+cat("已保存：EXP_CIA_coords_full.csv
+")
+
+
+# ==============================================================================
+# ---- 输出2：各形态/方向 PCA 轴对 CoIA 两轴的贡献（weight²）----
+# ==============================================================================
+
+cat("
+==== 各端 PCA 轴对 CoIA 轴的贡献（weight²）====
+")
+
+compute_pca_cia_contribution <- function(a_mat, pct_vec, endpoint_label) {
+  # a_mat：aX 或 aY（行=PCA轴，列=CoIA轴）
+  # pct_vec：各PCA轴的方差解释比例
+  df <- as.data.frame(a_mat)
+  colnames(df) <- paste0("CoIA_Ax", seq_len(ncol(df)))
+  df$PC       <- paste0("PC", seq_len(nrow(df)))
+  df$var_pct  <- pct_vec[seq_len(nrow(df))]
+  df$endpoint <- endpoint_label
+  
+  # 计算各轴 weight²
+  for (ax in colnames(df)[startsWith(colnames(df), "CoIA_Ax")]) {
+    df[[paste0(ax, "_w2")]] <- round(df[[ax]]^2, 4)
+  }
+  
+  # 各CoIA轴内的相对贡献%
+  for (ax in paste0("CoIA_Ax", seq_len(ncol(a_mat)))) {
+    w2col   <- paste0(ax, "_w2")
+    rel_col <- paste0(ax, "_contrib_pct")
+    df[[rel_col]] <- round(df[[w2col]] / sum(df[[w2col]]) * 100, 1)
+  }
+  
+  df %>% select(endpoint, PC, var_pct,
+                starts_with("CoIA_Ax1"), starts_with("CoIA_Ax2"))
+}
+
+morph_contrib <- compute_pca_cia_contribution(
+  coin_exp$aX,
+  round(dudi_morph$eig / sum(dudi_morph$eig) * 100, 1),
+  "Morphology"
+)
+scar_contrib <- compute_pca_cia_contribution(
+  coin_exp$aY,
+  round(dudi_scar$eig / sum(dudi_scar$eig) * 100, 1),
+  "Scar direction"
+)
+
+pca_cia_contrib <- bind_rows(morph_contrib, scar_contrib)
+
+cat("
+形态端 PCA 轴 对 CoIA 两轴的贡献：
+")
+print(morph_contrib %>% select(-endpoint) %>% as.data.frame())
+cat("
+方向端 PCA 轴 对 CoIA 两轴的贡献：
+")
+print(scar_contrib %>% select(-endpoint) %>% as.data.frame())
+
+write_csv(pca_cia_contrib,
+          here("analysis/data/derived_data/EXP_PCA_CoIA_contribution.csv"))
+cat("
+已保存：EXP_PCA_CoIA_contribution.csv
+")
+
+
+# ==============================================================================
+# CoIA 辅助可视化：轴诊断图（碎石图 + 变量载荷图）
+# ==============================================================================
+
+# ---- (i) 碎石图：CoIA 特征值 ----
+eig_df <- tibble(
+  axis      = paste0("Axis ", seq_along(coin_exp$eig)),
+  eigenvalue = coin_exp$eig,
+  pct        = coin_exp$eig / sum(coin_exp$eig) * 100,
+  cum_pct    = cumsum(pct)
+)
+
+p_scree <- ggplot(eig_df, aes(x = axis, y = pct)) +
+  geom_col(fill = "#7EB8C9", alpha = 0.85, width = 0.55) +
+  geom_line(aes(y = cum_pct, group = 1),
+            color = "#6271A1", linewidth = 0.8) +
+  geom_point(aes(y = cum_pct),
+             color = "#6271A1", size = 2.8) +
+  geom_text(aes(y = pct + 1.5,
+                label = sprintf("%.1f%%", pct)),
+            size = 3, color = "grey30") +
+  scale_y_continuous(
+    name     = "Explained co-inertia (%)",
+    sec.axis = sec_axis(~ ., name = "Cumulative (%)")
   ) +
   theme_bw(base_size = 10) +
   labs(
-    title    = sprintf("CoIA Biplot (EXP)  |  RV = %.3f, p = %.3f",
-                       coin_exp$RV, rv_test$pvalue),
-    subtitle = "Arrow: morphology → scar-direction coordinate; length = decoupling",
-    x = sprintf("CoIA Axis 1 (%.1f%%)", cia_inertia[1]),
-    y = sprintf("CoIA Axis 2 (%.1f%%)", cia_inertia[2])
+    title    = "CoIA Scree Plot (EXP)",
+    subtitle = sprintf("RV = %.3f, p = %.3f", coin_exp$RV, rv_test$pvalue),
+    x = "CoIA Axis"
   ) +
   theme(
     plot.title    = element_text(face = "bold", hjust = 0.5, size = 11),
-    plot.subtitle = element_text(hjust = 0.5, size = 8.5, color = "grey50"),
-    legend.position = "right"
+    plot.subtitle = element_text(hjust = 0.5, size = 8.5, color = "grey50")
   )
 
+# ---- (ii) 载荷图：两端均使用各自 PCA 轴在 CoIA 空间的投影（aX / aY）----
+# 说明：coinertia() 的 aX 和 aY 分别记录形态端和方向端各 PCA 主轴
+# 在 CoIA 轴上的旋转权重，两端结构完全对称，便于直接比较。
+# c1（形态端原始 ILR 变量载荷）与 aX 是等价的间接表示，
+# 这里统一改用 PCA 轴以保持两端一致性。
+
+# 提取各端 PCA 轴的方差解释比例（用于标签）
+morph_pct <- round(dudi_morph$eig / sum(dudi_morph$eig) * 100, 1)
+scar_pct  <- round(dudi_scar$eig  / sum(dudi_scar$eig)  * 100, 1)
+
+# 形态端：aX（形态 PCA 轴 → CoIA 轴）
+morph_load <- as.data.frame(coin_exp$aX) %>%
+  rownames_to_column("variable") %>%
+  rename(Axis1 = AxcX1, Axis2 = AxcX2) %>%
+  mutate(
+    pct   = morph_pct[as.integer(str_extract(variable, "[0-9]+"))],
+    variable_label = sprintf("Morph-PCA%s
+(%.1f%% var)",
+                             str_extract(variable, "[0-9]+"), pct),
+    endpoint = "Morphology"
+  )
+
+# 方向端：aY（方向 PCA 轴 → CoIA 轴）
+scar_load <- as.data.frame(coin_exp$aY) %>%
+  rownames_to_column("variable") %>%
+  rename(Axis1 = AxcY1, Axis2 = AxcY2) %>%
+  mutate(
+    pct   = scar_pct[as.integer(str_extract(variable, "[0-9]+"))],
+    variable_label = sprintf("Dir-PCA%s
+(%.1f%% var)",
+                             str_extract(variable, "[0-9]+"), pct),
+    endpoint = "Scar Direction"
+  )
+
+# 圆圈（单位圆参考）
+circle_df <- tibble(
+  angle = seq(0, 2 * pi, length.out = 300),
+  x = cos(angle), y = sin(angle)
+)
+
+make_loading_plot <- function(load_df, title_str, col_fill) {
+  ggplot(load_df) +
+    geom_path(data = circle_df, aes(x = x, y = y),
+              color = "grey80", linewidth = 0.4, linetype = "dashed") +
+    geom_hline(yintercept = 0, color = "grey70", linewidth = 0.3) +
+    geom_vline(xintercept = 0, color = "grey70", linewidth = 0.3) +
+    geom_segment(aes(x = 0, y = 0, xend = Axis1, yend = Axis2),
+                 arrow = arrow(length = unit(0.20, "cm"), type = "closed"),
+                 color = col_fill, linewidth = 0.9, alpha = 0.85) +
+    geom_label(aes(x = Axis1 * 1.12, y = Axis2 * 1.12,
+                   label = variable_label),
+               size = 2.6, color = "grey20",
+               label.size = 0.2, fill = "white", alpha = 0.85,
+               lineheight = 0.85) +
+    coord_fixed(xlim = c(-1.35, 1.35), ylim = c(-1.35, 1.35)) +
+    theme_bw(base_size = 10) +
+    labs(
+      title = title_str,
+      x = sprintf("CoIA Axis 1 (%.1f%%)", cia_inertia[1]),
+      y = sprintf("CoIA Axis 2 (%.1f%%)", cia_inertia[2])
+    ) +
+    theme(
+      plot.title = element_text(face = "bold", hjust = 0.5, size = 10),
+      panel.grid = element_blank()
+    )
+}
+
+p_load_morph <- make_loading_plot(
+  morph_load,
+  "Morphology PCA axes on CoIA space",
+  "#7EB8C9"
+)
+p_load_scar <- make_loading_plot(
+  scar_load,
+  "Scar direction PCA axes on CoIA space",
+  "#E6B89C"
+)
+
+# ---- (iii) 轴解读文字标注图 ----
+axis_annot_df <- tribble(
+  ~x,    ~y,    ~label,                              ~hjust,
+  1.5,   0.05, "← more complex / regular →",        0.5,
+  0.05,  1.5,  "↑ isotropic",                       0.5,
+  0.05, -1.5,  "↓ bipolar / elongated",              0.5
+)
+
+# ---- 组合辅助诊断图 ----
+p_cia_diagnostics <- (p_scree | p_load_morph | p_load_scar) +
+  plot_annotation(
+    title   = "CoIA Axis Diagnostics (EXP)",
+    caption = "Left: scree plot. Middle: morphology PCA axis loadings on CoIA axes. Right: scar-direction PCA axis loadings on CoIA axes.
+Both panels use PCA-axis projections (aX / aY) for symmetric interpretation. Arrow length = contribution to CoIA structure.
+Axis 1 = global regularity (low-freq vs mid-freq energy contrast); Axis 2 = isotropy vs bipolarity (l1 vs l2 contrast).",
+    theme   = theme(
+      plot.title   = element_text(face = "bold", hjust = 0.5, size = 12),
+      plot.caption = element_text(size = 7.5, color = "grey50", hjust = 0)
+    )
+  )
+
+ggsave(here("analysis/output/figures/EXP_L1_CIA_Diagnostics.png"),
+       plot = p_cia_diagnostics,
+       width = 15, height = 5.5, dpi = 300, bg = "white")
+cat("图已保存：EXP_L1_CIA_Diagnostics.png\n")
+
+
+# ==============================================================================
+# CIA 主双标图（重新设计）
+# 形态端：圆点（shape=21，filled）；刮痕端：三角形（shape=24，filled）
+# 颜色：Typology（形态点、刮痕点、箭头连线 均用同一颜色）
+# ==============================================================================
+
+# 需要长格式：分别标记形态端和刮痕端
+scores_long <- bind_rows(
+  scores_combined %>%
+    select(ID, Typology, x = Axis1_M, y = Axis2_M) %>%
+    mutate(endpoint = "Morphology"),
+  scores_combined %>%
+    select(ID, Typology, x = Axis1_S, y = Axis2_S) %>%
+    mutate(endpoint = "Scar direction")
+)
+
+# 构建长格式数据（含 endpoint 列，用于形状图例）
+scores_long_plot <- bind_rows(
+  scores_combined %>% filter(!is.na(Typology)) %>%
+    select(ID, Typology, x = Axis1_M, y = Axis2_M, arrow_length) %>%
+    mutate(endpoint = "Morphology"),
+  scores_combined %>% filter(!is.na(Typology)) %>%
+    select(ID, Typology, x = Axis1_S, y = Axis2_S, arrow_length) %>%
+    mutate(endpoint = "Scar direction")
+) %>%
+  mutate(endpoint = factor(endpoint, levels = c("Morphology", "Scar direction")))
+
+endpoint_shapes <- c("Morphology" = 21, "Scar direction" = 24)
+endpoint_sizes  <- c("Morphology" = 3.0, "Scar direction" = 2.6)
+
+p_cia_biplot <- ggplot() +
+  geom_hline(yintercept = 0, linetype = "dashed",
+             color = "grey70", linewidth = 0.3) +
+  geom_vline(xintercept = 0, linetype = "dashed",
+             color = "grey70", linewidth = 0.3) +
+  # 连线（无箭头）：颜色 = Typology
+  geom_segment(
+    data = scores_combined %>% filter(!is.na(Typology)),
+    aes(x = Axis1_M, y = Axis2_M,
+        xend = Axis1_S, yend = Axis2_S,
+        color = Typology),
+    linewidth = 0.45, alpha = 0.45, lineend = "round"
+  ) +
+  # 形态端 + 方向端统一绘制，shape 由 endpoint 决定
+  geom_point(
+    data = scores_long_plot,
+    aes(x = x, y = y,
+        fill  = Typology, color = Typology,
+        shape = endpoint, size  = endpoint),
+    stroke = 0.5, alpha = 0.90
+  ) +
+  # 最大解耦标本标签（前5，标在连线中点）
+  geom_text_repel(
+    data = scores_combined %>%
+      filter(!is.na(Typology)) %>%
+      slice_max(arrow_length, n = 5),
+    aes(x = (Axis1_M + Axis1_S) / 2,
+        y = (Axis2_M + Axis2_S) / 2,
+        label = ID, color = Typology),
+    size = 2.2, show.legend = FALSE,
+    max.overlaps = 20,
+    segment.color = "grey60", segment.linewidth = 0.3
+  ) +
+  annotate("text", x =  Inf, y = 0,
+           label = "low-freq dominant (regular) →",
+           hjust = 1.02, vjust = -0.5,
+           size = 2.4, color = "grey50", fontface = "italic") +
+  annotate("text", x = -Inf, y = 0,
+           label = "← mid-freq complex",
+           hjust = -0.02, vjust = -0.5,
+           size = 2.4, color = "grey50", fontface = "italic") +
+  annotate("text", x = 0, y =  Inf,
+           label = "↑ isotropic",
+           hjust = 0.5, vjust = 1.3,
+           size = 2.4, color = "grey50", fontface = "italic") +
+  annotate("text", x = 0, y = -Inf,
+           label = "↓ bipolar",
+           hjust = 0.5, vjust = -0.5,
+           size = 2.4, color = "grey50", fontface = "italic") +
+  scale_color_manual(values = typology_pal, name = "Typology") +
+  scale_fill_manual(values  = typology_pal, name = "Typology") +
+  scale_shape_manual(values = endpoint_shapes, name = "Endpoint") +
+  scale_size_manual(values  = endpoint_sizes,  name = "Endpoint") +
+  theme_bw(base_size = 10) +
+  labs(
+    title = sprintf("CoIA Biplot (EXP)  |  RV = %.3f, p = %.3f",
+                    coin_exp$RV, rv_test$pvalue),
+    x = sprintf("CoIA Axis 1 — regularity (%.1f%%)", cia_inertia[1]),
+    y = sprintf("CoIA Axis 2 — isotropy (%.1f%%)",   cia_inertia[2])
+  ) +
+  guides(
+    color = guide_legend(
+      order = 1,
+      override.aes = list(shape = 21, size = 3),
+      title = "Typology"
+    ),
+    fill = "none",
+    shape = guide_legend(
+      order = 2,
+      override.aes = list(fill = "grey60", color = "grey30",
+                          size = c(3.0, 2.6)),
+      title = "Endpoint"
+    ),
+    size = "none"
+  ) +
+  theme(
+    plot.title      = element_text(face = "bold", hjust = 0.5, size = 11),
+    legend.position = "right"
+  )
 ggsave(here("analysis/output/figures/EXP_L1_CIA_Biplot.png"),
        plot = p_cia_biplot, width = 10, height = 8, dpi = 300, bg = "white")
 cat("图已保存：EXP_L1_CIA_Biplot.png\n")
 
 l1_results <- tibble(
-  method  = c("Mantel (cosine, Spearman)", "RV (ILR, Euclidean)"),
+  method  = c("Mantel (ILR, Euclidean, Spearman)", "RV (ILR, Euclidean)"),
   stat    = c(mantel_global$statistic, coin_exp$RV),
   p_value = c(mantel_global$signif,    rv_test$pvalue),
   n       = length(exp_ids)
@@ -893,6 +1263,15 @@ run_kw_dunn_se <- function(df, y_col, label) {
              sep = " - ", remove = FALSE) %>%
     rename(statistic = Z, p = P.unadj, p.adj = P.adj) %>%
     mutate(
+      # 原始 p 显著性（未校正，仅用于趋势标注）
+      p.signif = case_when(
+        p < 0.001 ~ "***",
+        p < 0.01  ~ "**",
+        p < 0.05  ~ "*",
+        p < 0.10  ~ ".",
+        TRUE      ~ "ns"
+      ),
+      # Holm 校正后显著性（主要结论）
       p.adj.signif = case_when(
         p.adj < 0.001 ~ "***",
         p.adj < 0.01  ~ "**",
@@ -901,9 +1280,10 @@ run_kw_dunn_se <- function(df, y_col, label) {
         TRUE          ~ "ns"
       )
     ) %>%
-    select(Comparison, group1, group2, statistic, p, p.adj, p.adj.signif)
+    select(Comparison, group1, group2, statistic, p, p.signif, p.adj, p.adj.signif)
   
   cat("  Dunn 事后检验（FSA / Holm）：\n")
+  cat("  [注] p = 原始值，p.adj = Holm 校正后；† 趋势 = p < 0.05 但 p.adj >= 0.05\n")
   print(dunn)
   list(kw = kw, dunn = dunn)
 }
@@ -925,29 +1305,33 @@ cat("\n已保存：EXP_L2D_SE_dunn_results.csv\n")
 make_se_boxplot <- function(df, y_col, y_label, kw_res, dunn_res,
                             title_suffix, fname) {
   
-  # 显著对（p.adj < 0.05）
-  sig_pairs <- dunn_res %>%
-    filter(p.adj < 0.05) %>%
-    select(group1, group2, p.adj.signif)
-  
   # ---- 构建显著性标注坐标（手动绘制，兼容 FSA 输出格式）----
-  sig_pairs <- dunn_res %>% filter(p.adj < 0.05)
+  # 实线括号：Holm 校正后 p.adj < 0.05
+  sig_pairs   <- dunn_res %>% filter(p.adj < 0.05)
+  # 虚线括号：原始 p < 0.05 但 Holm 校正后不显著（趋势）
+  trend_pairs <- dunn_res %>% filter(p < 0.05, p.adj >= 0.05)
   
   y_vals    <- df[[y_col]]
   y_max     <- max(y_vals, na.rm = TRUE)
   y_range   <- diff(range(y_vals, na.rm = TRUE))
-  step      <- y_range * 0.10          # 每条连线的垂直间距
+  step      <- y_range * 0.10
   
-  # 将 Typology 水平映射到 x 轴数字位置
   type_lvls <- levels(df[["Typology"]])
   
-  sig_annot <- if (nrow(sig_pairs) > 0) {
-    sig_pairs %>%
+  # 所有需要标注的对（先显著后趋势，高度依次递增）
+  all_annot_base <- bind_rows(
+    sig_pairs   %>% mutate(annot_type = "sig"),
+    trend_pairs %>% mutate(annot_type = "trend")
+  )
+  
+  sig_annot <- if (nrow(all_annot_base) > 0) {
+    all_annot_base %>%
       mutate(
         x1    = match(group1, type_lvls),
         x2    = match(group2, type_lvls),
-        y_bar = y_max + step * row_number(),   # 各连线高度依次递增
-        x_mid = (x1 + x2) / 2
+        y_bar = y_max + step * row_number(),
+        x_mid = (x1 + x2) / 2,
+        label = if_else(annot_type == "sig", p.adj.signif, "†")  # † 表示趋势
       )
   } else {
     NULL
@@ -987,34 +1371,42 @@ make_se_boxplot <- function(df, y_col, y_label, kw_res, dunn_res,
       show.legend = FALSE
     ) +
     # 显著性括号（手动绘制）
+    # 实线 = Holm 校正后显著；虚线 + † = 原始 p < 0.05 但校正后趋势
     {
       if (!is.null(sig_annot) && nrow(sig_annot) > 0) {
         tip <- y_range * 0.012
         list(
-          # 水平主线
+          # 水平主线（实线=显著，虚线=趋势）
           geom_segment(
             data = sig_annot,
-            aes(x = x1, xend = x2, y = y_bar, yend = y_bar),
+            aes(x = x1, xend = x2, y = y_bar, yend = y_bar,
+                linetype = annot_type),
             inherit.aes = FALSE, color = "grey30", linewidth = 0.4
           ),
           # 左竖线
           geom_segment(
             data = sig_annot,
             aes(x = x1, xend = x1, y = y_bar - tip, yend = y_bar),
-            inherit.aes = FALSE, color = "grey30", linewidth = 0.4
+            inherit.aes = FALSE, color = "grey30", linewidth = 0.4,
+            linetype = "solid"
           ),
           # 右竖线
           geom_segment(
             data = sig_annot,
             aes(x = x2, xend = x2, y = y_bar - tip, yend = y_bar),
-            inherit.aes = FALSE, color = "grey30", linewidth = 0.4
+            inherit.aes = FALSE, color = "grey30", linewidth = 0.4,
+            linetype = "solid"
           ),
-          # 显著性标签
+          # 标签（显著用星号，趋势用 †）
           geom_text(
             data = sig_annot,
             aes(x = x_mid, y = y_bar + y_range * 0.015,
-                label = p.adj.signif),
+                label = label),
             inherit.aes = FALSE, size = 3.2, color = "grey25"
+          ),
+          scale_linetype_manual(
+            values = c("sig" = "solid", "trend" = "dashed"),
+            guide  = "none"
           )
         )
       } else {
@@ -1037,7 +1429,7 @@ make_se_boxplot <- function(df, y_col, y_label, kw_res, dunn_res,
     theme_bw(base_size = 11) +
     labs(
       title    = sprintf("EXP L2-D: Spectral Entropy by Typology — %s", title_suffix),
-      subtitle = "Pairwise: Dunn test (Holm corrected); open circles = individual specimens",
+      subtitle = "Solid bracket: Holm p.adj < 0.05; dashed bracket †: raw p < 0.05, Holm p.adj ≥ 0.05 (trend); KW p in top-right",
       x        = "Stone Core Typology",
       y        = y_label
     ) +
