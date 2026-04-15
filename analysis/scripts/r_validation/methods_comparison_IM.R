@@ -314,25 +314,33 @@ cat("\n===== 各方法的标准化平均类间距离 =====\n")
 cat("（越大 = 整体判别能力越强）\n")
 print(avg_dist)
 
-p_heatmap <- ggplot(dist_all, aes(x = To, y = From, fill = distance)) +
+dist_all_upper <- dist_all %>%
+  dplyr::filter(as.numeric(From) < as.numeric(To))
+
+p_heatmap <- ggplot(dist_all_upper, aes(x = To, y = From, fill = distance)) +
   geom_tile(color = "white", linewidth = 0.3) +
-  geom_text(aes(label = ifelse(From != To, sprintf("%.1f", distance), "")),
-            size = 2.2) +
+  geom_text(
+    aes(label = ifelse(From != To, sprintf("%.1f", distance), "")),
+    size = 2.2
+  ) +
   facet_wrap(~ method, ncol = 3) +
-  scale_fill_gradient(low = "white", high = "#E84D89",
-                      name = "Euclidean\ndistance\n(standardised)") +
+  scale_fill_gradient2(
+    low  = "#5C7F71",  
+    mid  = "white", 
+    high = "#802520",
+    midpoint = 2,
+    name = "Euclidean\ndistance\n(standardised)"
+  ) +
   scale_x_discrete(guide = guide_axis(angle = 45)) +
   scale_y_discrete(limits = rev) +
   theme_bw(base_size = 8) +
   labs(x = NULL, y = NULL) +
   theme(
-    plot.title       = element_text(face = "bold", size = 10, hjust = 0.5),
     strip.text       = element_text(face = "bold", size = 9),
-    strip.background = element_rect(fill = "grey80", color = "grey80"),
+    strip.background = element_rect(fill = "#EBEBEB", color = "#EBEBEB"),
     axis.text        = element_text(size = 6.5)
   )
 
 print(p_heatmap)
 ggsave(here("analysis/output/figures/IM_3_methods_comparison.png"),
        plot = p_heatmap, width = 12, height = 5, dpi = 300)
-
