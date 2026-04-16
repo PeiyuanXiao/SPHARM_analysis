@@ -65,8 +65,11 @@ Highlights: `r rmarkdown::metadata$highlights`
 ```{r}
 #| label: setup
 #| include: false
+
 library(targets)
 tar_config_set(store = "_targets")
+
+ph <- tar_read(spharm_analysis)$spharm_posthoc
 ```
 
 # Introduction
@@ -137,7 +140,7 @@ Finally, the residual matrix was extracted from the full model. Positive residua
 tar_read(p_rotational_invariance_validity)
 ```
 
-To examine the rotational invariance of each measure (SPI, fabric metrics, SP-SPHARM descriptors), we computed all three under three coordinates: the original coordinate system, a system aligned to the morphological fitted plane, and one aligned to the technological fitted plane. Bland-Altman analysis was used to assess agreement across coordinates. SPI and fabric metrics showed near-perfect agreement across all three conditions, with biases and 95% limits of agreement (LoA) on the order of 10⁻¹⁶ — well within the range of floating-point numerical precision (@fig-rotation-validity) — confirming that both measures are strictly rotationally invariant. Consequently, coordinate alignment of the core model is not required prior to analysis.
+To evaluate rotational invariance, SPI, fabric metrics, and SP-SPHARM descriptors were computed in three coordinate systems: the original system, a system aligned to the morphological fitted plane, and one aligned to the technological fitted plane. Bland-Altman analysis was used to assess agreement across coordinates. SPI and fabric metrics showed near-perfect agreement across all three conditions, with biases and 95% limits of agreement (LoA) on the order of 10⁻¹⁶ — well within the range of floating-point numerical precision (@fig-rotation-validity) — confirming that both measures are strictly rotationally invariant. Consequently, coordinate alignment of the core model is not required prior to analysis.
 
 The SP-SPHARM descriptors exhibited limited variation across alignment methods. Bland-Altman analysis revealed small systematic biases in low-order power (*l* = 1–2; 95% LoA = ±0.02), which diminished rapidly with increasing degree; no substantive differences were observed for *l* ≥ 3 (@fig-rotation-validity). To further evaluate this, we applied random rotational perturbations around the Z-axis to technological aligned data and recomputed the power spectra. Differences between perturbed and unperturbed spectra remained within machine precision, indicating that directional uncertainty within the coordinate frame — given a fixed Z-axis — has no effect on the power spectrum.
 
@@ -297,9 +300,19 @@ ggplot(dist_all_upper, aes(x = To, y = From, fill = distance)) +
 
 **Test of Ideal models** Using ideal core models, we computed SPI, fabric metrics, and SP-SPHARM descriptors and evaluated their discriminative performance. Heatmaps revealed a progressive increase in discriminative capacity from SPI to fabric metrics to SP-SPHARM descriptors (@fig-im-comparison). This ordering was corroborated by mean standardised Euclidean distance: the SP-SPHARM descriptors yielded the highest mean distance ($\bar{d}_{\mathrm{E,std}}$ = `r dist_spharm`), substantially exceeding those of fabric metrics ($\bar{d}_{\mathrm{E,std}}$ = `r dist_fabric`) and SPI ($\bar{d}_{\mathrm{E, std}}$ = `r dist_spi`). These results demonstrate that, under idealized core scar patterns, SP-SPHARM descriptors most effectively distinguishes among different scar distribution structures.\`
 
-**Test of experimental cores** To evaluate the sensitivity of each method on empirical data, we computed all three measures for experimental cores and conducted statistical comparisons by core type. All three methods detected significant inter-type differences (Fig. X). Post-hoc comparisons with Holm-Bonferroni correction are presented in Fig. X. The SP-SPHARM descriptors achieved the highest overall discrimination, identifying the greatest number of significant pairwise differences. Fabric metrics distinguished the majority of type pairs but failed to differentiate unidirectional from bidirectional cores. SPI was the most limited, detecting differences only where unidirectional cores were involved.
+```{r}
+#| label: fig-exp-method-compare
+#| fig-cap: ""
+#| fig-width: 10
+#| fig-height: 12
+#| echo: false
 
-These results suggest that the three methods are complementary in their capacity. SP-SPHARM descriptors captures the overall structure of scar patterning and is particularly sensitive to differences between discoidal and Levallois cores, though its discriminative power is reduced for patterns with bipolar symmetry. Fabric metrics effectively distinguishes differences between unidirectional and bidirectional cores from Levallois and discoidal cores, but cannot differentiate unidirectional from bidirectional cores, nor Levallois from discoidal cores. SPI is most sensitive to the unidirectional type but shows limited discriminative capacity for other types. Notably, SP-SPHARM descriptors failed to distinguish discoidal from bidirectional cores, as both exhibit symmetric scar distributions that yield similar power spectrum structures (@fig-im-comparison), a distinction that fabric metrics successfully recovered.
+tar_read(p_exp_method_combined)
+```
+
+**Test of experimental cores** To evaluate the sensitivity of each method on empirical data, we computed all three measures for experimental cores and conducted statistical comparisons by core type. All three methods detected significant inter-type differences (@fig-exp-method-compare). Post-hoc comparisons with Holm-Bonferroni correction are presented in @fig-exp-method-compare. The SP-SPHARM descriptors achieved the highest overall discrimination, identifying the greatest number of significant pairwise differences. Fabric metrics distinguished the majority of type pairs but failed to differentiate unidirectional from bidirectional cores. SPI was the most limited, detecting differences only where unidirectional cores were involved.
+
+These results suggest that the three methods are complementary in their capacity. SP-SPHARM descriptors capture the overall structure of scar patterning for most pairwise comparisons, although their discriminative power is reduced for patterns with bipolar symmetry, such as discoidal-bidirectional pairs ($P_{\text{adj}}$ = `r ph$p_dir_disc_bi`). Fabric metrics effectively distinguishes differences between unidirectional and bidirectional cores from Levallois and discoidal cores, but cannot differentiate unidirectional from bidirectional cores ($P_{\text{adj}}$ = `r ph$p_fab_uni_bi`), nor Levallois from discoidal cores ($P_{\text{adj}}$ = `r ph$p_fab_lev_disc`). SPI is most sensitive to the unidirectional type but shows limited discriminative capacity for other types. Notably, although SP-SPHARM descriptors failed to separete discoidal from bidirectional cores due to their similarity structures in SPHARM power spectrum (@fig-im-comparison), this distinction is successfully recovered by fabric metrics ($P_{\text{adj}}$ = `r ph$p_fab_disc_bi`).
 
 **3.2 Joint Analysis of Scar Patterns and Core Morphology in Experimental Knapping Specimens**
 
