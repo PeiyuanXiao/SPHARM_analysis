@@ -288,20 +288,20 @@ def run_batch_analysis(output_csv, output_dir, lmax=20):
     lmax : int
     """
     df         = pd.read_csv(output_csv)
-    power_cols = [c for c in df.columns if c.startswith("power_degree_")]
+    power_cols = [c for c in df.columns if c.startswith("power_l")]
     X          = df[power_cols].values
 
     # Variance analysis
     var_path = os.path.join(output_dir, "variance_per_degree.csv")
     analyze_variance(X,
-                     filenames=df["specimen_id"].tolist(),
+                     filenames=df["ID"].tolist(),
                      output_path=var_path)
 
     # UMAP
     if len(df) > 1:
         analyze_umap(
             X,
-            df["specimen_id"].astype(str).tolist(),
+            df["ID"].astype(str).tolist(),
             output_dir,
             lmax=lmax,
             save_plot=True,

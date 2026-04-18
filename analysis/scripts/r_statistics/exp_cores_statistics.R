@@ -1059,7 +1059,7 @@ run_arrow_length_analysis <- function(group_col, group_label, palette) {
     stat_summary(fun = mean, geom = "point",
                  shape = 16, size = 4, color = "white") +
     annotate("text", x = Inf, y = Inf,
-             label = sprintf("Kruskal-Wallis\nchi\u00b2 = %.2f, p = %.3f",
+             label = sprintf("Kruskal-Wallis\nP = %.3f",
                              kw$statistic, kw$p.value),
              hjust = 1.05, vjust = 1.2, size = 4, color = "grey40") +
     scale_fill_manual(values  = palette) +
@@ -1070,7 +1070,7 @@ run_arrow_length_analysis <- function(group_col, group_label, palette) {
       panel.grid.major.x = element_blank(),
       panel.grid.major.y = element_blank(),
       panel.grid.minor   = element_blank(),
-      axis.text.x        = element_text(angle = 30, hjust = 1, size = 9.5),
+      axis.text.x        = element_blank(),
       axis.text.y        = element_text(size = 9.5),
       legend.position    = "none"
     ) +
@@ -1112,42 +1112,96 @@ scores_combined %>%
 cat("\n---------- L2-C：箭头方位（Typology）----------\n")
 
 # ---- 绘图函数 ----
-plot_rose <- function(res, palette) {
+plot_rose <- function(res, palette, bw = 40) {
   group_col <- res$group_col
   kde_df    <- res$kde_df
   mean_dirs <- res$mean_dirs
   
-  ggplot(kde_df,
-         aes(x = angle_deg, y = density,
+  # 把角度从 [0, 360) 映射到 (-180, 180]，便于线性展示
+  kde_linear <- kde_df %>%
+    mutate(angle_centered = if_else(angle_deg > 180,
+                                    angle_deg - 360,
+                                    angle_deg),
+           !!group_col := factor(.data[[group_col]],
+                                 levels = levels(kde_df[[group_col]])))
+  
+  mean_linear <- mean_dirs %>%
+    mutate(angle_centered = if_else(mean_deg > 180,
+                                    mean_deg - 360,
+                                    mean_deg),
+           !!group_col := factor(.data[[group_col]],
+                                 levels = levels(kde_df[[group_col]])))
+  
+  # Rayleigh 标签（从 res$rayleigh 取）
+  rayleigh_labels <- res$rayleigh %>%
+    mutate(
+      label = case_when(
+        rayleigh_p < 0.001 ~ "P < 0.001",
+        rayleigh_p < 0.01  ~ sprintf("P = %.3f ", rayleigh_p),
+        rayleigh_p < 0.05  ~ sprintf("P = %.3f ", rayleigh_p),
+        TRUE               ~ sprintf("P = %.3f",    rayleigh_p)
+      ),
+      !!group_col := factor(group, levels = levels(kde_df[[group_col]]))
+    )
+  
+  ggplot(kde_linear,
+         aes(x     = angle_centered,
+             y     = density,
              fill  = .data[[group_col]],
              color = .data[[group_col]])) +
-    geom_area(alpha = 0.1, linewidth = 0.01) +
-    geom_segment(
-      data = mean_dirs,
-      aes(x = mean_deg, xend = mean_deg, y = 0, yend = Inf,
-          color = .data[[group_col]]),
-      linewidth = 0.9, linetype = "dashed", alpha = 0.85
+    geom_area(alpha = 0.65, color = NULL) +
+    geom_vline(
+      data     = mean_linear,
+      aes(xintercept = angle_centered,
+          color      = .data[[group_col]]),
+      linewidth = 0.5, linetype = "dashed", alpha = 0.9
     ) +
-    coord_polar(theta = "x", clip = "off") +
+    # Rayleigh 显著性标签
+    geom_text(
+      data = rayleigh_labels,
+      aes(label = label),
+      x = 170, y = Inf,
+      hjust = 1, vjust = 1.4,
+      size = 2.8, color = "grey35",
+      inherit.aes = FALSE
+    ) +
+    annotate("text", x =    0, y = -Inf, label = "+CoIA1",
+             vjust = 2.2, size = 2.4, color = "grey50", fontface = "italic") +
+    annotate("text", x =  180, y = -Inf, label = "−CoIA1",
+             vjust = 2.2, size = 2.4, color = "grey50", fontface = "italic",
+             hjust = 1) +
+    annotate("text", x = -180, y = -Inf, label = "−CoIA1",
+             vjust = 2.2, size = 2.4, color = "grey50", fontface = "italic",
+             hjust = 0) +
+    annotate("text", x =   90, y = -Inf, label = "+CoIA2",
+             vjust = 2.2, size = 2.4, color = "grey50", fontface = "italic") +
+    annotate("text", x =  -90, y = -Inf, label = "−CoIA2",
+             vjust = 2.2, size = 2.4, color = "grey50", fontface = "italic") +
     scale_x_continuous(
-      limits = c(0, 360),
-      breaks = seq(0, 315, by = 45),
-      labels = c("0\n(+CoIA1)", "45", "90\n(+CoIA2)",
-                 "135", "180\n(-CoIA1)", "225",
-                 "270\n(-CoIA2)", "315")
+      limits = c(-180, 180),
+      breaks = seq(-180, 180, by = 45),
+      labels = seq(-180, 180, by = 45)
     ) +
-    scale_y_continuous(expand = c(0, 0)) +
-    scale_fill_manual(values = palette, name = group_col) +
+    scale_y_continuous(expand = expansion(mult = c(0, 0.12))) +
+    scale_fill_manual(values  = palette) +
     scale_color_manual(values = palette, guide = "none") +
     facet_wrap(reformulate(group_col),
-               ncol = min(length(unique(kde_df[[group_col]])), 5)) +
+               nrow = 1,
+               scales = "free_y") +
+    labs(x = "Direction (°)",
+         y = "Density",
+         fill = group_col) +
     theme_bw(base_size = 10) +
     theme(
+      panel.grid.minor = element_blank(),
+      panel.grid.major.x = element_blank(),
+      panel.grid.major.y = element_blank(),
+      strip.text       = element_text(face = "bold", size = 9),
+      strip.background = element_rect(fill = "#EBEBEB", color = "#EBEBEB"),
+      axis.text.x      = element_text(size = 7.5),
       axis.text.y      = element_blank(),
       axis.ticks.y     = element_blank(),
-      panel.grid.minor = element_blank(),
-      strip.text       = element_text(face = "bold", size = 9),
-      strip.background = element_rect(fill = "#EBEBEB", color = "#EBEBEB")
+      legend.position  = "bottom"
     )
 }
 
@@ -1247,7 +1301,8 @@ run_circular_analysis <- function(group_col, group_label, palette) {
   
   # 调用 plot_rose 生成 ggplot 对象（此时 plot_rose 已定义）
   p_rose <- plot_rose(
-    list(group_col = group_col, kde_df = kde_df, mean_dirs = mean_dirs),
+    list(group_col = group_col, kde_df = kde_df, mean_dirs = mean_dirs,
+         rayleigh  = rayleigh_res),
     palette
   )
   
@@ -1270,7 +1325,9 @@ run_circular_analysis <- function(group_col, group_label, palette) {
 }
 
 res_circ_typology <- run_circular_analysis("Typology", "Typology", typology_pal)
-res_circ_typology$p_rose
+
+p_rose <- plot_rose(res_circ_typology, typology_pal)
+p_rose
 
 # ------------------------------------------------------------------------------
 # L2-D：spectral_entropy × Typology
@@ -1526,19 +1583,18 @@ cat("\n【桑基图】EXP_L1_CIA_Sankey.png\n")
 # ==============================================================================
 
 p_composite <- (
-  (p_cia_biplot | res_len_typology$p) /
-    res_circ_typology$p_rose          # 现在是 ggplot 对象，不再报错
+  ((p_cia_biplot | res_len_typology$p) + plot_layout(widths = c(3, 1))) /
+    res_circ_typology$p_rose
 ) +
-  plot_layout(heights = c(1.15, 0.9)) +
+  plot_layout(heights = c(2.3, 1)) +
   plot_annotation(
     tag_levels = "A",
     theme = theme(
-      plot.tag    = element_text(size = 11, face = "bold"),
-      plot.margin = margin(t = 4, r = 4, b = 4, l = 4)
+      plot.tag = element_text(size = 11, face = "bold")
     )
-  ) &
-  theme(plot.margin = margin(t = 2, r = 4, b = 2, l = 4))
+  )
 p_composite
+
 ggsave(
   here("analysis/output/figures/EXP_CoIA_composite.png"),
   plot   = p_composite,
