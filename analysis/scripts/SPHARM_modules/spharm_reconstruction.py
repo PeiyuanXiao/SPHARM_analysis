@@ -29,6 +29,7 @@ COORD_CSV  = "analysis/data/derived_data/EXP_CIA_coords_full.csv"
 OUT_DIR    = "analysis/output/figures/reconstruction"
 os.makedirs(OUT_DIR, exist_ok=True)
 os.makedirs(os.path.join(OUT_DIR, "EXP_individual"), exist_ok=True)
+os.makedirs(os.path.join(OUT_DIR, "IM_individual"), exist_ok=True)
 
 # ── 全局常量 ──────────────────────────────────────────────────────────────────
 LMAX = 20
@@ -47,8 +48,8 @@ TYPOLOGY_ORDER = [
     'Discoid', 'Multiplatform'
 ]
 
-TRAJECTORY_N_STEPS   = 7
-TRAJECTORY_BANDWIDTH = 0.4
+TRAJECTORY_N_STEPS    = 7
+TRAJECTORY_BANDWIDTH  = 0.3
 TRAJECTORY_PERCENTILE = 10
 
 # 多视角相机位置
@@ -58,12 +59,12 @@ CAMERA_VIEWS = {
     'front': 'xz',
 }
 
-EDGE_COLOR  = '#333333'
-EDGE_WIDTH  = 0.22
+EDGE_COLOR  = '#616161'
+EDGE_WIDTH  = 0.1
 
 CMAP = LinearSegmentedColormap.from_list(
     'custom_spharm',
-    ['#5C7F71', '#F5EDDC', '#802520'],
+    ['#F7F7D7', '#F7F7D7'],
     N=256
 )
 
@@ -111,8 +112,9 @@ def smooth_poles(grid_data: np.ndarray, n_rows: int = 4) -> np.ndarray:
     return g
 
 
-def grid_to_mesh(grid_data: np.ndarray):
+def grid_to_mesh(grid_data: np.ndarray, stride: int = 2):
     grid_data = smooth_poles(grid_data, n_rows=4)
+    grid_data = grid_data[::stride, ::stride]
     n_lat, n_lon = grid_data.shape
     theta = np.linspace(0, np.pi,   n_lat, endpoint=True)
     phi   = np.linspace(0, 2*np.pi, n_lon, endpoint=True)
@@ -129,13 +131,17 @@ def grid_to_mesh(grid_data: np.ndarray):
 
 def add_mesh_with_wireframe(pl, mesh, scalars, smin=None, smax=None):
     """
-    实体面 + 独立线框叠加，解决 off_screen 下 line_width 不生效的问题。
+    玻璃质感渲染：半透明实体面 + 高镜面反射 + 半透明线框叠加。
+    off-screen 模式（OSMesa/EGL）不支持深度剥离，因此不调用
+    SetUseDepthPeeling；改用较高 opacity 保证面片可见，
+    同时保留高 specular 以呈现玻璃高光感。
     """
     if smin is None:
         smin = scalars.min()
     if smax is None:
         smax = scalars.max()
-    # 实体面，不显示边线
+
+    # 半透明实体面，高光 + 高镜面反射 = 玻璃质感
     pl.add_mesh(
         mesh,
         scalars=scalars,
@@ -143,15 +149,21 @@ def add_mesh_with_wireframe(pl, mesh, scalars, smin=None, smax=None):
         cmap=CMAP,
         show_edges=False,
         lighting=True,
+        opacity=0.2,          
+        ambient=0.05,
+        diffuse=0.80,
+        specular=1.0,      
+        specular_power=128,
         show_scalar_bar=False,
     )
-    # 独立线框层，单独控制线宽和颜色
+
+    # 半透明线框层，颜色偏浅，不抢主体
     pl.add_mesh(
         mesh,
         style='wireframe',
         color=EDGE_COLOR,
         line_width=EDGE_WIDTH,
-        opacity=1.0,
+        opacity=0.1,
     )
 
 
@@ -300,6 +312,32 @@ def exp_individual_reconstruction(df: pd.DataFrame, label: str = 'morph'):
             print(f"  [跳过] {sid}: {e}")
 
 
+def exp_reconstruction_panel(df: pd.DataFrame, label: str = 'morph'):
+    """EXP 全部标本汇总为一整张图，仿照 sdg_reconstruction_panel。"""
+    exp_df = df[df['ID'].str.startswith('EXP')].copy()
+    if exp_df.empty:
+        print(f"  [跳过] 没有找到 EXP 标本（{label}）")
+        return
+
+    print(f"\n=== EXP 汇总重建图（{label}，n={len(exp_df)}）===")
+    items, titles = [], []
+    for _, row in exp_df.iterrows():
+        sid = row['ID']
+        try:
+            cilm = get_coeff_array(row)
+            grid = cilm_to_grid(cilm)
+            m, s = grid_to_mesh(grid)
+            items.append((m, s))
+            titles.append(sid)
+            print(f"  {sid} ✓")
+        except Exception as e:
+            print(f"  [跳过] {sid}: {e}")
+
+    out = os.path.join(OUT_DIR, f"recon_EXP_{label}.png")
+    ncols = min(len(items), 4)
+    render_panel(items, titles, out_path=out, ncols=ncols, multiview=True)
+
+
 def per_degree_reconstruction(df: pd.DataFrame, specimen_ids: list,
                                label: str = 'morph',
                                degrees: list = None):
@@ -356,6 +394,29 @@ def axis_extremes_panel(df: pd.DataFrame,
 
     out = os.path.join(OUT_DIR, f"recon_axis_extremes_{label}.png")
     render_panel(items, titles, out_path=out, ncols=2, multiview=True)
+
+
+def im_individual_reconstruction(df: pd.DataFrame, label: str = 'morph'):
+    """IM 理想模型逐件重建，保存到 IM_individual/ 子目录。"""
+    im_df = df[df['ID'].str.startswith('IM_')].copy()
+    if im_df.empty:
+        print(f"  [跳过] 没有找到 IM_ 标本（{label}）")
+        return
+
+    print(f"\n=== IM 逐件重建（{label}，n={len(im_df)}）===")
+    out_subdir = os.path.join(OUT_DIR, "IM_individual")
+
+    for _, row in im_df.iterrows():
+        sid = row['ID']
+        try:
+            cilm = get_coeff_array(row)
+            grid = cilm_to_grid(cilm)
+            mesh, scalars = grid_to_mesh(grid)
+            out = os.path.join(out_subdir, f"{sid}_{label}.png")
+            render_single_multiview(mesh, scalars,
+                                    title=f"{sid}\n({label})", out_path=out)
+        except Exception as e:
+            print(f"  [跳过] {sid}: {e}")
 
 
 def im_reconstruction_panel(df: pd.DataFrame, label: str = 'morph'):
@@ -672,10 +733,12 @@ if __name__ == '__main__':
     print("="*60)
     full_reconstruction(df_morph, extreme_ids, label='morph')
     exp_individual_reconstruction(df_morph, label='morph')
+    exp_reconstruction_panel(df_morph, label='morph')
     per_degree_reconstruction(df_morph, extreme_ids,
                               label='morph', degrees=DEGREES_TO_SHOW)
     axis_extremes_panel(df_morph, label='morph')
     typology_mean_reconstruction(df_morph_typed, label='morph')
+    im_individual_reconstruction(df_morph, label='morph')
     im_reconstruction_panel(df_morph, label='morph')
     sdg_reconstruction_panel(df_morph, label='morph')
     typology_mean_with_im(df_morph_typed, label='morph')
@@ -686,10 +749,12 @@ if __name__ == '__main__':
     print("="*60)
     full_reconstruction(df_scar, extreme_ids, label='scar')
     exp_individual_reconstruction(df_scar, label='scar')
+    exp_reconstruction_panel(df_scar, label='scar')
     per_degree_reconstruction(df_scar, extreme_ids,
                               label='scar', degrees=DEGREES_TO_SHOW)
     axis_extremes_panel(df_scar, label='scar')
     typology_mean_reconstruction(df_scar, label='scar')
+    im_individual_reconstruction(df_scar, label='scar')
     im_reconstruction_panel(df_scar, label='scar')
     sdg_reconstruction_panel(df_scar, label='scar')
     typology_mean_with_im(df_scar, label='scar')
