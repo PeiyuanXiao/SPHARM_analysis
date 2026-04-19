@@ -627,6 +627,19 @@ def axis_trajectory(df_coeffs: pd.DataFrame,
                        f"recon_trajectory_{axis_name}_{label}.png")
     render_panel(items, titles, out_path=out,
                  ncols=n_steps, multiview=True)
+    out = os.path.join(OUT_DIR,
+                       f"recon_trajectory_{axis_name}_{label}.png")
+    render_panel(items, titles, out_path=out,
+                 ncols=n_steps, multiview=True)
+
+    # 逐件保存到子目录
+    out_subdir = os.path.join(OUT_DIR, f"trajectory_{axis_name}_{label}")
+    os.makedirs(out_subdir, exist_ok=True)
+    for i, ((mesh, scalars), title) in enumerate(zip(items, titles)):
+        clean_title = title.replace('\n', '_').replace(' ', '').replace('=', '')
+        out_i = os.path.join(out_subdir, f"{i+1:02d}_{clean_title}.png")
+        render_single_multiview(mesh, scalars, title=title, out_path=out_i)
+        
     return items, titles
 
 
