@@ -62,7 +62,8 @@ library(compositions)
 library(ade4)
 library(circular)
 library(FSA)
-
+library(png)
+library(grid)
 
 # ==============================================================================
 # ---- 全局常量：色盘与类型顺序 ----
@@ -656,14 +657,6 @@ p_cia_biplot <-
         shape = endpoint, size = endpoint),
     stroke = 0.5, alpha = 0.90
   ) +
-  annotate("text", x =  Inf, y = 0, label = "low-freq dominant (regular) ->",
-           hjust = 1.02, vjust = -0.5, size = 2.4, color = "grey50", fontface = "italic") +
-  annotate("text", x = -Inf, y = 0, label = "<- mid-freq complex",
-           hjust = -0.02, vjust = -0.5, size = 2.4, color = "grey50", fontface = "italic") +
-  annotate("text", x = 0, y =  Inf, label = "^ isotropic",
-           hjust = 0.5, vjust = 1.3, size = 2.4, color = "grey50", fontface = "italic") +
-  annotate("text", x = 0, y = -Inf, label = "v bipolar",
-           hjust = 0.5, vjust = -0.5, size = 2.4, color = "grey50", fontface = "italic") +
   scale_color_manual(values = typology_pal, name = "Typology",
                      breaks = typology_levels) +
   scale_fill_manual(values  = typology_pal, name = "Typology",
@@ -672,12 +665,12 @@ p_cia_biplot <-
   scale_size_manual(values  = endpoint_sizes,  name = "Endpoint") +
   theme_bw() +
   labs(
-    x = sprintf("Axis1(%.1f%%) — regularity ", cia_inertia[1]),
-    y = sprintf("Axis2(%.1f%%) — isotropy",   cia_inertia[2])
+    x = sprintf("Axis1(%.1f%%)", cia_inertia[1]),
+    y = sprintf("Axis2(%.1f%%)", cia_inertia[2])
   ) +
   guides(
     color = guide_legend(order = 1, override.aes = list(shape = 21, size = 3),
-                         title = "Typology"),
+                         title = NULL),
     fill  = "none",
     shape = guide_legend(order = 2,
                          override.aes = list(fill = "grey60", color = "grey30",
@@ -689,7 +682,13 @@ p_cia_biplot <-
     panel.grid.major.x = element_blank(),
     panel.grid.major.y = element_blank(),
     panel.grid.minor   = element_blank(),
-    legend.position    = "none"
+    legend.position   = c(0.01, 0.01),  
+    legend.justification = c(0, 0),
+    legend.background = element_rect(fill = alpha("white", 0.75),
+                                     color = "grey80", linewidth = 0.3),
+    legend.key.size   = unit(0.45, "cm"),
+    legend.text       = element_text(size = 8),
+    legend.margin     = margin(4, 6, 4, 6)
   )
 
 ggsave(here("analysis/output/figures/EXP_L1_CIA_Biplot.png"),
@@ -1064,13 +1063,21 @@ run_arrow_length_analysis <- function(group_col, group_label, palette) {
              hjust = 1.05, vjust = 1.2, size = 4, color = "grey40") +
     scale_fill_manual(values  = palette) +
     scale_color_manual(values = palette) +
-    scale_x_discrete(expand = expansion(add = 0.6)) +
+    scale_x_discrete(
+      expand = expansion(add = 0.6),
+      labels = c(
+        "Unidirectional" = "Uni.",
+        "Bidirectional"  = "Bi.",
+        "Levallois"      = "Lev.",
+        "Discoid"        = "Dis.",
+        "Multiplatform"  = "Multi."
+      )) +
     theme_bw() +
     theme(
       panel.grid.major.x = element_blank(),
       panel.grid.major.y = element_blank(),
       panel.grid.minor   = element_blank(),
-      axis.text.x        = element_blank(),
+      axis.text.x        = element_text(size = 9.5),
       axis.text.y        = element_text(size = 9.5),
       legend.position    = "none"
     ) +
@@ -1132,14 +1139,13 @@ plot_rose <- function(res, palette, bw = 40) {
            !!group_col := factor(.data[[group_col]],
                                  levels = levels(kde_df[[group_col]])))
   
-  # Rayleigh 标签（从 res$rayleigh 取）
+  # Rayleigh 标签
   rayleigh_labels <- res$rayleigh %>%
     mutate(
       label = case_when(
-        rayleigh_p < 0.001 ~ "P < 0.001",
-        rayleigh_p < 0.01  ~ sprintf("P = %.3f ", rayleigh_p),
-        rayleigh_p < 0.05  ~ sprintf("P = %.3f ", rayleigh_p),
-        TRUE               ~ sprintf("P = %.3f",    rayleigh_p)
+        rayleigh_p < 0.001 ~ "Rayleigh\nP < 0.001",
+        rayleigh_p < 0.05  ~ sprintf("Rayleigh\nP = %.3f", rayleigh_p),
+        TRUE               ~ sprintf("Rayleigh\nP = %.3f", rayleigh_p)
       ),
       !!group_col := factor(group, levels = levels(kde_df[[group_col]]))
     )
@@ -1149,34 +1155,22 @@ plot_rose <- function(res, palette, bw = 40) {
              y     = density,
              fill  = .data[[group_col]],
              color = .data[[group_col]])) +
-    geom_area(alpha = 0.65, color = NULL) +
+    geom_area(alpha = 0.4, color = NULL) +
     geom_vline(
       data     = mean_linear,
       aes(xintercept = angle_centered,
           color      = .data[[group_col]]),
-      linewidth = 0.5, linetype = "dashed", alpha = 0.9
+      linewidth = 0.5, linetype = "dashed", alpha = 0.75
     ) +
     # Rayleigh 显著性标签
     geom_text(
       data = rayleigh_labels,
       aes(label = label),
       x = 170, y = Inf,
-      hjust = 1, vjust = 1.4,
-      size = 2.8, color = "grey35",
+      hjust = 0.8, vjust = 1.4,
+      size = 3, color = "grey35",
       inherit.aes = FALSE
     ) +
-    annotate("text", x =    0, y = -Inf, label = "+CoIA1",
-             vjust = 2.2, size = 2.4, color = "grey50", fontface = "italic") +
-    annotate("text", x =  180, y = -Inf, label = "−CoIA1",
-             vjust = 2.2, size = 2.4, color = "grey50", fontface = "italic",
-             hjust = 1) +
-    annotate("text", x = -180, y = -Inf, label = "−CoIA1",
-             vjust = 2.2, size = 2.4, color = "grey50", fontface = "italic",
-             hjust = 0) +
-    annotate("text", x =   90, y = -Inf, label = "+CoIA2",
-             vjust = 2.2, size = 2.4, color = "grey50", fontface = "italic") +
-    annotate("text", x =  -90, y = -Inf, label = "−CoIA2",
-             vjust = 2.2, size = 2.4, color = "grey50", fontface = "italic") +
     scale_x_continuous(
       limits = c(-180, 180),
       breaks = seq(-180, 180, by = 45),
@@ -1188,8 +1182,8 @@ plot_rose <- function(res, palette, bw = 40) {
     facet_wrap(reformulate(group_col),
                nrow = 1,
                scales = "free_y") +
-    labs(x = "Direction (°)",
-         y = "Density",
+    labs(x = "CoIA line direction (°)",
+         y = "von Mises KDE",
          fill = group_col) +
     theme_bw(base_size = 10) +
     theme(
@@ -1201,7 +1195,7 @@ plot_rose <- function(res, palette, bw = 40) {
       axis.text.x      = element_text(size = 7.5),
       axis.text.y      = element_blank(),
       axis.ticks.y     = element_blank(),
-      legend.position  = "bottom"
+      legend.position  = "none"
     )
 }
 
@@ -1299,7 +1293,7 @@ run_circular_analysis <- function(group_col, group_label, palette) {
     ungroup() %>%
     mutate(!!group_col := factor(.data[[group_col]], levels = valid_groups_ordered))
   
-  # 调用 plot_rose 生成 ggplot 对象（此时 plot_rose 已定义）
+  # 调用 plot_rose 生成 ggplot 对象
   p_rose <- plot_rose(
     list(group_col = group_col, kde_df = kde_df, mean_dirs = mean_dirs,
          rayleigh  = rayleigh_res),
@@ -1320,7 +1314,7 @@ run_circular_analysis <- function(group_col, group_label, palette) {
     kde_df    = kde_df,
     mean_dirs = mean_dirs,
     group_col = group_col,
-    p_rose    = p_rose      # ggplot 对象，而非函数引用
+    p_rose    = p_rose   
   )
 }
 
@@ -1356,9 +1350,6 @@ se_df_plot <- se_df %>%
                            levels = intersect(TYPOLOGY_ORDER,
                                               unique(as.character(Typology)))))
 
-cat("各 Typology 样本量（含 Biface）：\n"); print(count(se_df, Typology))
-cat("各 Typology 样本量（绘图用，不含 Biface）：\n"); print(count(se_df_plot, Typology))
-
 se_desc <- se_df %>%
   group_by(Typology) %>%
   summarise(
@@ -1377,11 +1368,11 @@ write_csv(se_desc, here("analysis/data/derived_data/EXP_L2D_SE_desc_stats.csv"))
 run_kw_dunn_se <- function(df, y_col, label) {
   cat(sprintf("\n----- %s -----\n", label))
   kw <- kruskal.test(reformulate("Typology", y_col), data = df)
-  cat(sprintf("  Kruskal-Wallis: chi^2 = %.4f, df = %d, p = %.4f -> %s\n",
+  cat(sprintf("  Kruskal-Wallis: P = %.4f -> %s\n",
               kw$statistic, kw$parameter, kw$p.value,
               ifelse(kw$p.value < 0.05, "组间有显著差异", "差异不显著")))
   dunn_raw <- dunnTest(x = df[[y_col]], g = df[["Typology"]],
-                       method = "holm")$res
+                       method = "bh")$res
   dunn <- dunn_raw %>%
     separate(Comparison, into = c("group1", "group2"),
              sep = " - ", remove = FALSE) %>%
@@ -1395,8 +1386,6 @@ run_kw_dunn_se <- function(df, y_col, label) {
         p.adj < 0.05  ~ "*",   p.adj < 0.10 ~ ".", TRUE ~ "ns")
     ) %>%
     select(Comparison, group1, group2, statistic, p, p.signif, p.adj, p.adj.signif)
-  cat("  Dunn 事后检验（Holm）：\n")
-  cat("  [注] p = 原始值，p.adj = Holm 校正后\n")
   print(dunn)
   list(kw = kw, dunn = dunn)
 }
@@ -1422,25 +1411,28 @@ make_se_boxplot <- function(df, y_col, y_label, kw_res, dunn_res,
   y_range     <- diff(range(y_vals, na.rm = TRUE))
   step        <- y_range * 0.10
   type_lvls   <- levels(df[["Typology"]])
+  cat("type_lvls:", type_lvls, "\n")
+  cat("group1 values:", sig_pairs$group1, "\n")
+  cat("group2 values:", sig_pairs$group2, "\n")
+  all_annot_base <- sig_pairs %>% mutate(annot_type = "sig")
   
-  all_annot_base <- bind_rows(
-    sig_pairs   %>% mutate(annot_type = "sig"),
-    trend_pairs %>% mutate(annot_type = "trend")
-  )
   sig_annot <- if (nrow(all_annot_base) > 0) {
     all_annot_base %>%
       mutate(
+        group1 = as.character(group1),
+        group2 = as.character(group2),
         x1    = match(group1, type_lvls),
         x2    = match(group2, type_lvls),
         y_bar = y_max + step * row_number(),
         x_mid = (x1 + x2) / 2,
-        label = if_else(annot_type == "sig", p.adj.signif, "\u2020")
-      )
+        label = p.adj.signif
+      ) %>%
+      filter(!is.na(x1), !is.na(x2))  
   } else NULL
   
   p <- ggplot(df, aes(x = Typology, y = .data[[y_col]],
                       fill = Typology, color = Typology)) +
-    geom_boxplot(outlier.shape = 21, outlier.size = 2.5,
+    geom_boxplot(outlier.shape = NA,
                  alpha = 0.25, linewidth = 0.5) +
     geom_jitter(width = 0.15, size = 2.5, alpha = 0.7, shape = 16) +
     stat_summary(fun = mean, geom = "point",
@@ -1464,8 +1456,7 @@ make_se_boxplot <- function(df, y_col, y_label, kw_res, dunn_res,
           geom_text(data = sig_annot,
                     aes(x = x_mid, y = y_bar + y_range * 0.015, label = label),
                     inherit.aes = FALSE, size = 3.2, color = "grey25"),
-          scale_linetype_manual(values = c("sig" = "solid", "trend" = "dashed"),
-                                guide = "none")
+          scale_linetype_manual(values = c("sig" = "solid"), guide = "none")
         )
       } else NULL
     } +
@@ -1473,7 +1464,7 @@ make_se_boxplot <- function(df, y_col, y_label, kw_res, dunn_res,
              label = sprintf("Kruskal-Wallis\nchi\u00b2 = %.2f, p = %.3f",
                              kw_res$statistic, kw_res$p.value),
              hjust = 1.05, vjust = 1.2, size = 4,
-             color = ifelse(kw_res$p.value < 0.05, "#802520", "grey50")) +
+             color = "grey50") +
     scale_fill_manual(values  = typology_pal) +
     scale_color_manual(values = typology_pal) +
     scale_x_discrete(expand = expansion(add = 0.6)) +
@@ -1485,13 +1476,9 @@ make_se_boxplot <- function(df, y_col, y_label, kw_res, dunn_res,
       panel.grid.minor   = element_blank(),
       axis.text.x        = element_text(angle = 30, hjust = 1, size = 9.5),
       axis.text.y        = element_text(size = 9.5),
-      plot.title         = element_text(face = "bold", size = 11, hjust = 0.5),
-      plot.subtitle      = element_text(size = 8.5, hjust = 0.5, color = "grey40"),
       legend.position    = "none"
     ) +
     labs(
-      title    = sprintf("EXP L2-D: Spectral Entropy by Typology — %s", title_suffix),
-      subtitle = "Solid bracket: Holm p.adj < 0.05; dashed bracket: raw p < 0.05 trend",
       x = NULL, y = y_label
     )
   
@@ -1504,7 +1491,7 @@ make_se_boxplot <- function(df, y_col, y_label, kw_res, dunn_res,
 
 p_se_dir <- make_se_boxplot(
   se_df_plot %>% filter(!is.na(SE_direction)),
-  "SE_direction", "Spectral Entropy (Scar Direction)",
+  "SE_direction", "Spectral Entropy (Scar Pattern)",
   res_se_dir$kw,   res_se_dir$dunn,   "Scar Direction",
   "analysis/output/figures/EXP_L2D_SE_Direction_Typology_boxplot.png"
 )
@@ -1514,7 +1501,6 @@ p_se_morph <- make_se_boxplot(
   res_se_morph$kw, res_se_morph$dunn, "Morphology",
   "analysis/output/figures/EXP_L2D_SE_Morphology_Typology_boxplot.png"
 )
-
 
 # ==============================================================================
 # ---- 保存衍生数据 ----
@@ -1582,30 +1568,63 @@ cat("\n【桑基图】EXP_L1_CIA_Sankey.png\n")
 # ---- 组合图 ----
 # ==============================================================================
 
+# 第一步：在各子图上直接加标签
+p_cia_biplot_tagged <- p_cia_biplot +
+  labs(tag = "A") +
+  theme(plot.tag = element_text(size = 13, face = "bold"))
+
+p_len_tagged <- res_len_typology$p +
+  labs(tag = "B") +
+  theme(plot.tag = element_text(size = 13, face = "bold"))
+
+p_rose_tagged <- res_circ_typology$p_rose +
+  labs(tag = "C") +
+  theme(plot.tag = element_text(size = 13, face = "bold"))
+
+# 第二步：重新组合 p_composite（不加 plot_annotation）
 p_composite <- (
-  ((p_cia_biplot | res_len_typology$p) + plot_layout(widths = c(3, 1))) /
-    res_circ_typology$p_rose
+  ((p_cia_biplot_tagged | p_len_tagged) + plot_layout(widths = c(3, 1))) /
+    p_rose_tagged
 ) +
-  plot_layout(heights = c(2.3, 1)) +
-  plot_annotation(
-    tag_levels = "A",
-    theme = theme(
-      plot.tag = element_text(size = 11, face = "bold")
-    )
+  plot_layout(heights = c(2.8, 1))
+
+# 第三步：外部图片加 D 标签
+external_img <- png::readPNG(here("asset/Axis_trajectory.png"))
+grob_img     <- grid::rasterGrob(external_img, interpolate = TRUE)
+p_external   <- wrap_elements(full = grob_img) +
+  labs(tag = "D") +
+  theme(
+    plot.tag    = element_text(size = 13, face = "bold"),
+    plot.margin = margin(0, 0, 0, 0)
   )
-p_composite
+
+# 第四步：拼图
+p_final <- wrap_elements(full = p_composite) / p_external +
+  plot_layout(heights = c(3, 1))
 
 ggsave(
-  here("analysis/output/figures/EXP_CoIA_composite.png"),
-  plot   = p_composite,
+  here("analysis/output/figures/EXP_CoIA_composite_full.png"),
+  plot   = p_final,
   width  = 10,
-  height = 11,
+  height = 14,
   dpi    = 300,
   bg     = "white"
 )
-cat("组合图已保存：EXP_CoIA_composite.png\n")
 
+p_se_combined <- (p_se_dir | p_se_morph) +
+  plot_annotation(
+    tag_levels = list(c("A", "B")),
+    theme = theme(plot.tag = element_text(size = 11, face = "bold"))
+  )
 
+ggsave(
+  here("analysis/output/figures/EXP_L2D_SE_combined_boxplot.png"),
+  plot   = p_se_combined,
+  width  = 10,
+  height = 6,
+  dpi    = 300,
+  bg     = "white"
+)
 # ==============================================================================
 # ---- 谱截断敏感性分析 ----
 # ==============================================================================
