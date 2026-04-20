@@ -178,7 +178,7 @@ ggsave(here("analysis/output/figures/IM_Direction_Variance.png"),
 
 # --- B-2：功率谱分面折线图 ---
 SPHARM_direction_IM_filter <- SPHARM_direction_IM %>%
-  select(ID, Typology, SHE, spectral_entropy, power_l1:power_l4)
+  select(ID, Typology, SHE, spectral_entropy, power_l0:power_l20)
 
 print(SPHARM_direction_IM_filter, n = Inf)
 
@@ -192,44 +192,54 @@ id_order <- c(
   "Biface",                        "Multiplatform"
 )
 
-df_long <- SPHARM_direction_IM_filter %>%
-  select(ID, Typology, power_l1:power_l4) %>%
-  pivot_longer(cols = power_l1:power_l4,
-               names_to = "degree_label", values_to = "power") %>%
-  mutate(
-    degree   = as.integer(str_remove(degree_label, "power_l")),
-    ID_clean = ID %>%
-      str_remove("^IM_") %>%
-      str_replace_all("_", " ") %>%
-      str_to_sentence() %>%
-      factor(levels = id_order)
-  )
+y_min <- min(df_long$power, na.rm = TRUE)
+y_max <- max(df_long$power, na.rm = TRUE)
 
-p_facet <- ggplot(df_long, aes(x = degree, y = power)) +
-  geom_area(fill = "#D4619A", alpha = 0.1) +
-  geom_line(color = "#D4619A", linewidth = 0.2) +
-  geom_point(fill = "#D4619A", color = "white",
-             size = 2, shape = 21, stroke = 0.3) +
-  facet_wrap(~ ID_clean, ncol = 3) +
-  scale_x_continuous(breaks = 1:4, labels = paste0("l=", 1:4)) +
-  scale_y_continuous(labels = scales::label_scientific(digits = 2)) +
-  theme_bw(base_size = 10) +
-  labs(title = "Direction SPHARM Power Spectrum in Ideal Models",
-       y = "Normalised Power") +
-  theme(
-    plot.title         = element_text(face = "bold", size = 11, hjust = 0.5),
-    plot.subtitle      = element_text(size = 8, hjust = 0.5,
-                                      color = "grey50", margin = margin(b = 8)),
-    strip.text         = element_text(face = "bold", size = 8.5),
-    strip.background   = element_rect(fill = "grey80", color = "grey80"),
-    panel.grid.minor   = element_blank(),
-    axis.text.x        = element_text(size = 8),
-    axis.text.y        = element_text(size = 7)
-  )
-
-print(p_facet)
-ggsave(here("analysis/output/figures/IM_Direction_PowerSpectrum_Facet.png"),
-       plot = p_facet, width = 8, height = 6, dpi = 600)
+df_long %>%
+  group_by(ID_clean) %>%
+  group_split() %>%
+  walk(function(df_sub) {
+    
+    type_name <- as.character(df_sub$ID_clean[1])
+    
+    p <- ggplot(df_sub, aes(x = degree, y = power)) +
+      geom_line(color = "#B26538", linewidth = 0.5, alpha = 0.7) +
+      geom_point(color = "#B26538",
+                 size = 2.5, shape = 16, alpha = 0.7) +
+      scale_x_continuous(breaks = 1:20) +
+      scale_y_continuous(
+        labels = scales::label_scientific(digits = 2),
+        limits = c(y_min, y_max)            
+      ) +
+      theme_classic() +
+      labs(
+        title = type_name,
+        x     = "Spherical Harmonic Degree (l)",
+        y     = "Normalised Power"
+      ) +
+      theme(
+        plot.title       = element_text(face = "bold", size = 13, hjust = 0.5),
+        panel.grid.major.x = element_blank(),
+        panel.grid.major.y = element_blank(),
+        panel.grid.minor   = element_blank(),
+        axis.text.x      = element_text(size = 9),
+        axis.text.y      = element_text(size = 9)
+      )
+    
+    file_name <- type_name %>%
+      str_replace_all(" ", "_") %>%
+      str_to_lower()
+    
+    ggsave(
+      here(paste0("analysis/output/figures/PowerSpectrum_", file_name, ".png")),
+      plot   = p,
+      width  = 6,
+      height = 3,
+      dpi    = 600
+    )
+    
+    cat("已保存：", type_name, "\n")
+  })
 
 df_long %>%
   select(ID_clean, degree, power) %>%

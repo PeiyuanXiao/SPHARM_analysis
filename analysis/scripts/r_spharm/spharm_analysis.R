@@ -42,14 +42,15 @@ library(RVAideMemoire)
 conflicted::conflicts_prefer(ggplot2::margin)
 conflicted::conflicts_prefer(dplyr::select)
 conflicted::conflicts_prefer(dplyr::filter)
-
+conflicted::conflicts_prefer(stats::sd)
 set.seed(42)
 
 # ==============================================================================
 # 全局参数
 # ==============================================================================
 
-POWER_COLS      <- paste0("power_l", 1:5)
+POWER_COLS_DIR   <- paste0("power_l", 1:6)   # 方向谱 l=1-6
+POWER_COLS_MORPH <- paste0("power_l", 1:8)   # 形态谱 l=1-8
 EXCLUDE_TYPES   <- c("Biface")
 LEVALLOIS_MERGE <- c("Levallois convergent", "Levallois laminar",
                      "Levallois preferential", "Levallois recurrent")
@@ -72,15 +73,15 @@ SPHARM_morphology <- SPHARM_morphology %>%
 # 2. 筛选特征 + 划分子集
 # ==============================================================================
 
-filter_spharm <- function(df, meta = NULL) {
+filter_spharm <- function(df, power_cols, meta = NULL) {
   result <- df %>%
-    select(ID, Typology, SHE, spectral_entropy, all_of(POWER_COLS))
+    select(ID, Typology, SHE, spectral_entropy, all_of(power_cols))
   if (!is.null(meta)) result <- left_join(result, meta, by = "ID")
   result
 }
 
-SPHARM_direction_filter  <- filter_spharm(SPHARM_direction,  metric_data)
-SPHARM_morphology_filter <- filter_spharm(SPHARM_morphology, metric_data)
+SPHARM_direction_filter  <- filter_spharm(SPHARM_direction,  POWER_COLS_DIR,   metric_data)
+SPHARM_morphology_filter <- filter_spharm(SPHARM_morphology, POWER_COLS_MORPH, metric_data)
 
 split_by_group <- function(df) {
   list(
@@ -99,7 +100,7 @@ morph_splits <- split_by_group(SPHARM_morphology_filter)
 df_exp_dir   <- dir_splits$exp_im
 df_exp_morph <- morph_splits$exp_im
 
-scale_features <- function(df_target, cols = POWER_COLS) {
+scale_features <- function(df_target, cols) {
   ref_mat  <- df_target %>%
     filter(!str_starts(ID, "IM_")) %>%
     select(all_of(cols)) %>% as.matrix()
@@ -109,10 +110,10 @@ scale_features <- function(df_target, cols = POWER_COLS) {
   scale(mat, center = col_mean, scale = col_sd)
 }
 
-z_dir   <- scale_features(df_exp_dir)
-z_morph <- scale_features(df_exp_morph)
-colnames(z_dir)   <- paste0("dir_",   POWER_COLS)
-colnames(z_morph) <- paste0("morph_", POWER_COLS)
+z_dir   <- scale_features(df_exp_dir,   POWER_COLS_DIR)
+z_morph <- scale_features(df_exp_morph, POWER_COLS_MORPH)
+colnames(z_dir)   <- paste0("dir_",   POWER_COLS_DIR)
+colnames(z_morph) <- paste0("morph_", POWER_COLS_MORPH)
 
 df_exp_only <- df_exp_dir %>%
   filter(!str_starts(ID, "IM_"),
@@ -185,14 +186,14 @@ run_lda_plot <- function(X, y, ids,
     scale_color_manual(values = TYPOLOGY_COLORS) +
     scale_fill_manual(values  = TYPOLOGY_COLORS) +
     scale_x_continuous(
-      limits = c(-4, 3),
+      limits = c(-3, 4),
       expand = expansion(mult = 0.08),
-      breaks = seq(-4, 4, by = 1)
+      breaks = seq(-3, 4, by = 1)
     ) +
     scale_y_continuous(
-      limits = c(-3.5, 5.5),
+      limits = c(-5.5, 3.5),
       expand = expansion(mult = 0.08),
-      breaks = seq(-5, 6, by = 1)
+      breaks = seq(-5.5, 3.5, by = 1)
     ) +
     labs(
       title    = title_str,
@@ -541,10 +542,10 @@ p_adj_vec <- c(
   0.010,
   
   # Direction SPHARM（Holm）
-  0.788, 0.010, 0.024, 0.010,
-  0.024, 0.316, 0.027,
-  0.010, 0.024,
-  0.014
+  0.436, 0.010, 0.030, 0.010,
+  0.010, 0.164, 0.012,
+  0.012, 0.024,
+  0.010
 )
 
 plot_data <- tibble(
@@ -664,15 +665,15 @@ p_dir_plot <- ggplot(res_dir$scores,
   scale_color_manual(values = TYPOLOGY_COLORS) +
   scale_fill_manual(values  = TYPOLOGY_COLORS) +
   scale_x_continuous(
-    limits = c(-4, 3),
+    limits = c(-3, 4),
     expand = expansion(mult = 0.08),
-    breaks = seq(-4, 4, by = 1)
+    breaks = seq(-3, 4, by = 1)
   ) +
   scale_y_continuous(
-    limits = c(-3.5, 5.5),
+    limits = c(-5.5, 3.5),
     expand = expansion(mult = 0.08),
-    breaks = seq(-5, 6, by = 1)
-  ) +
+    breaks = seq(-5.5, 3.5, by = 1)
+  )  +
   labs(
     x = sprintf("LD1 (%.1f%%)", res_dir$prop_var[1] * 100),
     y = sprintf("LD2 (%.1f%%)", res_dir$prop_var[2] * 100)
