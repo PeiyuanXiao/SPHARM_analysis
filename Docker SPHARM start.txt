@@ -11,16 +11,13 @@ docker run -d --name spharm-processor -p 8787:8787 ^
 
 第三步：激活 conda 环境
 conda activate spharm
-cd /project
 
 第四步：运行 SPHARM 形态分析
 python analysis/scripts/SPHARM_main/SPHARM_main.py
 
-第五步：运行 KDE 计算
+第五步：运行 KDE-SPHARM 片疤模式分析
 python analysis/scripts/SPHARM_main/kde_to_spharm_main.py
 
-第六步：运行球谐分析
-python analysis/scripts/SPHARM_main/kde_to_spharm.py
 
 # --- R端分析 ---
 # 在RStudio中打开并运行：
@@ -28,3 +25,8 @@ python analysis/scripts/SPHARM_main/kde_to_spharm.py
 
 # 6. 结束工作
 docker stop spharm-processor
+
+
+# 附：生成验证旋转不变性数据
+python analysis/scripts/SPHARM_main/kde_to_spharm_main.py --source all
+

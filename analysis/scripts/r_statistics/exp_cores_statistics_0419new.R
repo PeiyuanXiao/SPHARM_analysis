@@ -38,6 +38,8 @@
 #   EXP_L2D_SE_dunn_results.csv
 #   SENS_global.csv
 #   SENS_grouped.csv
+#   EXP_morph_ILR_scores.csv
+#   EXP_scar_ILR_scores.csv
 # ==============================================================================
 
 library(here)
@@ -161,7 +163,7 @@ watson_perm_test <- function(x1, x2, B = 9999) {
 # ==============================================================================
 
 POWER_COLS_DIR   <- paste0("power_l", 1:6)   # 方向谱 l=1-6
-POWER_COLS_MORPH <- paste0("power_l", 1:8)  # 形态谱 l=1-12
+POWER_COLS_MORPH <- paste0("power_l", 1:8)  # 形态谱 l=1-8
 
 SPHARM_direction  <- read_csv(here("analysis/data/derived_data/SPHARM_direction.csv"),
                               show_col_types = FALSE)
@@ -1516,6 +1518,16 @@ scores_combined %>%
   write_csv(here("analysis/data/derived_data/EXP_CIA_scores_full.csv"))
 cat("已保存：EXP_CIA_scores_full.csv\n")
 
+# 输出 ILR 得分
+morph_ilr_exp %>%
+  rownames_to_column("ID") %>%
+  write_csv(here("analysis/data/derived_data/EXP_morph_ILR_scores.csv"))
+cat("已保存：EXP_morph_ILR_scores.csv\n")
+
+scar_ilr_exp %>%
+  rownames_to_column("ID") %>%
+  write_csv(here("analysis/data/derived_data/EXP_scar_ILR_scores.csv"))
+cat("已保存：EXP_scar_ILR_scores.csv\n")
 
 # ==============================================================================
 # ---- 汇总打印 ----

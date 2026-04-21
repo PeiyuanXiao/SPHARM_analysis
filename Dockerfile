@@ -18,7 +18,6 @@ ENV PATH=/opt/conda/bin:$PATH
 # --- RSTUDIO PROJECT AUTO-LOAD CONFIG ---
 RUN mkdir -p /home/rstudio/.local/share/rstudio/projects_settings
 RUN echo "/project/SPHARM_analysis.Rproj" > /home/rstudio/.local/share/rstudio/projects_settings/last-project-path
-
 RUN mkdir -p /home/rstudio/.config/rstudio
 RUN echo '{"initial_working_directory": "/project"}' > /home/rstudio/.config/rstudio/rstudio-prefs.json
 RUN chown -R rstudio:rstudio /home/rstudio/.local /home/rstudio/.config
@@ -54,4 +53,3 @@ RUN conda tos accept --override-channels --channel https://repo.anaconda.com/pkg
   
 RUN git config --global --add safe.directory /project
 RUN /opt/conda/envs/spharm/bin/pip install pymeshfix networkx openpyxl
-RUN echo "conda activate spharm" >> /home/rstudio/.bashrc

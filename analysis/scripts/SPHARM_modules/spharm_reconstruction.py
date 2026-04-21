@@ -7,6 +7,7 @@
 #   3. 四象限轴端对比图  — EXP轴端标本
 #   4. 分类型平均重建    — EXP均值 + IM逐个对比
 #   5. 轴连续变化轨迹    — Axis1/2 × 形态/疤痕，多视角渲染
+#   6. ILR轴连续变化轨迹 — 每个ILR轴 × 形态/疤痕，保存至 ILR_trajectory/
 # ==============================================================================
 
 import os
@@ -23,11 +24,17 @@ pv.global_theme.background = 'white'
 pv.global_theme.font.color = 'black'
 
 # ── 路径配置 ──────────────────────────────────────────────────────────────────
-MORPH_CSV  = "analysis/data/derived_data/SPHARM_morphology.csv"
-SCAR_CSV   = "analysis/data/derived_data/SPHARM_direction.csv"
-COORD_CSV  = "analysis/data/derived_data/EXP_CIA_coords_full.csv"
-OUT_DIR    = "analysis/output/figures/reconstruction"
+MORPH_CSV     = "analysis/data/derived_data/SPHARM_morphology.csv"
+SCAR_CSV      = "analysis/data/derived_data/SPHARM_direction.csv"
+COORD_CSV     = "analysis/data/derived_data/EXP_CIA_coords_full.csv"
+MORPH_ILR_CSV = "analysis/data/derived_data/EXP_morph_ILR_scores.csv"
+SCAR_ILR_CSV  = "analysis/data/derived_data/EXP_scar_ILR_scores.csv"
+
+OUT_DIR     = "analysis/output/figures/reconstruction"
+OUT_ILR_DIR = os.path.join(OUT_DIR, "ILR_trajectory")
+
 os.makedirs(OUT_DIR, exist_ok=True)
+os.makedirs(OUT_ILR_DIR, exist_ok=True)
 os.makedirs(os.path.join(OUT_DIR, "EXP_individual"), exist_ok=True)
 os.makedirs(os.path.join(OUT_DIR, "IM_individual"), exist_ok=True)
 
@@ -141,7 +148,6 @@ def add_mesh_with_wireframe(pl, mesh, scalars, smin=None, smax=None):
     if smax is None:
         smax = scalars.max()
 
-    # 半透明实体面，高光 + 高镜面反射 = 玻璃质感
     pl.add_mesh(
         mesh,
         scalars=scalars,
@@ -149,15 +155,14 @@ def add_mesh_with_wireframe(pl, mesh, scalars, smin=None, smax=None):
         cmap=CMAP,
         show_edges=False,
         lighting=True,
-        opacity=0.2,          
+        opacity=0.2,
         ambient=0.05,
         diffuse=0.80,
-        specular=1.0,      
+        specular=1.0,
         specular_power=128,
         show_scalar_bar=False,
     )
 
-    # 半透明线框层，颜色偏浅，不抢主体
     pl.add_mesh(
         mesh,
         style='wireframe',
@@ -313,7 +318,7 @@ def exp_individual_reconstruction(df: pd.DataFrame, label: str = 'morph'):
 
 
 def exp_reconstruction_panel(df: pd.DataFrame, label: str = 'morph'):
-    """EXP 全部标本汇总为一整张图，仿照 sdg_reconstruction_panel。"""
+    """EXP 全部标本汇总为一整张图。"""
     exp_df = df[df['ID'].str.startswith('EXP')].copy()
     if exp_df.empty:
         print(f"  [跳过] 没有找到 EXP 标本（{label}）")
@@ -568,7 +573,7 @@ def typology_mean_with_im(df: pd.DataFrame,
                  ncols=ncols, multiview=True)
 
 
-# ── 轴连续变化轨迹 ────────────────────────────────────────────────────────────
+# ── CoIA 轴连续变化轨迹 ───────────────────────────────────────────────────────
 
 def gaussian_weights(positions: np.ndarray,
                      target: float,
@@ -587,7 +592,15 @@ def axis_trajectory(df_coeffs: pd.DataFrame,
                     axis_name: str,
                     n_steps: int = TRAJECTORY_N_STEPS,
                     bandwidth: float = TRAJECTORY_BANDWIDTH,
-                    pct: float = TRAJECTORY_PERCENTILE):
+                    pct: float = TRAJECTORY_PERCENTILE,
+                    out_dir: str = None):
+    """
+    沿指定轴（CoIA 轴或 ILR 轴）做高斯加权平均重建轨迹。
+    out_dir：汇总图和逐件子目录的根目录，默认为 OUT_DIR。
+    """
+    if out_dir is None:
+        out_dir = OUT_DIR
+
     print(f"\n=== 轴轨迹：{axis_name} × {label}（列：{axis_col}）===")
 
     merged = df_coords[['ID', axis_col]].merge(
@@ -597,9 +610,9 @@ def axis_trajectory(df_coeffs: pd.DataFrame,
         print(f"  [跳过] 合并后无数据")
         return None
 
-    positions  = merged[axis_col].values
-    lo = np.percentile(positions, pct)
-    hi = np.percentile(positions, 100 - pct)
+    positions     = merged[axis_col].values
+    lo            = np.percentile(positions, pct)
+    hi            = np.percentile(positions, 100 - pct)
     sample_points = np.linspace(lo, hi, n_steps)
 
     items, titles = [], []
@@ -623,23 +636,23 @@ def axis_trajectory(df_coeffs: pd.DataFrame,
         titles.append(f"{axis_col}\n= {pt:.2f}")
         print(f"  位置 {pt:.2f}：有效权重标本数 ≈ {int(1/(w**2).sum())}")
 
-    out = os.path.join(OUT_DIR,
-                       f"recon_trajectory_{axis_name}_{label}.png")
-    render_panel(items, titles, out_path=out,
-                 ncols=n_steps, multiview=True)
-    out = os.path.join(OUT_DIR,
-                       f"recon_trajectory_{axis_name}_{label}.png")
-    render_panel(items, titles, out_path=out,
+    if not items:
+        print(f"  [跳过] 无有效采样点")
+        return None
+
+    # 汇总图
+    out_panel = os.path.join(out_dir, f"recon_trajectory_{axis_name}_{label}.png")
+    render_panel(items, titles, out_path=out_panel,
                  ncols=n_steps, multiview=True)
 
     # 逐件保存到子目录
-    out_subdir = os.path.join(OUT_DIR, f"trajectory_{axis_name}_{label}")
+    out_subdir = os.path.join(out_dir, f"trajectory_{axis_name}_{label}")
     os.makedirs(out_subdir, exist_ok=True)
     for i, ((mesh, scalars), title) in enumerate(zip(items, titles)):
         clean_title = title.replace('\n', '_').replace(' ', '').replace('=', '')
         out_i = os.path.join(out_subdir, f"{i+1:02d}_{clean_title}.png")
         render_single_multiview(mesh, scalars, title=title, out_path=out_i)
-        
+
     return items, titles
 
 
@@ -648,6 +661,7 @@ def all_axis_trajectories(df_morph: pd.DataFrame,
                           df_coords: pd.DataFrame,
                           n_steps: int = TRAJECTORY_N_STEPS,
                           bandwidth: float = TRAJECTORY_BANDWIDTH):
+    """CoIA Axis1/2 × 形态/疤痕，四条轨迹 + 汇总对比图。"""
     configs = [
         ('Morph_Axis1', df_morph, 'morph', 'Axis1'),
         ('Scar_Axis1',  df_scar,  'scar',  'Axis1'),
@@ -665,6 +679,7 @@ def all_axis_trajectories(df_morph: pd.DataFrame,
             axis_name=axis_name,
             n_steps=n_steps,
             bandwidth=bandwidth,
+            out_dir=OUT_DIR,
         )
         if result is None:
             continue
@@ -675,7 +690,7 @@ def all_axis_trajectories(df_morph: pd.DataFrame,
         print("  [跳过] 没有有效轨迹数据")
         return
 
-    # ── 汇总图：4行 × (n_steps × 3视角) ──────────────────────────────────
+    # 汇总图：4行 × (n_steps × 3视角)
     print("\n=== 生成四轨迹汇总对比图（多视角）===")
     views  = list(CAMERA_VIEWS.items())
     nv     = len(views)
@@ -710,6 +725,168 @@ def all_axis_trajectories(df_morph: pd.DataFrame,
                 pl.background_color = 'white'
 
     out = os.path.join(OUT_DIR, "recon_trajectory_all_axes.png")
+    pl.screenshot(out)
+    pl.close()
+    print(f"  已保存：{out}")
+
+
+# ── ILR 轴连续变化轨迹 ────────────────────────────────────────────────────────
+
+def all_ilr_trajectories(df_morph: pd.DataFrame,
+                         df_scar: pd.DataFrame,
+                         df_morph_ilr: pd.DataFrame,
+                         df_scar_ilr: pd.DataFrame,
+                         n_steps: int = TRAJECTORY_N_STEPS,
+                         bandwidth: float = TRAJECTORY_BANDWIDTH):
+    """
+    沿每个 ILR 轴做高斯加权平均重建轨迹。
+    输出全部保存至 OUT_ILR_DIR（reconstruction/ILR_trajectory/）。
+
+    子目录结构：
+      ILR_trajectory/
+        recon_trajectory_MorphILR1_morph.png   ← 各轴汇总图
+        recon_trajectory_MorphILR2_morph.png
+        ...
+        trajectory_MorphILR1_morph/            ← 各轴逐件图
+          01_...png
+          02_...png
+          ...
+    """
+    # 自动检测 ILR 列名（排除 ID 列）
+    morph_ilr_cols = [c for c in df_morph_ilr.columns if c != 'ID']
+    scar_ilr_cols  = [c for c in df_scar_ilr.columns  if c != 'ID']
+
+    print(f"\n  形态 ILR 轴数：{len(morph_ilr_cols)}  "
+          f"（{', '.join(morph_ilr_cols)}）")
+    print(f"  方向 ILR 轴数：{len(scar_ilr_cols)}  "
+          f"（{', '.join(scar_ilr_cols)}）")
+
+    # 形态端：以 morph ILR 得分为轴坐标，用形态系数重建
+    for i, col in enumerate(morph_ilr_cols):
+        axis_name = f"MorphILR{i + 1}"
+        axis_trajectory(
+            df_coeffs=df_morph,
+            df_coords=df_morph_ilr,
+            axis_col=col,
+            label='morph',
+            axis_name=axis_name,
+            n_steps=n_steps,
+            bandwidth=bandwidth,
+            out_dir=OUT_ILR_DIR,
+        )
+
+    # 方向端：以 scar ILR 得分为轴坐标，用疤痕系数重建
+    for i, col in enumerate(scar_ilr_cols):
+        axis_name = f"ScarILR{i + 1}"
+        axis_trajectory(
+            df_coeffs=df_scar,
+            df_coords=df_scar_ilr,
+            axis_col=col,
+            label='scar',
+            axis_name=axis_name,
+            n_steps=n_steps,
+            bandwidth=bandwidth,
+            out_dir=OUT_ILR_DIR,
+        )
+
+    # 汇总对比图（所有 ILR 轴 × 两端，行 = 轴数×2，列 = n_steps × 3视角）
+    _ilr_summary_panel(
+        df_morph=df_morph,
+        df_scar=df_scar,
+        df_morph_ilr=df_morph_ilr,
+        df_scar_ilr=df_scar_ilr,
+        morph_ilr_cols=morph_ilr_cols,
+        scar_ilr_cols=scar_ilr_cols,
+        n_steps=n_steps,
+        bandwidth=bandwidth,
+    )
+
+
+def _ilr_summary_panel(df_morph, df_scar,
+                       df_morph_ilr, df_scar_ilr,
+                       morph_ilr_cols, scar_ilr_cols,
+                       n_steps, bandwidth):
+    """生成所有 ILR 轴的汇总对比图，保存至 OUT_ILR_DIR。"""
+    print("\n=== 生成 ILR 汇总对比图（多视角）===")
+
+    configs = (
+        [(col, df_morph, df_morph_ilr, 'morph', f"MorphILR{i+1}")
+         for i, col in enumerate(morph_ilr_cols)] +
+        [(col, df_scar,  df_scar_ilr,  'scar',  f"ScarILR{i+1}")
+         for i, col in enumerate(scar_ilr_cols)]
+    )
+
+    all_rows = []
+    for axis_col, df_coeffs, df_coords, label, axis_name in configs:
+        merged = df_coords[['ID', axis_col]].merge(
+            df_coeffs, on='ID', how='inner'
+        )
+        if merged.empty:
+            continue
+
+        positions     = merged[axis_col].values
+        lo            = np.percentile(positions, TRAJECTORY_PERCENTILE)
+        hi            = np.percentile(positions, 100 - TRAJECTORY_PERCENTILE)
+        sample_points = np.linspace(lo, hi, n_steps)
+
+        items, titles = [], []
+        coeff_cols = sorted(
+            [c for c in merged.columns if c.startswith('coeff_')],
+            key=lambda x: int(x.split('_')[1])
+        )
+        coeff_matrix = merged[coeff_cols].values.astype(float)
+
+        for pt in sample_points:
+            w = gaussian_weights(positions, pt, bandwidth)
+            if w.max() < 1e-6:
+                continue
+            cilm_flat = (w[:, np.newaxis] * coeff_matrix).sum(axis=0)
+            cilm      = cilm_flat.reshape(2, LMAX + 1, LMAX + 1)
+            grid      = cilm_to_grid(cilm)
+            m, s      = grid_to_mesh(grid)
+            items.append((m, s))
+            titles.append(f"{axis_col}\n= {pt:.2f}")
+
+        if items:
+            all_rows.append((items, titles, f"{axis_name}\n{label}"))
+
+    if not all_rows:
+        print("  [跳过] 无有效数据")
+        return
+
+    views  = list(CAMERA_VIEWS.items())
+    nv     = len(views)
+    ncols  = n_steps * nv
+    nrows  = len(all_rows)
+
+    pl = pv.Plotter(
+        off_screen=True,
+        shape=(nrows, ncols),
+        window_size=[ncols * 350, nrows * 350],
+    )
+    pl.background_color = 'white'
+
+    for r, (items, titles, row_label) in enumerate(all_rows):
+        for c_step, ((mesh, scalars), title) in enumerate(zip(items, titles)):
+            smin, smax = scalars.min(), scalars.max()
+            for v_idx, (view_name, cam) in enumerate(views):
+                col = c_step * nv + v_idx
+                pl.subplot(r, col)
+                add_mesh_with_wireframe(pl, mesh, scalars, smin, smax)
+                t = f"{row_label}\n{title}\n[{view_name}]" \
+                    if (c_step == 0 and v_idx == 0) else f"[{view_name}]"
+                pl.add_title(t, font_size=7, color='black')
+                pl.camera_position = cam
+                if cam == 'iso':
+                    pl.camera.elevation = 20
+
+        for c_step in range(len(items), n_steps):
+            for v_idx in range(nv):
+                col = c_step * nv + v_idx
+                pl.subplot(r, col)
+                pl.background_color = 'white'
+
+    out = os.path.join(OUT_ILR_DIR, "recon_ILR_all_axes.png")
     pl.screenshot(out)
     pl.close()
     print(f"  已保存：{out}")
@@ -772,9 +949,9 @@ if __name__ == '__main__':
     sdg_reconstruction_panel(df_scar, label='scar')
     typology_mean_with_im(df_scar, label='scar')
 
-    # ── 轴连续变化轨迹 ──────────────────────────────────────────────────────
+    # ── CoIA 轴连续变化轨迹 ─────────────────────────────────────────────────
     print("\n" + "="*60)
-    print("轴连续变化轨迹")
+    print("CoIA 轴连续变化轨迹")
     print("="*60)
     df_morph_exp = df_morph[df_morph['ID'].str.startswith('EXP')]
     df_scar_exp  = df_scar[df_scar['ID'].str.startswith('EXP')]
@@ -787,4 +964,26 @@ if __name__ == '__main__':
         bandwidth=TRAJECTORY_BANDWIDTH,
     )
 
-    print("\n全部完成。输出目录：", OUT_DIR)
+    # ── ILR 轴连续变化轨迹 ──────────────────────────────────────────────────
+    print("\n" + "="*60)
+    print("ILR 轴连续变化轨迹")
+    print("="*60)
+    df_morph_ilr = load_csv(MORPH_ILR_CSV)
+    df_scar_ilr  = load_csv(SCAR_ILR_CSV)
+
+    # 仅保留 EXP 标本（与 CoIA 轨迹保持一致）
+    df_morph_ilr = df_morph_ilr[df_morph_ilr['ID'].str.startswith('EXP')]
+    df_scar_ilr  = df_scar_ilr[df_scar_ilr['ID'].str.startswith('EXP')]
+
+    all_ilr_trajectories(
+        df_morph=df_morph_exp,
+        df_scar=df_scar_exp,
+        df_morph_ilr=df_morph_ilr,
+        df_scar_ilr=df_scar_ilr,
+        n_steps=TRAJECTORY_N_STEPS,
+        bandwidth=TRAJECTORY_BANDWIDTH,
+    )
+
+    print("\n全部完成。")
+    print(f"  主输出目录：{OUT_DIR}")
+    print(f"  ILR 轨迹目录：{OUT_ILR_DIR}")
