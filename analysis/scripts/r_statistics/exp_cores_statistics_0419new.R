@@ -2,7 +2,7 @@
 # exp_cores_statistics.R
 #
 # 分析框架：
-#   L1   ：整体 Mantel + CoIA
+#   L1   ：Global Mantel + CoIA
 #   L1-3 ：CoIA 桑基图
 #   L2-A ：分组 Mantel
 #   L2-B ：CoIA 箭头长度分组差异
