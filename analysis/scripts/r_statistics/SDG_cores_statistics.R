@@ -246,7 +246,8 @@ D_morph_all <- dist(morph_ilr_all)
 D_scar_all  <- dist(scar_ilr_all)
 
 # 分离考古标本（去除 IM_ 参照件）
-arch_ids <- rownames(morph_power_clean)[!str_starts(rownames(morph_power_clean), "IM_")]
+arch_ids <- rownames(morph_power_clean)[!str_starts(rownames(morph_power_clean), "IM_") &
+                                          !str_starts(rownames(morph_power_clean), "EXP")]
 cat("考古标本数量（不含 IM_）：", length(arch_ids), "\n")
 
 morph_arch     <- morph_power_clean[arch_ids, ]
@@ -1612,30 +1613,30 @@ cat("\n==== SE x Layer ====\n")
 res_se_dir_layer   <- run_kw_dunn_se(se_df_base, "SE_direction",  "layer", "SE（方向）× Layer")
 res_se_morph_layer <- run_kw_dunn_se(se_df_base, "SE_morphology", "layer", "SE（形态）× Layer")
 
-make_se_boxplot(res_se_dir_layer,   "Spectral Entropy (Scar Direction)", "Layer",
-                "analysis/output/figures/L2D_SE_Direction_Layer_boxplot.png",   layer_pal)
-make_se_boxplot(res_se_morph_layer, "Spectral Entropy (Morphology)",     "Layer",
-                "analysis/output/figures/L2D_SE_Morphology_Layer_boxplot.png",  layer_pal)
+p_se_dir_layer_box   <- make_se_boxplot(res_se_dir_layer,   "Spectral Entropy (Scar Direction)", "Layer",
+                                        "analysis/output/figures/L2D_SE_Direction_Layer_boxplot.png",   layer_pal)
+p_se_morph_layer_box <- make_se_boxplot(res_se_morph_layer, "Spectral Entropy (Morphology)",     "Layer",
+                                        "analysis/output/figures/L2D_SE_Morphology_Layer_boxplot.png",  layer_pal)
 
 # ---- 按 Raw Material 分析 ----
 cat("\n==== SE x Raw Material ====\n")
 res_se_dir_rawmat   <- run_kw_dunn_se(se_df_base, "SE_direction",  "raw_material", "SE（方向）× Raw Material")
 res_se_morph_rawmat <- run_kw_dunn_se(se_df_base, "SE_morphology", "raw_material", "SE（形态）× Raw Material")
 
-make_se_boxplot(res_se_dir_rawmat,   "Spectral Entropy (Scar Direction)", "Raw Material",
-                "analysis/output/figures/L2D_SE_Direction_RawMat_boxplot.png",   rawmat_pal)
-make_se_boxplot(res_se_morph_rawmat, "Spectral Entropy (Morphology)",     "Raw Material",
-                "analysis/output/figures/L2D_SE_Morphology_RawMat_boxplot.png",  rawmat_pal)
+p_se_dir_rawmat_box   <- make_se_boxplot(res_se_dir_rawmat,   "Spectral Entropy (Scar Direction)", "Raw Material",
+                                         "analysis/output/figures/L2D_SE_Direction_RawMat_boxplot.png",   rawmat_pal)
+p_se_morph_rawmat_box <- make_se_boxplot(res_se_morph_rawmat, "Spectral Entropy (Morphology)",     "Raw Material",
+                                         "analysis/output/figures/L2D_SE_Morphology_RawMat_boxplot.png",  rawmat_pal)
 
 # ---- 按 Core Type 分析 ----
 cat("\n==== SE x Core Type ====\n")
 res_se_dir_coretype   <- run_kw_dunn_se(se_df_base, "SE_direction",  "core_type", "SE（方向）× Core Type")
 res_se_morph_coretype <- run_kw_dunn_se(se_df_base, "SE_morphology", "core_type", "SE（形态）× Core Type")
 
-make_se_boxplot(res_se_dir_coretype,   "Spectral Entropy (Scar Direction)", "Core Type",
-                "analysis/output/figures/L2D_SE_Direction_CoreType_boxplot.png",   coretype_pal)
-make_se_boxplot(res_se_morph_coretype, "Spectral Entropy (Morphology)",     "Core Type",
-                "analysis/output/figures/L2D_SE_Morphology_CoreType_boxplot.png",  coretype_pal)
+p_se_dir_coretype_box   <- make_se_boxplot(res_se_dir_coretype,   "Spectral Entropy (Scar Direction)", "Core Type",
+                                           "analysis/output/figures/L2D_SE_Direction_CoreType_boxplot.png",   coretype_pal)
+p_se_morph_coretype_box <- make_se_boxplot(res_se_morph_coretype, "Spectral Entropy (Morphology)",     "Core Type",
+                                           "analysis/output/figures/L2D_SE_Morphology_CoreType_boxplot.png",  coretype_pal)
 
 # ---- 汇总描述统计与 Dunn 结果 ----
 se_desc_all <- bind_rows(
@@ -1704,17 +1705,10 @@ cat("已保存：SDG_scar_ILR_scores.csv\n")
 
 
 # ==============================================================================
-# ---- 组合图：CoIA × 箭头长度 × 方向（3行 × 3列）----
+# ---- 组合图：CoIA × 箭头长度 × 方向（3行 × 3列）+ 外部图片行 ----
 # ==============================================================================
-# 布局说明：
-#   - 列 1（CoIA双标图）：颜色图例隐藏，仅保留 Endpoint shape 图例（左下角）
-#   - 列 2（箭头长度箱线图）：x轴标签隐藏（颜色即分组）
-#   - 列 3（方向KDE图）：分面标签隐藏，颜色图例显示在最右侧
-# ==============================================================================
-
 cat("\n==== 组合图：CoIA / 箭头长度 / 方向 ====\n")
 
-# 重建组合图用的方向图
 make_rose_for_composite <- function(res_circ) {
   if (is.null(res_circ)) return(NULL)
   plot_rose(
@@ -1728,6 +1722,7 @@ make_rose_for_composite <- function(res_circ) {
 }
 
 strip_margin <- function(p) p + theme(plot.margin = margin(4, 4, 4, 4))
+
 get_len_plot <- function(res_len) {
   if (is.null(res_len)) return(NULL)
   res_len$p + theme(plot.margin = margin(4, 4, 4, 4))
@@ -1750,27 +1745,81 @@ row_coretype <- make_composite_row(p_coia_coretype, res_len_coretype, res_circ_c
 rows_valid <- Filter(Negate(is.null), list(row_layer, row_rawmat, row_coretype))
 
 if (length(rows_valid) > 0) {
-  p_composite <- Reduce(`/`, rows_valid) +
-    plot_layout(heights = rep(1, length(rows_valid))) +
-    plot_annotation(
-      tag_levels = list(LETTERS[seq_len(length(rows_valid) * 3)]),
-      theme = theme(plot.tag = element_text(size = 11, face = "bold"))
+  n_rows     <- length(rows_valid)
+  n_subplots <- n_rows * 3  # 每行3列
+  
+  # ---- 第一步：主体组合图（不加 plot_annotation，手动标签见下） ----
+  # 先给每个行内子图手动打 A-I 标签
+  all_tags <- LETTERS[seq_len(n_subplots)]
+  tag_idx  <- 1L
+  
+  rows_tagged <- lapply(rows_valid, function(row) {
+    # row 是 patchwork 对象，无法直接按格子访问，
+    # 所以在 make_composite_row 里重建时打标签更可靠。
+    # 此处用 wrap_elements 冻结整行，标签已在子图层打好（见下方改法）
+    row
+  })
+  
+  # 更稳妥：在 make_composite_row 返回前，对三个子图分别手动加 tag
+  # 重新构建带标签的行
+  make_tagged_row <- function(p_coia, p_len, res_circ, tags) {
+    p_rose <- make_rose_for_composite(res_circ)
+    if (is.null(p_coia) || is.null(p_len) || is.null(p_rose)) return(NULL)
+    
+    p1 <- strip_margin(p_coia)    + labs(tag = tags[1]) + theme(plot.tag = element_text(size = 11, face = "bold"))
+    p2 <- get_len_plot(p_len)     + labs(tag = tags[2]) + theme(plot.tag = element_text(size = 11, face = "bold"))
+    p3 <- p_rose                  + labs(tag = tags[3]) + theme(plot.tag = element_text(size = 11, face = "bold"))
+    
+    (p1 | p2 | p3) + plot_layout(widths = c(5, 2, 2))
+  }
+  
+  # 重建带标签的各行
+  inputs <- list(
+    list(p_coia_layer,    res_len_layer,    res_circ_layer),
+    list(p_coia_rawmat,   res_len_rawmat,   res_circ_rawmat),
+    list(p_coia_coretype, res_len_coretype, res_circ_coretype)
+  )
+  valid_mask <- !sapply(rows_valid, is.null)  # rows_valid 已过滤，长度即 n_rows
+  
+  tagged_rows <- vector("list", n_rows)
+  for (i in seq_len(n_rows)) {
+    tags_i <- LETTERS[((i - 1) * 3 + 1):(i * 3)]
+    inp    <- inputs[[i]]
+    tagged_rows[[i]] <- make_tagged_row(inp[[1]], inp[[2]], inp[[3]], tags_i)
+  }
+  
+  # ---- 第二步：主体拼图（冻结，防止加外部图时布局被破坏）----
+  p_main <- Reduce(`/`, tagged_rows) +
+    plot_layout(heights = rep(1, n_rows))
+  
+  # ---- 第三步：外部图片，手动加最后一个标签 ----
+  next_tag    <- LETTERS[n_subplots + 1]
+  external_img <- png::readPNG(here("asset/Axis_trajectory_SDG.png"))
+  grob_img     <- grid::rasterGrob(external_img, interpolate = TRUE)
+  p_external   <- wrap_elements(full = grob_img) +
+    labs(tag = next_tag) +
+    theme(
+      plot.tag    = element_text(size = 11, face = "bold"),
+      plot.margin = margin(0, 0, 0, 0)
     )
   
-  n_rows <- length(rows_valid)
+  # ---- 第四步：最终拼图 ----
+  p_final <- wrap_elements(full = p_main) / p_external +
+    plot_layout(heights = c(n_rows, 1))
+  
   ggsave(
     here("analysis/output/figures/L_CoIA_composite.png"),
-    plot   = p_composite,
+    plot   = p_final,
     width  = 12,
-    height = n_rows * 5,
+    height = n_rows * 5 + 3,  # 额外3英寸给外部图片行
     dpi    = 300,
     bg     = "white"
   )
-  cat(sprintf("组合图已保存：L_CoIA_composite.png（%d 行 × 3 列）\n", n_rows))
+  cat(sprintf("组合图已保存：L_CoIA_composite.png（%d 行 × 3 列 + 外部图片行）\n", n_rows))
+  
 } else {
   cat("  [跳过] 所有行均无有效子图，未生成组合图\n")
 }
-
 # ==============================================================================
 # ========== 第三层：PERMANOVA ==========
 # ==============================================================================
@@ -1929,6 +1978,37 @@ bind_rows(
   write_csv(here("analysis/data/derived_data/L3_permanova.csv"))
 cat("已保存：L3_permanova.csv\n")
 
+# ==============================================================================
+# ---- 组合图：SE × 分组（形态谱 / 方向谱）----
+# ==============================================================================
+cat("\n==== 组合图：SE 分组箱线图 ====\n")
+
+add_tag <- function(p, tag) {
+  p + labs(tag = tag) + theme(plot.tag = element_text(size = 11, face = "bold"))
+}
+
+row_morph <- (add_tag(p_se_morph_layer_box, "A") |
+                add_tag(p_se_morph_rawmat_box, "B") |
+                add_tag(p_se_morph_coretype_box, "C")) +
+  plot_layout(widths = c(1, 1, 3))
+
+row_dir <- (add_tag(p_se_dir_layer_box, "D") |
+              add_tag(p_se_dir_rawmat_box, "E") |
+              add_tag(p_se_dir_coretype_box, "F")) +
+  plot_layout(widths = c(1, 1, 3))
+
+p_se_composite <- (row_morph / row_dir) +
+  plot_layout(heights = c(1, 1))
+
+ggsave(
+  here("analysis/output/figures/L2D_SE_composite.png"),
+  plot   = p_se_composite,
+  width  = 12,
+  height = 10,
+  dpi    = 300,
+  bg     = "white"
+)
+cat("组合图已保存：L2D_SE_composite.png\n")
 
 # ==============================================================================
 # ---- 汇总打印 ----
