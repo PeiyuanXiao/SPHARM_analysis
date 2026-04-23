@@ -6,8 +6,8 @@
 #   2. 分阶重建          — EXP轴端标本
 #   3. 四象限轴端对比图  — EXP轴端标本
 #   4. 分类型平均重建    — EXP均值 + IM逐个对比
-#   5. 轴连续变化轨迹    — Axis1/2 × 形态/疤痕，多视角渲染
-#   6. ILR轴连续变化轨迹 — 每个ILR轴 × 形态/疤痕，保存至 ILR_trajectory/
+#   5. 轴连续变化轨迹    — Axis1/2 × 形态/疤痕，多视角渲染（EXP + SDG）
+#   6. ILR轴连续变化轨迹 — 每个ILR轴 × 形态/疤痕（EXP + SDG）
 # ==============================================================================
 
 import os
@@ -24,19 +24,27 @@ pv.global_theme.background = 'white'
 pv.global_theme.font.color = 'black'
 
 # ── 路径配置 ──────────────────────────────────────────────────────────────────
-MORPH_CSV     = "analysis/data/derived_data/SPHARM_morphology.csv"
-SCAR_CSV      = "analysis/data/derived_data/SPHARM_direction.csv"
-COORD_CSV     = "analysis/data/derived_data/EXP_CIA_coords_full.csv"
-MORPH_ILR_CSV = "analysis/data/derived_data/EXP_morph_ILR_scores.csv"
-SCAR_ILR_CSV  = "analysis/data/derived_data/EXP_scar_ILR_scores.csv"
+MORPH_CSV         = "analysis/data/derived_data/SPHARM_morphology.csv"
+SCAR_CSV          = "analysis/data/derived_data/SPHARM_direction.csv"
+EXP_COORD_CSV     = "analysis/data/derived_data/EXP_CIA_coords_full.csv"
+EXP_MORPH_ILR_CSV = "analysis/data/derived_data/EXP_morph_ILR_scores.csv"
+EXP_SCAR_ILR_CSV  = "analysis/data/derived_data/EXP_scar_ILR_scores.csv"
+SDG_COORD_CSV     = "analysis/data/derived_data/CoIA_coords_full.csv"
+SDG_MORPH_ILR_CSV = "analysis/data/derived_data/SDG_morph_ILR_scores.csv"
+SDG_SCAR_ILR_CSV  = "analysis/data/derived_data/SDG_scar_ILR_scores.csv"
 
-OUT_DIR     = "analysis/output/figures/reconstruction"
-OUT_ILR_DIR = os.path.join(OUT_DIR, "ILR_trajectory")
+OUT_DIR         = "analysis/output/figures/reconstruction"
+OUT_ILR_DIR     = os.path.join(OUT_DIR, "ILR_trajectory")
+OUT_SDG_DIR     = "analysis/output/figures/reconstruction_sdg"
+OUT_SDG_ILR_DIR = os.path.join(OUT_SDG_DIR, "ILR_trajectory")
 
 os.makedirs(OUT_DIR, exist_ok=True)
 os.makedirs(OUT_ILR_DIR, exist_ok=True)
 os.makedirs(os.path.join(OUT_DIR, "EXP_individual"), exist_ok=True)
 os.makedirs(os.path.join(OUT_DIR, "IM_individual"), exist_ok=True)
+os.makedirs(OUT_SDG_DIR, exist_ok=True)
+os.makedirs(OUT_SDG_ILR_DIR, exist_ok=True)
+os.makedirs(os.path.join(OUT_SDG_DIR, "SDG_individual"), exist_ok=True)
 
 # ── 全局常量 ──────────────────────────────────────────────────────────────────
 LMAX = 20
@@ -59,7 +67,6 @@ TRAJECTORY_N_STEPS    = 7
 TRAJECTORY_BANDWIDTH  = 0.3
 TRAJECTORY_PERCENTILE = 10
 
-# 多视角相机位置
 CAMERA_VIEWS = {
     'iso':   'iso',
     'top':   'zy',
@@ -137,12 +144,6 @@ def grid_to_mesh(grid_data: np.ndarray, stride: int = 2):
 
 
 def add_mesh_with_wireframe(pl, mesh, scalars, smin=None, smax=None):
-    """
-    玻璃质感渲染：半透明实体面 + 高镜面反射 + 半透明线框叠加。
-    off-screen 模式（OSMesa/EGL）不支持深度剥离，因此不调用
-    SetUseDepthPeeling；改用较高 opacity 保证面片可见，
-    同时保留高 specular 以呈现玻璃高光感。
-    """
     if smin is None:
         smin = scalars.min()
     if smax is None:
@@ -174,7 +175,6 @@ def add_mesh_with_wireframe(pl, mesh, scalars, smin=None, smax=None):
 
 def render_single(mesh, scalars, title: str, out_path: str,
                   camera_position='iso'):
-    """单视角渲染，保存单张PNG。"""
     pl = pv.Plotter(off_screen=True, window_size=[900, 900])
     pl.background_color = 'white'
     add_mesh_with_wireframe(pl, mesh, scalars)
@@ -187,9 +187,6 @@ def render_single(mesh, scalars, title: str, out_path: str,
 
 
 def render_single_multiview(mesh, scalars, title: str, out_path: str):
-    """
-    多视角渲染：iso / top / front 三个角度横向拼排，保存单张PNG。
-    """
     views = list(CAMERA_VIEWS.items())
     ncols = len(views)
     pl = pv.Plotter(
@@ -216,11 +213,6 @@ def render_single_multiview(mesh, scalars, title: str, out_path: str):
 def render_panel(meshes_scalars: list, titles: list,
                  out_path: str, ncols: int = 4,
                  multiview: bool = False):
-    """
-    多面板渲染。
-    multiview=True 时每个面板内嵌三视角（iso/top/front），
-    此时实际列数 = ncols * 3，行数不变。
-    """
     n = len(meshes_scalars)
     nrows = int(np.ceil(n / ncols))
 
@@ -261,7 +253,6 @@ def render_panel(meshes_scalars: list, titles: list,
             pl.camera_position = 'iso'
             pl.camera.elevation = 20
 
-    # 空白子图
     for j in range(n, nrows * ncols):
         base_row, base_col = divmod(j, ncols)
         if multiview:
@@ -281,8 +272,8 @@ def render_panel(meshes_scalars: list, titles: list,
 # ── 主重建函数 ────────────────────────────────────────────────────────────────
 
 def full_reconstruction(df: pd.DataFrame, specimen_ids: list,
-                        label: str = 'morph'):
-    """全谱重建：指定标本逐一重建，多视角。"""
+                        label: str = 'morph',
+                        out_dir: str = OUT_DIR):
     print(f"\n=== 全谱重建（{label}）===")
     for sid in specimen_ids:
         rows = df[df['ID'] == sid]
@@ -293,16 +284,17 @@ def full_reconstruction(df: pd.DataFrame, specimen_ids: list,
         cilm = get_coeff_array(row)
         grid = cilm_to_grid(cilm)
         mesh, scalars = grid_to_mesh(grid)
-        out = os.path.join(OUT_DIR, f"recon_full_{sid}_{label}.png")
+        out = os.path.join(out_dir, f"recon_full_{sid}_{label}.png")
         render_single_multiview(mesh, scalars,
                                 title=f"{sid} ({label})", out_path=out)
 
 
-def exp_individual_reconstruction(df: pd.DataFrame, label: str = 'morph'):
-    """EXP 全部标本逐件重建，保存到 EXP_individual/ 子目录。"""
+def exp_individual_reconstruction(df: pd.DataFrame, label: str = 'morph',
+                                   out_dir: str = OUT_DIR):
     exp_df = df[df['ID'].str.startswith('EXP')].copy()
     print(f"\n=== EXP 逐件重建（{label}，n={len(exp_df)}）===")
-    out_subdir = os.path.join(OUT_DIR, "EXP_individual")
+    out_subdir = os.path.join(out_dir, "EXP_individual")
+    os.makedirs(out_subdir, exist_ok=True)
 
     for _, row in exp_df.iterrows():
         sid = row['ID']
@@ -317,8 +309,8 @@ def exp_individual_reconstruction(df: pd.DataFrame, label: str = 'morph'):
             print(f"  [跳过] {sid}: {e}")
 
 
-def exp_reconstruction_panel(df: pd.DataFrame, label: str = 'morph'):
-    """EXP 全部标本汇总为一整张图。"""
+def exp_reconstruction_panel(df: pd.DataFrame, label: str = 'morph',
+                              out_dir: str = OUT_DIR):
     exp_df = df[df['ID'].str.startswith('EXP')].copy()
     if exp_df.empty:
         print(f"  [跳过] 没有找到 EXP 标本（{label}）")
@@ -338,14 +330,15 @@ def exp_reconstruction_panel(df: pd.DataFrame, label: str = 'morph'):
         except Exception as e:
             print(f"  [跳过] {sid}: {e}")
 
-    out = os.path.join(OUT_DIR, f"recon_EXP_{label}.png")
+    out = os.path.join(out_dir, f"recon_EXP_{label}.png")
     ncols = min(len(items), 4)
     render_panel(items, titles, out_path=out, ncols=ncols, multiview=True)
 
 
 def per_degree_reconstruction(df: pd.DataFrame, specimen_ids: list,
                                label: str = 'morph',
-                               degrees: list = None):
+                               degrees: list = None,
+                               out_dir: str = OUT_DIR):
     if degrees is None:
         degrees = DEGREES_TO_SHOW
     print(f"\n=== 分阶重建（{label}）===")
@@ -370,14 +363,15 @@ def per_degree_reconstruction(df: pd.DataFrame, specimen_ids: list,
             items.append((m, s))
             titles.append(f"l={l}")
 
-        out = os.path.join(OUT_DIR, f"recon_degrees_{sid}_{label}.png")
+        out = os.path.join(out_dir, f"recon_degrees_{sid}_{label}.png")
         render_panel(items, titles, out_path=out,
                      ncols=len(degrees) + 1, multiview=True)
 
 
 def axis_extremes_panel(df: pd.DataFrame,
                         extremes: dict = None,
-                        label: str = 'morph'):
+                        label: str = 'morph',
+                        out_dir: str = OUT_DIR):
     if extremes is None:
         extremes = AXIS_EXTREMES
     print(f"\n=== 轴端对比图（{label}）===")
@@ -397,19 +391,20 @@ def axis_extremes_panel(df: pd.DataFrame,
         items.append((m, s))
         titles.append(panel_title)
 
-    out = os.path.join(OUT_DIR, f"recon_axis_extremes_{label}.png")
+    out = os.path.join(out_dir, f"recon_axis_extremes_{label}.png")
     render_panel(items, titles, out_path=out, ncols=2, multiview=True)
 
 
-def im_individual_reconstruction(df: pd.DataFrame, label: str = 'morph'):
-    """IM 理想模型逐件重建，保存到 IM_individual/ 子目录。"""
+def im_individual_reconstruction(df: pd.DataFrame, label: str = 'morph',
+                                  out_dir: str = OUT_DIR):
     im_df = df[df['ID'].str.startswith('IM_')].copy()
     if im_df.empty:
         print(f"  [跳过] 没有找到 IM_ 标本（{label}）")
         return
 
     print(f"\n=== IM 逐件重建（{label}，n={len(im_df)}）===")
-    out_subdir = os.path.join(OUT_DIR, "IM_individual")
+    out_subdir = os.path.join(out_dir, "IM_individual")
+    os.makedirs(out_subdir, exist_ok=True)
 
     for _, row in im_df.iterrows():
         sid = row['ID']
@@ -424,7 +419,8 @@ def im_individual_reconstruction(df: pd.DataFrame, label: str = 'morph'):
             print(f"  [跳过] {sid}: {e}")
 
 
-def im_reconstruction_panel(df: pd.DataFrame, label: str = 'morph'):
+def im_reconstruction_panel(df: pd.DataFrame, label: str = 'morph',
+                             out_dir: str = OUT_DIR):
     im_df = df[df['ID'].str.startswith('IM_')].copy()
     if im_df.empty:
         print(f"  [跳过] 没有找到 IM_ 标本（{label}）")
@@ -444,18 +440,43 @@ def im_reconstruction_panel(df: pd.DataFrame, label: str = 'morph'):
         except Exception as e:
             print(f"  [跳过] {sid}: {e}")
 
-    out = os.path.join(OUT_DIR, f"recon_IM_{label}.png")
+    out = os.path.join(out_dir, f"recon_IM_{label}.png")
     ncols = min(len(items), 4)
     render_panel(items, titles, out_path=out, ncols=ncols, multiview=True)
 
 
-def sdg_reconstruction_panel(df: pd.DataFrame, label: str = 'morph'):
+def sdg_individual_reconstruction(df: pd.DataFrame, label: str = 'morph',
+                                   out_dir: str = OUT_SDG_DIR):
     sdg_df = df[df['ID'].str.startswith('SDG')].copy()
     if sdg_df.empty:
         print(f"  [跳过] 没有找到 SDG 标本（{label}）")
         return
 
-    print(f"\n=== SDG 考古标本重建（{label}，n={len(sdg_df)}）===")
+    print(f"\n=== SDG 逐件重建（{label}，n={len(sdg_df)}）===")
+    out_subdir = os.path.join(out_dir, "SDG_individual")
+    os.makedirs(out_subdir, exist_ok=True)
+
+    for _, row in sdg_df.iterrows():
+        sid = row['ID']
+        try:
+            cilm = get_coeff_array(row)
+            grid = cilm_to_grid(cilm)
+            mesh, scalars = grid_to_mesh(grid)
+            out = os.path.join(out_subdir, f"{sid}_{label}.png")
+            render_single_multiview(mesh, scalars,
+                                    title=f"{sid}\n({label})", out_path=out)
+        except Exception as e:
+            print(f"  [跳过] {sid}: {e}")
+
+
+def sdg_reconstruction_panel(df: pd.DataFrame, label: str = 'morph',
+                              out_dir: str = OUT_SDG_DIR):
+    sdg_df = df[df['ID'].str.startswith('SDG')].copy()
+    if sdg_df.empty:
+        print(f"  [跳过] 没有找到 SDG 标本（{label}）")
+        return
+
+    print(f"\n=== SDG 汇总重建图（{label}，n={len(sdg_df)}）===")
     items, titles = [], []
     for _, row in sdg_df.iterrows():
         sid = row['ID']
@@ -469,7 +490,7 @@ def sdg_reconstruction_panel(df: pd.DataFrame, label: str = 'morph'):
         except Exception as e:
             print(f"  [跳过] {sid}: {e}")
 
-    out = os.path.join(OUT_DIR, f"recon_SDG_{label}.png")
+    out = os.path.join(out_dir, f"recon_SDG_{label}.png")
     ncols = min(len(items), 4)
     render_panel(items, titles, out_path=out, ncols=ncols, multiview=True)
 
@@ -477,7 +498,8 @@ def sdg_reconstruction_panel(df: pd.DataFrame, label: str = 'morph'):
 def typology_mean_reconstruction(df: pd.DataFrame,
                                  label: str = 'morph',
                                  typology_col: str = 'Typology',
-                                 min_n: int = 3):
+                                 min_n: int = 3,
+                                 out_dir: str = OUT_DIR):
     print(f"\n=== EXP 分类型平均重建（{label}）===")
     df = df.copy()
     df = df[df['ID'].str.startswith('EXP')]
@@ -509,7 +531,7 @@ def typology_mean_reconstruction(df: pd.DataFrame,
         items.append((m, s))
         titles.append(f"{typ}\n(n={len(cilm_list)})")
 
-    out = os.path.join(OUT_DIR, f"recon_typology_mean_{label}.png")
+    out = os.path.join(out_dir, f"recon_typology_mean_{label}.png")
     ncols = min(len(items), 5)
     render_panel(items, titles, out_path=out, ncols=ncols, multiview=True)
 
@@ -517,7 +539,8 @@ def typology_mean_reconstruction(df: pd.DataFrame,
 def typology_mean_with_im(df: pd.DataFrame,
                           label: str = 'morph',
                           typology_col: str = 'Typology',
-                          min_n: int = 3):
+                          min_n: int = 3,
+                          out_dir: str = OUT_DIR):
     print(f"\n=== EXP 分类型均值 + IM 对比（{label}）===")
     df = df.copy()
 
@@ -568,12 +591,12 @@ def typology_mean_with_im(df: pd.DataFrame,
     all_items  = exp_items  + im_items
     all_titles = exp_titles + im_titles
 
-    out = os.path.join(OUT_DIR, f"recon_typology_vs_IM_{label}.png")
+    out = os.path.join(out_dir, f"recon_typology_vs_IM_{label}.png")
     render_panel(all_items, all_titles, out_path=out,
                  ncols=ncols, multiview=True)
 
 
-# ── CoIA 轴连续变化轨迹 ───────────────────────────────────────────────────────
+# ── CoIA / ILR 轴连续变化轨迹（通用，支持 out_dir 参数）────────────────────────
 
 def gaussian_weights(positions: np.ndarray,
                      target: float,
@@ -594,10 +617,6 @@ def axis_trajectory(df_coeffs: pd.DataFrame,
                     bandwidth: float = TRAJECTORY_BANDWIDTH,
                     pct: float = TRAJECTORY_PERCENTILE,
                     out_dir: str = None):
-    """
-    沿指定轴（CoIA 轴或 ILR 轴）做高斯加权平均重建轨迹。
-    out_dir：汇总图和逐件子目录的根目录，默认为 OUT_DIR。
-    """
     if out_dir is None:
         out_dir = OUT_DIR
 
@@ -615,21 +634,20 @@ def axis_trajectory(df_coeffs: pd.DataFrame,
     hi            = np.percentile(positions, 100 - pct)
     sample_points = np.linspace(lo, hi, n_steps)
 
+    coeff_cols = sorted(
+        [c for c in merged.columns if c.startswith('coeff_')],
+        key=lambda x: int(x.split('_')[1])
+    )
+    coeff_matrix = merged[coeff_cols].values.astype(float)
+
     items, titles = [], []
     for pt in sample_points:
         w = gaussian_weights(positions, pt, bandwidth)
         if w.max() < 1e-6:
             print(f"  [跳过] 位置 {pt:.2f}：权重过小")
             continue
-
-        coeff_cols   = sorted(
-            [c for c in merged.columns if c.startswith('coeff_')],
-            key=lambda x: int(x.split('_')[1])
-        )
-        coeff_matrix = merged[coeff_cols].values.astype(float)
-        cilm_flat    = (w[:, np.newaxis] * coeff_matrix).sum(axis=0)
-        cilm         = cilm_flat.reshape(2, LMAX + 1, LMAX + 1)
-
+        cilm_flat = (w[:, np.newaxis] * coeff_matrix).sum(axis=0)
+        cilm      = cilm_flat.reshape(2, LMAX + 1, LMAX + 1)
         grid = cilm_to_grid(cilm)
         m, s = grid_to_mesh(grid)
         items.append((m, s))
@@ -640,12 +658,10 @@ def axis_trajectory(df_coeffs: pd.DataFrame,
         print(f"  [跳过] 无有效采样点")
         return None
 
-    # 汇总图
     out_panel = os.path.join(out_dir, f"recon_trajectory_{axis_name}_{label}.png")
     render_panel(items, titles, out_path=out_panel,
                  ncols=n_steps, multiview=True)
 
-    # 逐件保存到子目录
     out_subdir = os.path.join(out_dir, f"trajectory_{axis_name}_{label}")
     os.makedirs(out_subdir, exist_ok=True)
     for i, ((mesh, scalars), title) in enumerate(zip(items, titles)):
@@ -660,13 +676,20 @@ def all_axis_trajectories(df_morph: pd.DataFrame,
                           df_scar: pd.DataFrame,
                           df_coords: pd.DataFrame,
                           n_steps: int = TRAJECTORY_N_STEPS,
-                          bandwidth: float = TRAJECTORY_BANDWIDTH):
-    """CoIA Axis1/2 × 形态/疤痕，四条轨迹 + 汇总对比图。"""
+                          bandwidth: float = TRAJECTORY_BANDWIDTH,
+                          out_dir: str = None,
+                          coord_morph_axis1: str = 'Morph_Axis1',
+                          coord_scar_axis1:  str = 'Scar_Axis1',
+                          coord_morph_axis2: str = 'Morph_Axis2',
+                          coord_scar_axis2:  str = 'Scar_Axis2'):
+    if out_dir is None:
+        out_dir = OUT_DIR
+
     configs = [
-        ('Morph_Axis1', df_morph, 'morph', 'Axis1'),
-        ('Scar_Axis1',  df_scar,  'scar',  'Axis1'),
-        ('Morph_Axis2', df_morph, 'morph', 'Axis2'),
-        ('Scar_Axis2',  df_scar,  'scar',  'Axis2'),
+        (coord_morph_axis1, df_morph, 'morph', 'Axis1'),
+        (coord_scar_axis1,  df_scar,  'scar',  'Axis1'),
+        (coord_morph_axis2, df_morph, 'morph', 'Axis2'),
+        (coord_scar_axis2,  df_scar,  'scar',  'Axis2'),
     ]
 
     all_rows = []
@@ -679,7 +702,7 @@ def all_axis_trajectories(df_morph: pd.DataFrame,
             axis_name=axis_name,
             n_steps=n_steps,
             bandwidth=bandwidth,
-            out_dir=OUT_DIR,
+            out_dir=out_dir,
         )
         if result is None:
             continue
@@ -690,7 +713,6 @@ def all_axis_trajectories(df_morph: pd.DataFrame,
         print("  [跳过] 没有有效轨迹数据")
         return
 
-    # 汇总图：4行 × (n_steps × 3视角)
     print("\n=== 生成四轨迹汇总对比图（多视角）===")
     views  = list(CAMERA_VIEWS.items())
     nv     = len(views)
@@ -724,35 +746,22 @@ def all_axis_trajectories(df_morph: pd.DataFrame,
                 pl.subplot(r, col)
                 pl.background_color = 'white'
 
-    out = os.path.join(OUT_DIR, "recon_trajectory_all_axes.png")
+    out = os.path.join(out_dir, "recon_trajectory_all_axes.png")
     pl.screenshot(out)
     pl.close()
     print(f"  已保存：{out}")
 
-
-# ── ILR 轴连续变化轨迹 ────────────────────────────────────────────────────────
 
 def all_ilr_trajectories(df_morph: pd.DataFrame,
                          df_scar: pd.DataFrame,
                          df_morph_ilr: pd.DataFrame,
                          df_scar_ilr: pd.DataFrame,
                          n_steps: int = TRAJECTORY_N_STEPS,
-                         bandwidth: float = TRAJECTORY_BANDWIDTH):
-    """
-    沿每个 ILR 轴做高斯加权平均重建轨迹。
-    输出全部保存至 OUT_ILR_DIR（reconstruction/ILR_trajectory/）。
+                         bandwidth: float = TRAJECTORY_BANDWIDTH,
+                         out_dir: str = None):
+    if out_dir is None:
+        out_dir = OUT_ILR_DIR
 
-    子目录结构：
-      ILR_trajectory/
-        recon_trajectory_MorphILR1_morph.png   ← 各轴汇总图
-        recon_trajectory_MorphILR2_morph.png
-        ...
-        trajectory_MorphILR1_morph/            ← 各轴逐件图
-          01_...png
-          02_...png
-          ...
-    """
-    # 自动检测 ILR 列名（排除 ID 列）
     morph_ilr_cols = [c for c in df_morph_ilr.columns if c != 'ID']
     scar_ilr_cols  = [c for c in df_scar_ilr.columns  if c != 'ID']
 
@@ -761,35 +770,30 @@ def all_ilr_trajectories(df_morph: pd.DataFrame,
     print(f"  方向 ILR 轴数：{len(scar_ilr_cols)}  "
           f"（{', '.join(scar_ilr_cols)}）")
 
-    # 形态端：以 morph ILR 得分为轴坐标，用形态系数重建
     for i, col in enumerate(morph_ilr_cols):
-        axis_name = f"MorphILR{i + 1}"
         axis_trajectory(
             df_coeffs=df_morph,
             df_coords=df_morph_ilr,
             axis_col=col,
             label='morph',
-            axis_name=axis_name,
+            axis_name=f"MorphILR{i + 1}",
             n_steps=n_steps,
             bandwidth=bandwidth,
-            out_dir=OUT_ILR_DIR,
+            out_dir=out_dir,
         )
 
-    # 方向端：以 scar ILR 得分为轴坐标，用疤痕系数重建
     for i, col in enumerate(scar_ilr_cols):
-        axis_name = f"ScarILR{i + 1}"
         axis_trajectory(
             df_coeffs=df_scar,
             df_coords=df_scar_ilr,
             axis_col=col,
             label='scar',
-            axis_name=axis_name,
+            axis_name=f"ScarILR{i + 1}",
             n_steps=n_steps,
             bandwidth=bandwidth,
-            out_dir=OUT_ILR_DIR,
+            out_dir=out_dir,
         )
 
-    # 汇总对比图（所有 ILR 轴 × 两端，行 = 轴数×2，列 = n_steps × 3视角）
     _ilr_summary_panel(
         df_morph=df_morph,
         df_scar=df_scar,
@@ -799,14 +803,18 @@ def all_ilr_trajectories(df_morph: pd.DataFrame,
         scar_ilr_cols=scar_ilr_cols,
         n_steps=n_steps,
         bandwidth=bandwidth,
+        out_dir=out_dir,
     )
 
 
 def _ilr_summary_panel(df_morph, df_scar,
                        df_morph_ilr, df_scar_ilr,
                        morph_ilr_cols, scar_ilr_cols,
-                       n_steps, bandwidth):
-    """生成所有 ILR 轴的汇总对比图，保存至 OUT_ILR_DIR。"""
+                       n_steps, bandwidth,
+                       out_dir: str = None):
+    if out_dir is None:
+        out_dir = OUT_ILR_DIR
+
     print("\n=== 生成 ILR 汇总对比图（多视角）===")
 
     configs = (
@@ -829,13 +837,13 @@ def _ilr_summary_panel(df_morph, df_scar,
         hi            = np.percentile(positions, 100 - TRAJECTORY_PERCENTILE)
         sample_points = np.linspace(lo, hi, n_steps)
 
-        items, titles = [], []
         coeff_cols = sorted(
             [c for c in merged.columns if c.startswith('coeff_')],
             key=lambda x: int(x.split('_')[1])
         )
         coeff_matrix = merged[coeff_cols].values.astype(float)
 
+        items, titles = [], []
         for pt in sample_points:
             w = gaussian_weights(positions, pt, bandwidth)
             if w.max() < 1e-6:
@@ -886,7 +894,7 @@ def _ilr_summary_panel(df_morph, df_scar,
                 pl.subplot(r, col)
                 pl.background_color = 'white'
 
-    out = os.path.join(OUT_ILR_DIR, "recon_ILR_all_axes.png")
+    out = os.path.join(out_dir, "recon_ILR_all_axes.png")
     pl.screenshot(out)
     pl.close()
     print(f"  已保存：{out}")
@@ -898,8 +906,10 @@ if __name__ == '__main__':
     print("读取数据...")
     df_morph  = load_csv(MORPH_CSV)
     df_scar   = load_csv(SCAR_CSV)
-    df_coords = load_csv(COORD_CSV)
-    df_coords = df_coords[df_coords['ID'].str.startswith('EXP')]
+
+    # EXP 坐标（列名：Morph_Axis1/2, Scar_Axis1/2）
+    df_coords_exp = load_csv(EXP_COORD_CSV)
+    df_coords_exp = df_coords_exp[df_coords_exp['ID'].str.startswith('EXP')]
 
     coeff_cols = [c for c in df_morph.columns if c.startswith('coeff_')]
     n_coeffs   = len(coeff_cols)
@@ -915,75 +925,130 @@ if __name__ == '__main__':
         on='ID', how='left'
     )
 
-    extreme_ids = list(AXIS_EXTREMES.values())
-
-    # ── 形态端 ──────────────────────────────────────────────────────────────
-    print("\n" + "="*60)
-    print("形态谱重建")
-    print("="*60)
-    full_reconstruction(df_morph, extreme_ids, label='morph')
-    exp_individual_reconstruction(df_morph, label='morph')
-    exp_reconstruction_panel(df_morph, label='morph')
-    per_degree_reconstruction(df_morph, extreme_ids,
-                              label='morph', degrees=DEGREES_TO_SHOW)
-    axis_extremes_panel(df_morph, label='morph')
-    typology_mean_reconstruction(df_morph_typed, label='morph')
-    im_individual_reconstruction(df_morph, label='morph')
-    im_reconstruction_panel(df_morph, label='morph')
-    sdg_reconstruction_panel(df_morph, label='morph')
-    typology_mean_with_im(df_morph_typed, label='morph')
-
-    # ── 疤痕端 ──────────────────────────────────────────────────────────────
-    print("\n" + "="*60)
-    print("疤痕谱重建")
-    print("="*60)
-    full_reconstruction(df_scar, extreme_ids, label='scar')
-    exp_individual_reconstruction(df_scar, label='scar')
-    exp_reconstruction_panel(df_scar, label='scar')
-    per_degree_reconstruction(df_scar, extreme_ids,
-                              label='scar', degrees=DEGREES_TO_SHOW)
-    axis_extremes_panel(df_scar, label='scar')
-    typology_mean_reconstruction(df_scar, label='scar')
-    im_individual_reconstruction(df_scar, label='scar')
-    im_reconstruction_panel(df_scar, label='scar')
-    sdg_reconstruction_panel(df_scar, label='scar')
-    typology_mean_with_im(df_scar, label='scar')
-
-    # ── CoIA 轴连续变化轨迹 ─────────────────────────────────────────────────
-    print("\n" + "="*60)
-    print("CoIA 轴连续变化轨迹")
-    print("="*60)
+    extreme_ids  = list(AXIS_EXTREMES.values())
     df_morph_exp = df_morph[df_morph['ID'].str.startswith('EXP')]
     df_scar_exp  = df_scar[df_scar['ID'].str.startswith('EXP')]
 
+    # ── EXP：形态端 ──────────────────────────────────────────────────────────
+    print("\n" + "="*60)
+    print("EXP 形态谱重建")
+    print("="*60)
+    full_reconstruction(df_morph, extreme_ids, label='morph', out_dir=OUT_DIR)
+    exp_individual_reconstruction(df_morph, label='morph', out_dir=OUT_DIR)
+    exp_reconstruction_panel(df_morph, label='morph', out_dir=OUT_DIR)
+    per_degree_reconstruction(df_morph, extreme_ids,
+                              label='morph', degrees=DEGREES_TO_SHOW,
+                              out_dir=OUT_DIR)
+    axis_extremes_panel(df_morph, label='morph', out_dir=OUT_DIR)
+    typology_mean_reconstruction(df_morph_typed, label='morph', out_dir=OUT_DIR)
+    im_individual_reconstruction(df_morph, label='morph', out_dir=OUT_DIR)
+    im_reconstruction_panel(df_morph, label='morph', out_dir=OUT_DIR)
+    typology_mean_with_im(df_morph_typed, label='morph', out_dir=OUT_DIR)
+
+    # ── EXP：疤痕端 ──────────────────────────────────────────────────────────
+    print("\n" + "="*60)
+    print("EXP 疤痕谱重建")
+    print("="*60)
+    full_reconstruction(df_scar, extreme_ids, label='scar', out_dir=OUT_DIR)
+    exp_individual_reconstruction(df_scar, label='scar', out_dir=OUT_DIR)
+    exp_reconstruction_panel(df_scar, label='scar', out_dir=OUT_DIR)
+    per_degree_reconstruction(df_scar, extreme_ids,
+                              label='scar', degrees=DEGREES_TO_SHOW,
+                              out_dir=OUT_DIR)
+    axis_extremes_panel(df_scar, label='scar', out_dir=OUT_DIR)
+    typology_mean_reconstruction(df_scar, label='scar', out_dir=OUT_DIR)
+    im_individual_reconstruction(df_scar, label='scar', out_dir=OUT_DIR)
+    im_reconstruction_panel(df_scar, label='scar', out_dir=OUT_DIR)
+    typology_mean_with_im(df_scar, label='scar', out_dir=OUT_DIR)
+
+    # ── EXP：CoIA 轴连续变化轨迹 ─────────────────────────────────────────────
+    print("\n" + "="*60)
+    print("EXP CoIA 轴连续变化轨迹")
+    print("="*60)
     all_axis_trajectories(
         df_morph=df_morph_exp,
         df_scar=df_scar_exp,
-        df_coords=df_coords,
+        df_coords=df_coords_exp,
         n_steps=TRAJECTORY_N_STEPS,
         bandwidth=TRAJECTORY_BANDWIDTH,
+        out_dir=OUT_DIR,
     )
 
-    # ── ILR 轴连续变化轨迹 ──────────────────────────────────────────────────
+    # ── EXP：ILR 轴连续变化轨迹 ──────────────────────────────────────────────
     print("\n" + "="*60)
-    print("ILR 轴连续变化轨迹")
+    print("EXP ILR 轴连续变化轨迹")
     print("="*60)
-    df_morph_ilr = load_csv(MORPH_ILR_CSV)
-    df_scar_ilr  = load_csv(SCAR_ILR_CSV)
-
-    # 仅保留 EXP 标本（与 CoIA 轨迹保持一致）
-    df_morph_ilr = df_morph_ilr[df_morph_ilr['ID'].str.startswith('EXP')]
-    df_scar_ilr  = df_scar_ilr[df_scar_ilr['ID'].str.startswith('EXP')]
+    df_morph_ilr_exp = load_csv(EXP_MORPH_ILR_CSV)
+    df_scar_ilr_exp  = load_csv(EXP_SCAR_ILR_CSV)
+    df_morph_ilr_exp = df_morph_ilr_exp[
+        df_morph_ilr_exp['ID'].str.startswith('EXP')].copy()
+    df_scar_ilr_exp  = df_scar_ilr_exp[
+        df_scar_ilr_exp['ID'].str.startswith('EXP')].copy()
 
     all_ilr_trajectories(
         df_morph=df_morph_exp,
         df_scar=df_scar_exp,
-        df_morph_ilr=df_morph_ilr,
-        df_scar_ilr=df_scar_ilr,
+        df_morph_ilr=df_morph_ilr_exp,
+        df_scar_ilr=df_scar_ilr_exp,
         n_steps=TRAJECTORY_N_STEPS,
         bandwidth=TRAJECTORY_BANDWIDTH,
+        out_dir=OUT_ILR_DIR,
+    )
+
+    # ── SDG：全谱重建 ─────────────────────────────────────────────────────────
+    print("\n" + "="*60)
+    print("SDG 全谱重建")
+    print("="*60)
+    df_morph_sdg = df_morph[df_morph['ID'].str.startswith('SDG')].copy()
+    df_scar_sdg  = df_scar[df_scar['ID'].str.startswith('SDG')].copy()
+
+    sdg_individual_reconstruction(df_morph_sdg, label='morph',
+                                  out_dir=OUT_SDG_DIR)
+    sdg_individual_reconstruction(df_scar_sdg,  label='scar',
+                                  out_dir=OUT_SDG_DIR)
+    sdg_reconstruction_panel(df_morph_sdg, label='morph', out_dir=OUT_SDG_DIR)
+    sdg_reconstruction_panel(df_scar_sdg,  label='scar',  out_dir=OUT_SDG_DIR)
+
+    # ── SDG：CoIA 轴连续变化轨迹 ──────────────────────────────────────────────
+    print("\n" + "="*60)
+    print("SDG CoIA 轴连续变化轨迹")
+    print("="*60)
+    df_coords_sdg = load_csv(SDG_COORD_CSV)
+    df_coords_sdg = df_coords_sdg[
+        df_coords_sdg['ID'].str.startswith('SDG')].copy()
+
+    all_axis_trajectories(
+        df_morph=df_morph_sdg,
+        df_scar=df_scar_sdg,
+        df_coords=df_coords_sdg,
+        n_steps=TRAJECTORY_N_STEPS,
+        bandwidth=TRAJECTORY_BANDWIDTH,
+        out_dir=OUT_SDG_DIR,
+    )
+
+    # ── SDG：ILR 轴连续变化轨迹 ───────────────────────────────────────────────
+    print("\n" + "="*60)
+    print("SDG ILR 轴连续变化轨迹")
+    print("="*60)
+    df_morph_ilr_sdg = load_csv(SDG_MORPH_ILR_CSV)
+    df_scar_ilr_sdg  = load_csv(SDG_SCAR_ILR_CSV)
+    df_morph_ilr_sdg = df_morph_ilr_sdg[
+        df_morph_ilr_sdg['ID'].str.startswith('SDG')].copy()
+    df_scar_ilr_sdg  = df_scar_ilr_sdg[
+        df_scar_ilr_sdg['ID'].str.startswith('SDG')].copy()
+
+    all_ilr_trajectories(
+        df_morph=df_morph_sdg,
+        df_scar=df_scar_sdg,
+        df_morph_ilr=df_morph_ilr_sdg,
+        df_scar_ilr=df_scar_ilr_sdg,
+        n_steps=TRAJECTORY_N_STEPS,
+        bandwidth=TRAJECTORY_BANDWIDTH,
+        out_dir=OUT_SDG_ILR_DIR,
     )
 
     print("\n全部完成。")
-    print(f"  主输出目录：{OUT_DIR}")
-    print(f"  ILR 轨迹目录：{OUT_ILR_DIR}")
+    print(f"  EXP 输出目录：{OUT_DIR}")
+    print(f"  EXP ILR 轨迹：{OUT_ILR_DIR}")
+    print(f"  SDG 输出目录：{OUT_SDG_DIR}")
+    print(f"  SDG ILR 轨迹：{OUT_SDG_ILR_DIR}")

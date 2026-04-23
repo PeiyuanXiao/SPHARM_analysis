@@ -1,10 +1,10 @@
 # ==============================================================================
 # SDG_cores_statistics.R
 #
-# 第一层：整体 Mantel + CIA
+# 第一层：整体 Mantel + CoIA
 #   形态与片疤方向是否整体独立？
-#   附：CIA 箭头长度 + 箭头方位描述
-#   附：CIA 桑基图（ILR -> PCA -> CoIA 贡献流）
+#   附：CoIA 箭头长度 + 箭头方位描述
+#   附：CoIA 桑基图（ILR -> PCA -> CoIA 贡献流）
 #
 # 第二层：分组 Mantel（层位 × 原料 × 类型）
 #   这种独立性是否在所有条件下都成立？
@@ -12,7 +12,7 @@
 #     - 分组 Mantel r
 #     - 箭头长度分组差异
 #     - 箭头方位分组差异
-#     - spectral_entropy × Typology / Layer / Raw_mat
+#     - spectral_entropy × Layer / Raw_mat / Core_type
 #
 # 第三层：PERMANOVA（层位 × 原料 × 类型）
 #   形态和片疤方向各自的分组结构
@@ -24,27 +24,24 @@
 #
 # 输出（figures/）：
 #   L1_Mantel_Network.png
-#   L1_CIA_Biplot.png
-#   L1_CIA_Diagnostics.png
-#   L1_CIA_Sankey.png
-#   L2_Mantel_Grouped_dumbbell.png
-#   L2_Mantel_Grouped_heatmap.png
+#   L1_CoIA_Biplot_layer.png
+#   L1_CoIA_Biplot_raw_material.png
+#   L1_CoIA_Biplot_core_type.png
+#   L1_CoIA_Diagnostics.png
+#   L1_CoIA_Sankey.png
 #   L2_Arrow_Length_layer.png
-#   L2_Arrow_Length_raw_material.png       （有效分组时）
-#   L2_Arrow_Length_core_type.png          （有效分组时）
+#   L2_Arrow_Length_raw_material.png
+#   L2_Arrow_Length_core_type.png
 #   L2_Arrow_Direction_rose_layer.png
-#   L2_Arrow_Direction_rose_raw_material.png   （有效分组时）
-#   L2_Arrow_Direction_rose_core_type.png      （有效分组时）
+#   L2_Arrow_Direction_rose_raw_material.png
+#   L2_Arrow_Direction_rose_core_type.png
 #   L2D_SE_Direction_Layer_boxplot.png
 #   L2D_SE_Morphology_Layer_boxplot.png
 #   L2D_SE_Direction_RawMat_boxplot.png
 #   L2D_SE_Morphology_RawMat_boxplot.png
 #   L2D_SE_Direction_CoreType_boxplot.png
 #   L2D_SE_Morphology_CoreType_boxplot.png
-#   L3_PERMANOVA_R2.png
-#   L3_PERMANOVA_CAP_layer.png
-#   L3_PERMANOVA_CAP_raw_material.png
-#   L3_PERMANOVA_CAP_core_type.png
+#   L_CoIA_composite.png
 #
 # 输出（derived_data/）：
 #   L1_results.csv
@@ -54,9 +51,11 @@
 #   L2D_SE_desc_stats.csv
 #   L2D_SE_dunn_results.csv
 #   L3_permanova.csv
-#   CIA_scores_full.csv
-#   CIA_coords_full.csv
+#   CoIA_scores_full.csv
+#   CoIA_coords_full.csv
 #   PCA_CoIA_contribution.csv
+#   SDG_morph_ILR_scores.csv
+#   SDG_scar_ILR_scores.csv
 # ==============================================================================
 
 library(here)
@@ -74,10 +73,49 @@ library(FSA)
 
 
 # ==============================================================================
-# ---- 全局辅助函数 ----
+# ---- 全局常量：色盘与顺序 ----
 # ==============================================================================
 
-# 【修改1】移除 cosine_dist，统一使用 ILR + 欧氏距离
+LAYER_ORDER <- c("Layer 2", "Layer 3", "Layer 4")
+
+CORETYPE_ORDER <- c(
+  "Unifacial_unidirection",
+  "Unifacial_centripetal",
+  "Bifacial_adjacent",
+  "Bifacial_independent",
+  "Bifacial_centripetal",
+  "Multifacial",
+  "Core_on_flake"
+)
+
+# 剔除的石核类型
+EXCLUDE_CORE_TYPES <- c("Handaxe", "Pick")
+
+layer_pal <- c(
+  "Layer 2" = "#802520",
+  "Layer 3" = "#5C7F71",
+  "Layer 4" = "#BA8530"
+)
+
+rawmat_pal <- c(
+  "chert"     = "#4A6E8A",
+  "sandstone" = "#802520"
+)
+
+coretype_pal <- c(
+  "Unifacial_unidirection" = "#5C7F71",
+  "Unifacial_centripetal"  = "#BA8530",
+  "Bifacial_adjacent"      = "#802520",
+  "Bifacial_independent"   = "#B26538",
+  "Bifacial_centripetal"   = "#788C4A",
+  "Multifacial"            = "#8A7A68",
+  "Core_on_flake"          = "#4A6E8A"
+)
+
+
+# ==============================================================================
+# ---- 全局辅助函数 ----
+# ==============================================================================
 
 replace_zeros <- function(X, delta = NULL) {
   X <- as.matrix(X)
@@ -149,7 +187,8 @@ watson_perm_test <- function(x1, x2, B = 9999) {
 # ---- 数据准备（所有层共用）----
 # ==============================================================================
 
-POWER_COLS <- paste0("power_l", 1:5)
+POWER_COLS_DIR   <- paste0("power_l", 1:6)   # 方向谱 l=1-6
+POWER_COLS_MORPH <- paste0("power_l", 1:8)   # 形态谱 l=1-8
 
 SPHARM_direction_filter  <- readRDS(here("analysis/data/derived_data/SPHARM_direction_filter.rds"))
 SPHARM_morphology_filter <- readRDS(here("analysis/data/derived_data/SPHARM_morphology_filter.rds"))
@@ -182,13 +221,13 @@ core_meta <- core_meta_raw %>%
   ) %>%
   mutate(across(everything(), ~ str_trim(as.character(.))))
 
-# 提取 power 特征矩阵
+# 提取 power 特征矩阵（方向谱和形态谱使用各自的列数）
 morph_power <- df_morph_raw %>%
-  select(all_of(POWER_COLS)) %>%
+  select(all_of(POWER_COLS_MORPH)) %>%
   rename_with(~ paste0("M", seq_along(.))) %>%
   as.data.frame()
 scar_power <- df_scar_raw %>%
-  select(all_of(POWER_COLS)) %>%
+  select(all_of(POWER_COLS_DIR)) %>%
   rename_with(~ paste0("S", seq_along(.))) %>%
   as.data.frame()
 rownames(morph_power) <- df_morph_raw$ID
@@ -197,7 +236,7 @@ rownames(scar_power)  <- df_scar_raw$ID
 morph_power_clean <- morph_power[, sapply(morph_power, sd, na.rm = TRUE) > 0]
 scar_power_clean  <- scar_power[,  sapply(scar_power,  sd, na.rm = TRUE) > 0]
 
-# 【修改1】ILR 变换 -> 欧氏距离（与 EXP 脚本对齐，替换原余弦距离）
+# ILR 变换 -> 欧氏距离
 morph_ilr_all <- as.data.frame(ilr(replace_zeros(as.matrix(morph_power_clean))))
 scar_ilr_all  <- as.data.frame(ilr(replace_zeros(as.matrix(scar_power_clean))))
 rownames(morph_ilr_all) <- rownames(morph_power_clean)
@@ -230,6 +269,21 @@ meta_arch <- tibble(ID = arch_ids) %>%
   ) %>%
   left_join(core_meta, by = "ID")
 
+# 剔除 Handaxe 和 Pick
+meta_arch <- meta_arch %>%
+  filter(!core_type %in% EXCLUDE_CORE_TYPES | is.na(core_type))
+
+# 更新 arch_ids 以反映剔除后的标本集
+arch_ids <- meta_arch$ID
+morph_arch     <- morph_power_clean[arch_ids, ]
+scar_arch      <- scar_power_clean[arch_ids, ]
+morph_ilr_arch <- morph_ilr_all[arch_ids, ]
+scar_ilr_arch  <- scar_ilr_all[arch_ids, ]
+D_morph_arch   <- extract_subdist(D_morph_all, arch_ids)
+D_scar_arch    <- extract_subdist(D_scar_all,  arch_ids)
+
+cat("剔除 Handaxe/Pick 后考古标本数量：", length(arch_ids), "\n")
+
 # 合并 spectral_entropy
 meta_arch <- meta_arch %>%
   left_join(
@@ -253,28 +307,6 @@ if (length(unmatched) > 0) {
 meta_layer    <- safe_filter_groups(meta_arch %>% filter(layer != "Other"), "layer")
 meta_rawmat   <- safe_filter_groups(meta_arch, "raw_material")
 meta_coretype <- safe_filter_groups(meta_arch, "core_type")
-
-# 调色板
-layer_pal <- c(
-  "Layer 2" = "#E6B89C",
-  "Layer 3" = "#A1C2E6",
-  "Layer 4" = "#FFBAE0"
-)
-rawmat_pal <- c(
-  "chert"     = "#8ECFC9",
-  "sandstone" = "#FFBE7A"
-)
-coretype_pal <- c(
-  "Unifacial_unidirection"  = "#7EB8C9",
-  "Unifacial_centripetal"   = "#6271A1",
-  "Bifacial_adjacent"       = "#C6DEA4",
-  "Bifacial_independent"    = "#90C49A",
-  "Bifacial_centripetal"    = "#609988",
-  "Multifacial"             = "#D4A5A3",
-  "Core_on_flake"           = "#D6D6D6",
-  "Handaxe"                 = "#EDF0A3",
-  "Pick"                    = "#F7E09E"
-)
 
 
 # ==============================================================================
@@ -306,7 +338,6 @@ run_cross_mantel <- function(X_single, D_target, from_label, var_label,
 morph_arch_df <- as.data.frame(morph_arch)
 scar_arch_df  <- as.data.frame(scar_arch)
 
-# 【修改4】多重检验校正：Holm（原脚本为 FDR）
 mantel_cross_l1 <- bind_rows(
   map_dfr(colnames(morph_arch_df),
           ~ run_cross_mantel(morph_arch_df[[.x]], D_scar_arch,
@@ -333,8 +364,14 @@ p_mantel_net <- qcorrplot(
     curvature    = 0.15,
     label.params = list(color = "transparent")
   ) +
-  scale_fill_viridis_c(option = "D", limits = c(-1, 1),
-                       name = "Spearman's rho") +
+  scale_fill_gradient2(
+    low      = "#802520",
+    mid      = "#F5EDDC",
+    high     = "#4A6E8A",
+    midpoint = 0,
+    limits   = c(-1, 1),
+    name     = "Spearman's rho"
+  ) +
   scale_color_manual(
     values = c("P\u22640.05" = "#E6A5A5", "P>0.05" = "#BABABA"),
     name   = "Mantel test\n(Holm corrected)"
@@ -366,7 +403,7 @@ dudi_morph <- dudi.pca(morph_arch_ilr, center = TRUE, scale = TRUE,
 dudi_scar  <- dudi.pca(scar_arch_ilr,  center = TRUE, scale = TRUE,
                        scannf = FALSE, nf = ncol(scar_arch_ilr))
 
-# PCA 详细报告（与 EXP 对齐）
+# PCA 详细报告
 report_pca <- function(dudi_obj, label) {
   n_ax <- length(dudi_obj$eig)
   eig  <- dudi_obj$eig
@@ -445,7 +482,8 @@ scores_combined <- left_join(
     arrow_angle  = atan2(Axis2_S - Axis2_M, Axis1_S - Axis1_M)
   ) %>%
   left_join(meta_arch %>% select(ID, layer, raw_material, core_type),
-            by = "ID")
+            by = "ID") %>%
+  filter(!str_starts(ID, "EXP"))
 
 # CoIA 坐标输出
 cat("\n==== CoIA 样本坐标 ====\n")
@@ -458,8 +496,8 @@ print(cia_coords %>%
         mutate(across(where(is.numeric), ~ round(.x, 4))) %>%
         as.data.frame())
 write_csv(cia_coords,
-          here("analysis/data/derived_data/CIA_coords_full.csv"))
-cat("已保存：CIA_coords_full.csv\n")
+          here("analysis/data/derived_data/CoIA_coords_full.csv"))
+cat("已保存：CoIA_coords_full.csv\n")
 
 # PCA 轴对 CoIA 轴贡献
 cat("\n==== 各端 PCA 轴对 CoIA 轴的贡献（weight^2）====\n")
@@ -502,7 +540,7 @@ cat("已保存：PCA_CoIA_contribution.csv\n")
 
 
 # ------------------------------------------------------------------------------
-# CoIA 辅助可视化：诊断图（与 EXP 对齐）
+# CoIA 辅助可视化：诊断图
 # ------------------------------------------------------------------------------
 
 eig_df <- tibble(
@@ -513,9 +551,9 @@ eig_df <- tibble(
 )
 
 p_scree <- ggplot(eig_df, aes(x = axis, y = pct)) +
-  geom_col(fill = "#7EB8C9", alpha = 0.85, width = 0.55) +
-  geom_line(aes(y = cum_pct, group = 1), color = "#6271A1", linewidth = 0.8) +
-  geom_point(aes(y = cum_pct), color = "#6271A1", size = 2.8) +
+  geom_col(fill = "#5C7F71", alpha = 0.85, width = 0.55) +
+  geom_line(aes(y = cum_pct, group = 1), color = "#802520", linewidth = 0.8) +
+  geom_point(aes(y = cum_pct), color = "#802520", size = 2.8) +
   geom_text(aes(y = pct + 1.5, label = sprintf("%.1f%%", pct)),
             size = 3, color = "grey30") +
   scale_y_continuous(
@@ -581,71 +619,149 @@ make_loading_plot <- function(load_df, title_str, col_fill) {
 }
 
 p_load_morph <- make_loading_plot(morph_load,
-                                  "Morphology PCA axes on CoIA space", "#7EB8C9")
+                                  "Morphology PCA axes on CoIA space", "#5C7F71")
 p_load_scar  <- make_loading_plot(scar_load,
-                                  "Scar direction PCA axes on CoIA space", "#E6B89C")
+                                  "Scar direction PCA axes on CoIA space", "#BA8530")
 
 p_cia_diagnostics <- (p_scree | p_load_morph | p_load_scar) +
   plot_annotation(
     title   = "CoIA Axis Diagnostics (SDG)",
-    caption = "Left: scree plot. Middle: morphology PCA axis loadings on CoIA axes. Right: scar-direction PCA axis loadings on CoIA axes.\nBoth panels use PCA-axis projections (aX / aY) for symmetric interpretation.",
+    caption = paste(
+      "Left: scree plot. Middle: morphology PCA axis loadings on CoIA axes.",
+      "Right: scar-direction PCA axis loadings on CoIA axes.",
+      "\nBoth panels use PCA-axis projections (aX / aY) for symmetric interpretation.",
+      "Arrow length = contribution to CoIA structure."
+    ),
     theme = theme(
       plot.title   = element_text(face = "bold", hjust = 0.5, size = 12),
       plot.caption = element_text(size = 7.5, color = "grey50", hjust = 0)
     )
   )
 
-ggsave(here("analysis/output/figures/L1_CIA_Diagnostics.png"),
+ggsave(here("analysis/output/figures/L1_CoIA_Diagnostics.png"),
        plot = p_cia_diagnostics, width = 15, height = 5.5, dpi = 300, bg = "white")
-cat("图已保存：L1_CIA_Diagnostics.png\n")
+cat("图已保存：L1_CoIA_Diagnostics.png\n")
 
 
-# CoIA 主双标图（按 layer 着色，保留原有逻辑）
-p_cia_biplot <- ggplot() +
-  geom_hline(yintercept = 0, linetype = "dashed", color = "grey70", linewidth = 0.3) +
-  geom_vline(xintercept = 0, linetype = "dashed", color = "grey70", linewidth = 0.3) +
-  geom_segment(
-    data = scores_combined %>% filter(!is.na(layer), layer != "Other"),
-    aes(x = Axis1_M, y = Axis2_M, xend = Axis1_S, yend = Axis2_S,
-        color = layer),
-    linewidth = 0.45, alpha = 0.45, lineend = "round"
-  ) +
-  geom_point(
-    data = scores_combined %>% filter(!is.na(layer), layer != "Other"),
-    aes(x = Axis1_M, y = Axis2_M, fill = layer, color = layer),
-    shape = 21, size = 3.0, stroke = 0.5, alpha = 0.90
-  ) +
-  geom_point(
-    data = scores_combined %>% filter(!is.na(layer), layer != "Other"),
-    aes(x = Axis1_S, y = Axis2_S, fill = layer, color = layer),
-    shape = 24, size = 2.6, stroke = 0.5, alpha = 0.90
-  ) +
-  geom_text_repel(
-    data = scores_combined %>%
-      filter(!is.na(layer), layer != "Other") %>%
-      slice_max(arrow_length, n = 5),
-    aes(x = (Axis1_M + Axis1_S) / 2, y = (Axis2_M + Axis2_S) / 2,
-        label = ID, color = layer),
-    size = 2.2, show.legend = FALSE,
-    max.overlaps = 20, segment.color = "grey60", segment.linewidth = 0.3
-  ) +
-  scale_color_manual(values = layer_pal, name = "Layer") +
-  scale_fill_manual(values  = layer_pal, name = "Layer") +
-  theme_bw(base_size = 10) +
-  labs(
-    title = sprintf("CoIA Biplot (SDG)  |  RV = %.3f, p = %.3f",
-                    coin_arch$RV, rv_test$pvalue),
-    subtitle = "Circle = Morphology endpoint; Triangle = Scar-direction endpoint; Arrow = decoupling",
-    x = sprintf("CoIA Axis 1 (%.1f%%)", cia_inertia[1]),
-    y = sprintf("CoIA Axis 2 (%.1f%%)", cia_inertia[2])
-  ) +
-  theme(plot.title      = element_text(face = "bold", hjust = 0.5, size = 11),
-        plot.subtitle   = element_text(hjust = 0.5, size = 8.5, color = "grey50"),
-        legend.position = "right")
+# ------------------------------------------------------------------------------
+# CoIA 双标图通用函数
+# show_color_legend：TRUE = 独立图显示颜色图例；FALSE = 组合图用，颜色图例移至方向图
+# ------------------------------------------------------------------------------
+make_coia_biplot <- function(group_col, group_label, palette,
+                             group_order = NULL, fname_tag = NULL,
+                             show_color_legend = TRUE) {
+  valid_groups <- scores_combined %>%
+    filter(!is.na(.data[[group_col]]), .data[[group_col]] != "Other") %>%
+    pull(.data[[group_col]]) %>% unique()
+  if (length(valid_groups) < 1) {
+    cat(sprintf("  [跳过] %s CoIA 双标图：无有效分组\n", group_label))
+    return(invisible(NULL))
+  }
+  if (!is.null(group_order)) {
+    lvls <- intersect(group_order, valid_groups)
+  } else {
+    lvls <- sort(valid_groups)
+  }
+  
+  sub_seg <- scores_combined %>%
+    filter(!is.na(.data[[group_col]]), .data[[group_col]] != "Other") %>%
+    mutate(!!group_col := factor(.data[[group_col]], levels = lvls))
+  
+  scores_long <- bind_rows(
+    sub_seg %>%
+      select(ID, !!group_col, x = Axis1_M, y = Axis2_M, arrow_length) %>%
+      mutate(endpoint = "Morphology"),
+    sub_seg %>%
+      select(ID, !!group_col, x = Axis1_S, y = Axis2_S, arrow_length) %>%
+      mutate(endpoint = "Scar direction")
+  ) %>%
+    mutate(
+      endpoint     = factor(endpoint, levels = c("Morphology", "Scar direction")),
+      !!group_col := factor(.data[[group_col]], levels = lvls)
+    )
+  
+  endpoint_shapes <- c("Morphology" = 21, "Scar direction" = 24)
+  endpoint_sizes  <- c("Morphology" = 3.0, "Scar direction" = 2.6)
+  
+  p <- ggplot() +
+    geom_hline(yintercept = 0, linetype = "dashed", color = "grey70", linewidth = 0.3) +
+    geom_vline(xintercept = 0, linetype = "dashed", color = "grey70", linewidth = 0.3) +
+    geom_segment(
+      data = sub_seg,
+      aes(x = Axis1_M, y = Axis2_M, xend = Axis1_S, yend = Axis2_S,
+          color = .data[[group_col]]),
+      linewidth = 0.45, alpha = 0.45, lineend = "round"
+    ) +
+    geom_point(
+      data = scores_long,
+      aes(x = x, y = y,
+          fill  = .data[[group_col]],
+          color = .data[[group_col]],
+          shape = endpoint,
+          size  = endpoint),
+      stroke = 0.5, alpha = 0.90
+    ) +
+    scale_color_manual(values = palette, name = group_label, breaks = lvls) +
+    scale_fill_manual(values  = palette, name = group_label, breaks = lvls) +
+    scale_shape_manual(values = endpoint_shapes, name = "Endpoint") +
+    scale_size_manual(values  = endpoint_sizes,  name = "Endpoint") +
+    theme_bw() +
+    labs(
+      x = sprintf("CoIA Axis 1 (%.1f%%)", cia_inertia[1]),
+      y = sprintf("CoIA Axis 2 (%.1f%%)", cia_inertia[2])
+    ) +
+    guides(
+      # 颜色图例：独立图显示，组合图隐藏（移至方向图）
+      color = if (show_color_legend) {
+        guide_legend(order = 1,
+                     override.aes = list(shape = 21, size = 3),
+                     title = group_label)
+      } else {
+        "none"
+      },
+      fill  = "none",
+      # Endpoint shape 图例始终显示
+      shape = guide_legend(order = 2,
+                           override.aes = list(fill  = "grey60",
+                                               color = "grey30",
+                                               size  = c(3.0, 2.6)),
+                           title = "Endpoint"),
+      size  = "none"
+    ) +
+    theme(
+      panel.grid.major.x   = element_blank(),
+      panel.grid.major.y   = element_blank(),
+      panel.grid.minor     = element_blank(),
+      legend.position      = c(0.01, 0.99),
+      legend.justification = c(0, 1),
+      legend.box           = "vertical",
+      legend.box.just      = "left",
+      legend.background    = element_rect(fill  = alpha("white", 0.75),
+                                          color = "grey80", linewidth = 0.3),
+      legend.key.size      = unit(0.45, "cm"),
+      legend.text          = element_text(size = 8),
+      legend.margin        = margin(4, 6, 4, 6)
+    )
+  
+  tag   <- if (!is.null(fname_tag)) fname_tag else tolower(str_replace_all(group_label, " ", "_"))
+  fname <- sprintf("analysis/output/figures/L1_CoIA_Biplot_%s.png", tag)
+  ggsave(here(fname), plot = p, width = 10, height = 8, dpi = 300, bg = "white")
+  cat(sprintf("图已保存：%s\n", basename(fname)))
+  p
+}
 
-ggsave(here("analysis/output/figures/L1_CIA_Biplot.png"),
-       plot = p_cia_biplot, width = 10, height = 8, dpi = 300, bg = "white")
-cat("图已保存：L1_CIA_Biplot.png\n")
+# 独立图（保留颜色图例）
+make_coia_biplot("layer",        "Layer",        layer_pal,    LAYER_ORDER,    "layer")
+make_coia_biplot("raw_material", "Raw Material", rawmat_pal,   NULL,           "raw_material")
+make_coia_biplot("core_type",    "Core Type",    coretype_pal, CORETYPE_ORDER, "core_type")
+
+# 组合图用版本（颜色图例隐藏，移至方向图右侧）
+p_coia_layer    <- make_coia_biplot("layer",        "Layer",        layer_pal,
+                                    LAYER_ORDER,    "layer",        show_color_legend = TRUE)
+p_coia_rawmat   <- make_coia_biplot("raw_material", "Raw Material", rawmat_pal,
+                                    NULL,           "raw_material", show_color_legend = TRUE)
+p_coia_coretype <- make_coia_biplot("core_type",    "Core Type",    coretype_pal,
+                                    CORETYPE_ORDER, "core_type",    show_color_legend = TRUE)
 
 l1_results <- tibble(
   method  = c("Mantel (ILR, Euclidean, Spearman)", "RV (ILR, Euclidean)"),
@@ -658,12 +774,11 @@ cat("\n第一层结论：\n"); print(l1_results)
 
 
 # ==============================================================================
-# ---- L1-3：CoIA 桑基图（ILR -> PCA -> CoIA 贡献流）【新增，与 EXP 对齐】----
+# ---- L1-3：CoIA 桑基图（ILR -> PCA -> CoIA 贡献流）----
 # ==============================================================================
 
 cat("\n==== L1-3：CoIA 桑基图 ====\n")
 
-# ---- 提取权重矩阵 ----
 c1_morph <- as.matrix(dudi_morph$c1)
 c1_scar  <- as.matrix(dudi_scar$c1)
 
@@ -684,7 +799,6 @@ w2_dpc_cia <- a_scar^2
 morph_var_pct_full <- round(dudi_morph$eig / sum(dudi_morph$eig) * 100, 1)
 scar_var_pct_full  <- round(dudi_scar$eig  / sum(dudi_scar$eig)  * 100, 1)
 
-# 保留累计方差 <= 95% 的轴（至少保留第1轴）
 keep_mpc <- which(cumsum(morph_var_pct_full) <= 95 | seq_along(morph_var_pct_full) == 1)
 keep_dpc <- which(cumsum(scar_var_pct_full)  <= 95 | seq_along(scar_var_pct_full)  == 1)
 keep_mpc <- keep_mpc[keep_mpc <= ncol(c1_morph)]
@@ -706,7 +820,6 @@ cat(sprintf(
   n_ilr_m, n_mpc, n_ilr_d, n_dpc, n_cia_ax
 ))
 
-# ---- 节点高度 ----
 h_ilr_m_raw <- rowSums(w2_ilr_mpc)
 h_ilr_d_raw <- rowSums(w2_ilr_dpc)
 h_mpc_raw   <- rowSums(w2_mpc_cia)
@@ -746,7 +859,6 @@ cia_offset  <- (two_ends_h - cia_total_h) / 2
 y_cia <- y_start + cia_offset +
   cumsum(c(0, head(h_cia + NODE_GAP, -1)))
 
-# ---- 画布参数 ----
 SVG_W  <- 680
 SVG_H  <- ceiling(y_start + MORPH_HEIGHT + NODE_GAP + SCAR_HEIGHT + 30)
 NODE_W <- 100
@@ -763,7 +875,6 @@ col_cia_text     <- "#3C3489"
 col_band_cia_m   <- "#AFA9EC"
 col_band_cia_d   <- "#C9A8E0"
 
-# ---- SVG 辅助函数 ----
 svg_rect <- function(x, y, w, h, fill, stroke, rx = 5, sw = 0.8)
   sprintf(
     '<rect x="%.1f" y="%.1f" width="%.1f" height="%.1f" rx="%d" fill="%s" stroke="%s" stroke-width="%.1f"/>',
@@ -789,7 +900,6 @@ svg_text <- function(x, y, txt, size = 11, weight = 400,
     x, y, size, weight, anchor, fill, txt
   )
 
-# ---- 组装 SVG ----
 lines <- character(0)
 push  <- function(...) lines <<- c(lines, ...)
 
@@ -801,83 +911,67 @@ push('<title>ILR to PCA to CoIA contribution flow (SDG)</title>')
 push('<desc>Sankey-style flow diagram showing ILR spectral variable contributions through PCA axes to CoIA axes.</desc>')
 push(sprintf('<rect width="%d" height="%d" fill="white"/>', SVG_W, SVG_H))
 
-push(svg_text(x_col1 + NODE_W / 2, 20, "ILR variables",   12, 500, fill = "#2C2C2A"))
+push(svg_text(x_col1 + NODE_W / 2, 20, "ILR variables",    12, 500, fill = "#2C2C2A"))
 push(svg_text(x_col1 + NODE_W / 2, 36, "spectral log-contrasts", 10, 400, fill = "#5F5E5A"))
-push(svg_text(x_col2 + NODE_W / 2, 20, "PCA axes",        12, 500, fill = "#2C2C2A"))
-push(svg_text(x_col2 + NODE_W / 2, 36, "per endpoint",    10, 400, fill = "#5F5E5A"))
-push(svg_text(x_col3 + NODE_W / 2, 20, "CoIA axes",       12, 500, fill = "#2C2C2A"))
-push(svg_text(x_col3 + NODE_W / 2, 36, "shared structure",10, 400, fill = "#5F5E5A"))
+push(svg_text(x_col2 + NODE_W / 2, 20, "PCA axes",          12, 500, fill = "#2C2C2A"))
+push(svg_text(x_col2 + NODE_W / 2, 36, "per endpoint",      10, 400, fill = "#5F5E5A"))
+push(svg_text(x_col3 + NODE_W / 2, 20, "CoIA axes",         12, 500, fill = "#2C2C2A"))
+push(svg_text(x_col3 + NODE_W / 2, 36, "shared structure",  10, 400, fill = "#5F5E5A"))
 
-# 流带
-outlet_ilr_m <- rep(0, n_ilr_m)
-inlet_mpc    <- rep(0, n_mpc)
-outlet_ilr_d <- rep(0, n_ilr_d)
-inlet_dpc    <- rep(0, n_dpc)
+outlet_ilr_m <- rep(0, n_ilr_m); inlet_mpc  <- rep(0, n_mpc)
+outlet_ilr_d <- rep(0, n_ilr_d); inlet_dpc  <- rep(0, n_dpc)
 inlet_cia    <- rep(0, n_cia_ax)
 
-for (i in seq_len(n_ilr_m)) {
-  for (j in seq_len(n_mpc)) {
-    ww <- w2_ilr_mpc[i, j]
-    if (ww < 0.004) next
-    bw_out <- ww * h_ilr_m[i]; bw_in <- ww * h_mpc[j]
-    y1t <- y_ilr_m[i] + outlet_ilr_m[i]; y1b <- y1t + bw_out
-    y2t <- y_mpc[j]   + inlet_mpc[j];    y2b <- y2t + bw_in
-    push(svg_band(x_col1 + NODE_W, y1t, y1b, x_col2, y2t, y2b,
-                  col_morph_band, 0.28 + 0.32 * ww))
-    outlet_ilr_m[i] <- outlet_ilr_m[i] + bw_out
-    inlet_mpc[j]    <- inlet_mpc[j]    + bw_in
-  }
+for (i in seq_len(n_ilr_m)) for (j in seq_len(n_mpc)) {
+  ww <- w2_ilr_mpc[i, j]; if (ww < 0.004) next
+  bw_out <- ww * h_ilr_m[i]; bw_in <- ww * h_mpc[j]
+  y1t <- y_ilr_m[i] + outlet_ilr_m[i]; y1b <- y1t + bw_out
+  y2t <- y_mpc[j]   + inlet_mpc[j];    y2b <- y2t + bw_in
+  push(svg_band(x_col1 + NODE_W, y1t, y1b, x_col2, y2t, y2b,
+                col_morph_band, 0.28 + 0.32 * ww))
+  outlet_ilr_m[i] <- outlet_ilr_m[i] + bw_out
+  inlet_mpc[j]    <- inlet_mpc[j]    + bw_in
 }
 
-for (i in seq_len(n_ilr_d)) {
-  for (j in seq_len(n_dpc)) {
-    ww <- w2_ilr_dpc[i, j]
-    if (ww < 0.004) next
-    bw_out <- ww * h_ilr_d[i]; bw_in <- ww * h_dpc[j]
-    y1t <- y_ilr_d[i] + outlet_ilr_d[i]; y1b <- y1t + bw_out
-    y2t <- y_dpc[j]   + inlet_dpc[j];    y2b <- y2t + bw_in
-    push(svg_band(x_col1 + NODE_W, y1t, y1b, x_col2, y2t, y2b,
-                  col_scar_band, 0.28 + 0.32 * ww))
-    outlet_ilr_d[i] <- outlet_ilr_d[i] + bw_out
-    inlet_dpc[j]    <- inlet_dpc[j]    + bw_in
-  }
+for (i in seq_len(n_ilr_d)) for (j in seq_len(n_dpc)) {
+  ww <- w2_ilr_dpc[i, j]; if (ww < 0.004) next
+  bw_out <- ww * h_ilr_d[i]; bw_in <- ww * h_dpc[j]
+  y1t <- y_ilr_d[i] + outlet_ilr_d[i]; y1b <- y1t + bw_out
+  y2t <- y_dpc[j]   + inlet_dpc[j];    y2b <- y2t + bw_in
+  push(svg_band(x_col1 + NODE_W, y1t, y1b, x_col2, y2t, y2b,
+                col_scar_band, 0.28 + 0.32 * ww))
+  outlet_ilr_d[i] <- outlet_ilr_d[i] + bw_out
+  inlet_dpc[j]    <- inlet_dpc[j]    + bw_in
 }
 
 outlet_mpc <- rep(0, n_mpc)
-for (j in seq_len(n_mpc)) {
-  for (k in seq_len(n_cia_ax)) {
-    ww <- w2_mpc_cia[j, k]
-    if (ww < 0.004) next
-    tot_k  <- colSums(w2_mpc_cia)[k] + colSums(w2_dpc_cia)[k]
-    bw_out <- ww * h_mpc[j]
-    bw_in  <- ww * h_cia[k] * (colSums(w2_mpc_cia)[k] / tot_k)
-    y1t <- y_mpc[j] + outlet_mpc[j]; y1b <- y1t + bw_out
-    y2t <- y_cia[k] + inlet_cia[k];  y2b <- y2t + bw_in
-    push(svg_band(x_col2 + NODE_W, y1t, y1b, x_col3, y2t, y2b,
-                  col_band_cia_m, 0.22 + 0.36 * ww))
-    outlet_mpc[j] <- outlet_mpc[j] + bw_out
-    inlet_cia[k]  <- inlet_cia[k]  + bw_in
-  }
+for (j in seq_len(n_mpc)) for (k in seq_len(n_cia_ax)) {
+  ww <- w2_mpc_cia[j, k]; if (ww < 0.004) next
+  tot_k  <- colSums(w2_mpc_cia)[k] + colSums(w2_dpc_cia)[k]
+  bw_out <- ww * h_mpc[j]
+  bw_in  <- ww * h_cia[k] * (colSums(w2_mpc_cia)[k] / tot_k)
+  y1t <- y_mpc[j] + outlet_mpc[j]; y1b <- y1t + bw_out
+  y2t <- y_cia[k] + inlet_cia[k];  y2b <- y2t + bw_in
+  push(svg_band(x_col2 + NODE_W, y1t, y1b, x_col3, y2t, y2b,
+                col_band_cia_m, 0.22 + 0.36 * ww))
+  outlet_mpc[j] <- outlet_mpc[j] + bw_out
+  inlet_cia[k]  <- inlet_cia[k]  + bw_in
 }
 
 outlet_dpc <- rep(0, n_dpc)
-for (j in seq_len(n_dpc)) {
-  for (k in seq_len(n_cia_ax)) {
-    ww <- w2_dpc_cia[j, k]
-    if (ww < 0.004) next
-    tot_k  <- colSums(w2_mpc_cia)[k] + colSums(w2_dpc_cia)[k]
-    bw_out <- ww * h_dpc[j]
-    bw_in  <- ww * h_cia[k] * (colSums(w2_dpc_cia)[k] / tot_k)
-    y1t <- y_dpc[j] + outlet_dpc[j]; y1b <- y1t + bw_out
-    y2t <- y_cia[k] + inlet_cia[k];  y2b <- y2t + bw_in
-    push(svg_band(x_col2 + NODE_W, y1t, y1b, x_col3, y2t, y2b,
-                  col_band_cia_d, 0.22 + 0.36 * ww))
-    outlet_dpc[j] <- outlet_dpc[j] + bw_out
-    inlet_cia[k]  <- inlet_cia[k]  + bw_in
-  }
+for (j in seq_len(n_dpc)) for (k in seq_len(n_cia_ax)) {
+  ww <- w2_dpc_cia[j, k]; if (ww < 0.004) next
+  tot_k  <- colSums(w2_mpc_cia)[k] + colSums(w2_dpc_cia)[k]
+  bw_out <- ww * h_dpc[j]
+  bw_in  <- ww * h_cia[k] * (colSums(w2_dpc_cia)[k] / tot_k)
+  y1t <- y_dpc[j] + outlet_dpc[j]; y1b <- y1t + bw_out
+  y2t <- y_cia[k] + inlet_cia[k];  y2b <- y2t + bw_in
+  push(svg_band(x_col2 + NODE_W, y1t, y1b, x_col3, y2t, y2b,
+                col_band_cia_d, 0.22 + 0.36 * ww))
+  outlet_dpc[j] <- outlet_dpc[j] + bw_out
+  inlet_cia[k]  <- inlet_cia[k]  + bw_in
 }
 
-# 节点
 for (i in seq_len(n_ilr_m)) {
   push(svg_rect(x_col1, y_ilr_m[i], NODE_W, h_ilr_m[i], col_morph_fill, col_morph_stroke))
   push(svg_text(x_col1 + NODE_W / 2, y_ilr_m[i] + h_ilr_m[i] / 2,
@@ -898,31 +992,29 @@ for (j in seq_len(n_dpc)) {
   push(svg_text(x_col2 + NODE_W / 2, y_dpc[j] + h_dpc[j] / 2,
                 sprintf("Dir-PC%d", j), 11, 500, fill = col_scar_text))
 }
-cia_labels <- c("CoIA Axis 1", "CoIA Axis 2")
 for (k in seq_len(n_cia_ax)) {
   push(svg_rect(x_col3, y_cia[k], NODE_W, h_cia[k], col_cia_fill, col_cia_stroke))
   push(svg_text(x_col3 + NODE_W / 2, y_cia[k] + h_cia[k] / 2,
-                cia_labels[k], 11, 500, fill = col_cia_text))
+                c("CoIA Axis 1", "CoIA Axis 2")[k], 11, 500, fill = col_cia_text))
 }
 
 push("</svg>")
 
-# ---- PNG 转换 ----
 svg_path <- tempfile(fileext = ".svg")
-png_path <- here("analysis/output/figures/L1_CIA_Sankey.png")
+png_path <- here("analysis/output/figures/L1_CoIA_Sankey.png")
 writeLines(lines, svg_path, useBytes = FALSE)
 
 if (requireNamespace("rsvg", quietly = TRUE)) {
   rsvg::rsvg_png(svg_path, png_path, width = SVG_W * 2)
-  cat("PNG 已保存（via rsvg）：L1_CIA_Sankey.png\n")
+  cat("PNG 已保存（via rsvg）：L1_CoIA_Sankey.png\n")
 } else if (nzchar(Sys.which("rsvg-convert"))) {
   system2("rsvg-convert",
           args = c("-d", "300", "-p", "300", "-o", png_path, svg_path))
-  cat("PNG 已保存（via rsvg-convert）：L1_CIA_Sankey.png\n")
+  cat("PNG 已保存（via rsvg-convert）：L1_CoIA_Sankey.png\n")
 } else if (nzchar(Sys.which("inkscape"))) {
   system2("inkscape",
           args = c("--export-filename", png_path, "--export-dpi", "300", svg_path))
-  cat("PNG 已保存（via Inkscape）：L1_CIA_Sankey.png\n")
+  cat("PNG 已保存（via Inkscape）：L1_CoIA_Sankey.png\n")
 } else {
   cat("[警告] 未检测到 rsvg / rsvg-convert / Inkscape，无法生成 PNG。\n")
   cat("       请运行 install.packages('rsvg') 后重新执行此段。\n")
@@ -988,7 +1080,6 @@ cat("\n石核类型分组 Mantel：\n")
 if (!is.null(mantel_by_coretype))
   print(mantel_by_coretype %>% mutate(across(c(mantel_r, p_raw), ~ round(.x, 4))))
 
-# 【修改4】Holm 校正（原脚本为 FDR）
 l2_mantel <- bind_rows(
   mantel_by_layer, mantel_by_rawmat, mantel_by_coretype
 ) %>%
@@ -1010,83 +1101,8 @@ l2_mantel <- bind_rows(
   ungroup()
 
 if (nrow(l2_mantel) > 0) {
-  
-  p_l2_dumbbell <- ggplot(l2_mantel,
-                          aes(x = mantel_r, y = group,
-                              color = significance,
-                              shape = group_var_label)) +
-    geom_vline(xintercept = mantel_global$statistic,
-               linetype = "dashed", color = "grey40", linewidth = 0.6) +
-    geom_vline(xintercept = 0, linetype = "dotted",
-               color = "grey70", linewidth = 0.4) +
-    geom_point(size = 4, alpha = 0.9) +
-    geom_text(aes(label = sprintf("n=%d", n)),
-              hjust = -0.35, size = 2.5, color = "grey40") +
-    facet_wrap(~ group_var_label, scales = "free_y", ncol = 1) +
-    scale_color_manual(
-      values = c("***" = "#C0392B", "**" = "#E67E22", "*" = "#F1C40F",
-                 "."  = "#27AE60", "ns" = "#95A5A6"),
-      name = "Significance\n(Holm corrected)"
-    ) +
-    scale_shape_manual(
-      values = c("Layer" = 16, "Raw Material" = 17, "Core Type" = 15),
-      name   = "Grouping variable"
-    ) +
-    theme_bw(base_size = 10) +
-    labs(
-      title    = "L2-A: Within-group Mantel Test (Morphology x Scar Direction)",
-      subtitle = "Each point = Mantel r within one subgroup; dashed line = global baseline; p = Holm corrected",
-      x = "Mantel r (Spearman, Holm corrected)", y = NULL
-    ) +
-    theme(plot.title      = element_text(face = "bold", hjust = 0.5, size = 11),
-          plot.subtitle   = element_text(hjust = 0.5, size = 8.5, color = "grey50"),
-          strip.text      = element_text(face = "bold", size = 9),
-          legend.position = "right")
-  
-  ggsave(here("analysis/output/figures/L2_Mantel_Grouped_dumbbell.png"),
-         plot = p_l2_dumbbell,
-         width = 10, height = max(4, nrow(l2_mantel) * 0.7 + 2),
-         dpi = 300, bg = "white")
-  cat("图已保存：L2_Mantel_Grouped_dumbbell.png\n")
-  
-  heatmap_df <- l2_mantel %>%
-    mutate(group = fct_reorder(group, mantel_r, .fun = mean),
-           y_int = as.integer(group))
-  y_labels <- heatmap_df %>% distinct(y_int, group) %>% arrange(y_int) %>%
-    mutate(group_chr = as.character(group))
-  
-  p_l2_heatmap <- ggplot(heatmap_df,
-                         aes(x = group_var_label, y = y_int, fill = mantel_r)) +
-    geom_tile(color = "white", linewidth = 0.8) +
-    geom_text(aes(label = sprintf("r = %.3f\n%s", mantel_r, significance)),
-              size = 2.8, color = "grey20") +
-    scale_fill_gradient2(
-      low = "#3B82C4", mid = "white", high = "#C0392B",
-      midpoint = 0, limits = c(-0.3, 0.3),
-      oob = scales::squish, name = "Mantel r"
-    ) +
-    scale_y_continuous(breaks = y_labels$y_int, labels = y_labels$group_chr,
-                       expand = expansion(add = 0.5)) +
-    scale_x_discrete(expand = expansion(add = 0.5)) +
-    theme_bw(base_size = 10) +
-    labs(
-      title    = "L2-A: Within-group Mantel r (Morphology x Scar Direction)",
-      subtitle = sprintf("Global baseline: r = %.3f (p = %.3f) | p = Holm corrected",
-                         mantel_global$statistic, mantel_global$signif),
-      x = "Grouping variable", y = "Subgroup"
-    ) +
-    theme(plot.title    = element_text(face = "bold", hjust = 0.5, size = 11),
-          plot.subtitle = element_text(hjust = 0.5, size = 8.5, color = "grey50"),
-          axis.text.y   = element_text(size = 8))
-  
-  ggsave(here("analysis/output/figures/L2_Mantel_Grouped_heatmap.png"),
-         plot   = p_l2_heatmap,
-         width  = max(6, length(unique(heatmap_df$group_var_label)) * 3 + 2),
-         height = max(4, nrow(l2_mantel) * 0.6 + 2),
-         dpi = 300, bg = "white")
-  cat("图已保存：L2_Mantel_Grouped_heatmap.png\n")
-  
   write_csv(l2_mantel, here("analysis/data/derived_data/L2_grouped_mantel.csv"))
+  cat("已保存：L2_grouped_mantel.csv\n")
 }
 
 
@@ -1096,7 +1112,8 @@ if (nrow(l2_mantel) > 0) {
 
 cat("\n---------- L2-B：箭头长度分组差异 ----------\n")
 
-run_arrow_length_analysis <- function(group_col, group_label, palette) {
+run_arrow_length_analysis <- function(group_col, group_label, palette,
+                                      group_order = NULL) {
   valid_groups <- scores_combined %>%
     filter(!is.na(.data[[group_col]]), .data[[group_col]] != "Other") %>%
     group_by(.data[[group_col]]) %>% filter(n() >= 3) %>%
@@ -1105,47 +1122,64 @@ run_arrow_length_analysis <- function(group_col, group_label, palette) {
     cat(sprintf("  [跳过] %s 箭头长度检验：有效分组不足\n", group_label))
     return(invisible(NULL))
   }
-  sub_df <- scores_combined %>% filter(.data[[group_col]] %in% valid_groups)
+  
+  if (!is.null(group_order)) {
+    valid_groups_plot <- intersect(group_order, valid_groups)
+  } else {
+    valid_groups_plot <- valid_groups
+  }
+  
+  sub_df_stat <- scores_combined %>% filter(.data[[group_col]] %in% valid_groups)
   cat(sprintf("\n----- %s x 箭头长度 -----\n", group_label))
-  kw <- kruskal.test(reformulate(group_col, "arrow_length"), data = sub_df)
+  kw <- kruskal.test(reformulate(group_col, "arrow_length"), data = sub_df_stat)
   print(kw)
-  # 【修改4】Holm 校正
-  pw <- pairwise.wilcox.test(sub_df$arrow_length, sub_df[[group_col]],
+  pw <- pairwise.wilcox.test(sub_df_stat$arrow_length, sub_df_stat[[group_col]],
                              p.adjust.method = "holm", exact = FALSE)
   print(pw)
-  p <- ggplot(sub_df, aes(x = .data[[group_col]], y = arrow_length,
-                          fill = .data[[group_col]])) +
-    geom_boxplot(outlier.shape = NA, alpha = 0.6, linewidth = 0.5) +
-    geom_jitter(aes(color = .data[[group_col]]), width = 0.15,
-                size = 2.5, alpha = 0.75, show.legend = FALSE) +
-    geom_text_repel(
-      data = sub_df %>% group_by(.data[[group_col]]) %>% slice_max(arrow_length, n = 1),
-      aes(label = ID), size = 2.4, color = "grey40",
-      max.overlaps = 10, show.legend = FALSE
-    ) +
-    annotate("text", x = 1.5, y = max(sub_df$arrow_length) * 1.02,
-             label = sprintf("Kruskal-Wallis: chi^2 = %.2f, p = %.3f",
+  
+  sub_df <- scores_combined %>%
+    filter(.data[[group_col]] %in% valid_groups_plot) %>%
+    mutate(!!group_col := factor(.data[[group_col]], levels = valid_groups_plot))
+  
+  p <- ggplot(sub_df,
+              aes(x = .data[[group_col]], y = arrow_length,
+                  fill = .data[[group_col]], color = .data[[group_col]])) +
+    geom_boxplot(outlier.shape = 21, outlier.size = 2.5,
+                 alpha = 0.25, linewidth = 0.5) +
+    geom_jitter(width = 0.15, size = 2.5, alpha = 0.7, shape = 16) +
+    stat_summary(fun = mean, geom = "point",
+                 shape = 16, size = 4, color = "white") +
+    annotate("text", x = Inf, y = Inf,
+             label = sprintf("Kruskal-Wallis\nchi\u00b2 = %.2f, P = %.3f",
                              kw$statistic, kw$p.value),
-             size = 3, color = "grey30", hjust = 0.5) +
-    scale_fill_manual(values  = palette, guide = "none") +
-    scale_color_manual(values = palette, guide = "none") +
-    theme_bw(base_size = 10) +
-    labs(title    = sprintf("L2-B: CoIA Arrow Length by %s", group_label),
-         subtitle = "Longer arrows = greater morphology-technique decoupling",
-         x = NULL, y = "Arrow length (CoIA space)") +
-    theme(plot.title    = element_text(face = "bold", hjust = 0.5, size = 11),
-          plot.subtitle = element_text(hjust = 0.5, size = 8.5, color = "grey50"),
-          axis.text.x   = element_text(angle = 15, hjust = 1))
+             hjust = 1.05, vjust = 1.2, size = 4, color = "grey40") +
+    scale_fill_manual(values  = palette) +
+    scale_color_manual(values = palette) +
+    theme_bw() +
+    theme(
+      panel.grid.major.x = element_blank(),
+      panel.grid.major.y = element_blank(),
+      panel.grid.minor   = element_blank(),
+      axis.text.x        = element_blank(),
+      axis.ticks.x       = element_blank(),
+      axis.text.y        = element_text(size = 9.5),
+      legend.position    = "none"
+    ) +
+    labs(x = NULL, y = "CoIA line length")
+  
   fname <- sprintf("analysis/output/figures/L2_Arrow_Length_%s.png",
                    tolower(str_replace_all(group_label, " ", "_")))
   ggsave(here(fname), plot = p, width = 7, height = 6, dpi = 300, bg = "white")
   cat(sprintf("图已保存：%s\n", basename(fname)))
-  list(sub_df = sub_df, kw = kw, pw = pw)
+  list(sub_df = sub_df, kw = kw, pw = pw, p = p)
 }
 
-res_len_layer    <- run_arrow_length_analysis("layer",        "Layer",       layer_pal)
-res_len_rawmat   <- run_arrow_length_analysis("raw_material", "Raw_Material",rawmat_pal)
-res_len_coretype <- run_arrow_length_analysis("core_type",    "Core_Type",   coretype_pal)
+res_len_layer    <- run_arrow_length_analysis("layer",        "Layer",
+                                              layer_pal,    LAYER_ORDER)
+res_len_rawmat   <- run_arrow_length_analysis("raw_material", "Raw_Material",
+                                              rawmat_pal)
+res_len_coretype <- run_arrow_length_analysis("core_type",    "Core_Type",
+                                              coretype_pal, CORETYPE_ORDER)
 
 cat("\n==== 箭头长度描述统计 ====\n")
 for (gc in c("layer", "raw_material", "core_type")) {
@@ -1165,12 +1199,115 @@ for (gc in c("layer", "raw_material", "core_type")) {
 
 
 # ------------------------------------------------------------------------------
-# L2-C：CoIA 箭头方位圆形统计
+# L2-C：CoIA 箭头方位圆形统计（线性展示）
+# plot_rose() 支持 show_color_legend 参数：
+#   TRUE  = 独立图，颜色图例显示在右侧（默认）
+#   FALSE = 组合图内部调用，不显示颜色图例
+#   "right_panel" = 组合图最右列，显示颜色图例（legend 放在图右侧）
 # ------------------------------------------------------------------------------
 
 cat("\n---------- L2-C：箭头方位圆形统计 ----------\n")
 
-run_circular_analysis <- function(group_col, group_label, palette) {
+plot_rose <- function(res, palette, show_color_legend = TRUE) {
+  group_col <- res$group_col
+  kde_df    <- res$kde_df
+  mean_dirs <- res$mean_dirs
+  
+  kde_linear <- kde_df %>%
+    mutate(angle_centered = if_else(angle_deg > 180, angle_deg - 360, angle_deg),
+           !!group_col := factor(.data[[group_col]],
+                                 levels = levels(kde_df[[group_col]])))
+  
+  mean_linear <- mean_dirs %>%
+    mutate(angle_centered = if_else(mean_deg > 180, mean_deg - 360, mean_deg),
+           !!group_col := factor(.data[[group_col]],
+                                 levels = levels(kde_df[[group_col]])))
+  
+  rayleigh_labels <- res$rayleigh %>%
+    mutate(
+      label = case_when(
+        rayleigh_p < 0.001 ~ "Rayleigh\nP < 0.001",
+        rayleigh_p < 0.05  ~ sprintf("Rayleigh\nP = %.3f", rayleigh_p),
+        TRUE               ~ sprintf("Rayleigh\nP = %.3f", rayleigh_p)
+      ),
+      !!group_col := factor(group, levels = levels(kde_df[[group_col]]))
+    )
+  
+  # 图例位置与显示策略
+  if (isTRUE(show_color_legend)) {
+    # 独立图：右侧显示颜色图例
+    legend_pos    <- "right"
+    color_guide   <- guide_legend(title = group_col)
+  } else if (identical(show_color_legend, "right_panel")) {
+    # 组合图最右列：右侧显示颜色图例
+    legend_pos    <- "right"
+    color_guide   <- guide_legend(title = group_col)
+  } else {
+    # 组合图非末列：隐藏颜色图例
+    legend_pos    <- "none"
+    color_guide   <- "none"
+  }
+  
+  ggplot(kde_linear,
+         aes(x     = angle_centered,
+             y     = density,
+             fill  = .data[[group_col]],
+             color = .data[[group_col]])) +
+    geom_area(alpha = 0.4, color = NULL) +
+    geom_vline(
+      data      = mean_linear,
+      aes(xintercept = angle_centered, color = .data[[group_col]]),
+      linewidth = 0.5, linetype = "dashed", alpha = 0.75
+    ) +
+    geom_text(
+      data = rayleigh_labels,
+      aes(label = label),
+      x = 170, y = Inf,
+      hjust = 0.8, vjust = 1.4,
+      size = 3, color = "grey35",
+      inherit.aes = FALSE
+    ) +
+    scale_x_continuous(
+      limits = c(-180, 180),
+      breaks = seq(-180, 180, by = 45),
+      labels = seq(-180, 180, by = 45)
+    ) +
+    scale_y_continuous(expand = expansion(mult = c(0, 0.12))) +
+    scale_fill_manual(values  = palette, guide = color_guide) +
+    scale_color_manual(values = palette, guide = "none") +
+    # 组合图内：ncol=1 垂直分面，分面标签隐藏
+    facet_wrap(reformulate(group_col), ncol = 1, scales = "free_y") +
+    labs(x    = "CoIA line direction (\u00b0)",
+         y    = "von Mises KDE") +
+    theme_bw(base_size = 10) +
+    theme(
+      panel.grid.minor    = element_blank(),
+      panel.grid.major.x  = element_blank(),
+      panel.grid.major.y  = element_blank(),
+      # 分面标签：独立图时显示，组合图时隐藏
+      strip.text          = if (isTRUE(show_color_legend)) {
+        element_text(face = "bold", size = 9)
+      } else {
+        element_blank()
+      },
+      strip.background    = if (isTRUE(show_color_legend)) {
+        element_rect(fill = "#EBEBEB", color = "#EBEBEB")
+      } else {
+        element_blank()
+      },
+      axis.text.x         = element_text(size = 7.5),
+      axis.text.y         = element_blank(),
+      axis.ticks.y        = element_blank(),
+      legend.position     = legend_pos,
+      legend.key.size     = unit(0.45, "cm"),
+      legend.text         = element_text(size = 8),
+      legend.title        = element_text(size = 8.5, face = "bold")
+    )
+}
+
+# ---- 分析函数 ----
+run_circular_analysis <- function(group_col, group_label, palette,
+                                  group_order = NULL) {
   valid_groups <- scores_combined %>%
     filter(!is.na(.data[[group_col]]), .data[[group_col]] != "Other") %>%
     group_by(.data[[group_col]]) %>% filter(n() >= 5) %>%
@@ -1179,10 +1316,17 @@ run_circular_analysis <- function(group_col, group_label, palette) {
     cat(sprintf("  [跳过] %s 圆形统计：有效组数不足\n", group_label))
     return(invisible(NULL))
   }
+  
+  if (!is.null(group_order)) {
+    valid_groups_ordered <- intersect(group_order, valid_groups)
+  } else {
+    valid_groups_ordered <- sort(valid_groups)
+  }
+  
   sub_df <- scores_combined %>% filter(.data[[group_col]] %in% valid_groups)
   
   cat(sprintf("\n----- %s 圆形描述统计 -----\n", group_label))
-  circ_desc <- map_dfr(valid_groups, function(g) {
+  circ_desc <- map_dfr(valid_groups_ordered, function(g) {
     angles <- sub_df %>% filter(.data[[group_col]] == g) %>% pull(arrow_angle)
     cs     <- circ_stats_one(angles)
     tibble(group_var = group_col, group = g, n = length(angles),
@@ -1192,7 +1336,7 @@ run_circular_analysis <- function(group_col, group_label, palette) {
   print(circ_desc)
   
   cat(sprintf("\n----- %s Rayleigh 检验 -----\n", group_label))
-  rayleigh_res <- map_dfr(valid_groups, function(g) {
+  rayleigh_res <- map_dfr(valid_groups_ordered, function(g) {
     angles   <- sub_df %>% filter(.data[[group_col]] == g) %>% pull(arrow_angle)
     circ_obj <- circular(angles, type = "angles", units = "radians", modulo = "2pi")
     rt       <- rayleigh.test(circ_obj)
@@ -1205,6 +1349,7 @@ run_circular_analysis <- function(group_col, group_label, palette) {
            conclusion = ifelse(rt$p.value < 0.05, "concentrated", "uniform"))
   })
   
+  watson_res <- NULL
   if (length(valid_groups) >= 2) {
     cat(sprintf("\n----- %s Watson 两样本检验 -----\n", group_label))
     pairs <- combn(valid_groups, 2, simplify = FALSE)
@@ -1221,19 +1366,14 @@ run_circular_analysis <- function(group_col, group_label, palette) {
              p_value      = round(wt$p.value,   4),
              conclusion   = ifelse(wt$p.value < 0.05, "different", "ns"))
     })
-  } else {
-    watson_res <- NULL
   }
   
-  mean_dirs <- map_dfr(valid_groups, function(g) {
+  mean_dirs <- map_dfr(valid_groups_ordered, function(g) {
     angles <- sub_df %>% filter(.data[[group_col]] == g) %>% pull(arrow_angle)
-    cs <- circ_stats_one(angles)
+    cs     <- circ_stats_one(angles)
     tibble(!!group_col := g, mean_deg = cs$mean_deg)
-  })
-  
-  rose_df <- sub_df %>%
-    mutate(angle_deg = arrow_angle * 180 / pi,
-           angle_deg = ifelse(angle_deg < 0, angle_deg + 360, angle_deg))
+  }) %>%
+    mutate(!!group_col := factor(.data[[group_col]], levels = valid_groups_ordered))
   
   compute_circular_kde <- function(angles_deg, bw = 25, n = 360) {
     circ <- circular(angles_deg * pi / 180,
@@ -1245,59 +1385,53 @@ run_circular_analysis <- function(group_col, group_label, palette) {
            density   = c(density,   density[1]))
   }
   
-  kde_df <- rose_df %>%
+  kde_df <- sub_df %>%
+    mutate(
+      angle_deg = arrow_angle * 180 / pi,
+      angle_deg = ifelse(angle_deg < 0, angle_deg + 360, angle_deg),
+      !!group_col := factor(.data[[group_col]], levels = valid_groups_ordered)
+    ) %>%
     group_by(.data[[group_col]]) %>%
     group_modify(~ compute_circular_kde(.x$angle_deg, bw = 25)) %>%
-    ungroup()
+    ungroup() %>%
+    mutate(!!group_col := factor(.data[[group_col]], levels = valid_groups_ordered))
   
-  p_rose <- ggplot(kde_df,
-                   aes(x = angle_deg, y = density,
-                       fill = .data[[group_col]],
-                       color = .data[[group_col]])) +
-    geom_col(width = 0.1, alpha = 0.4, position = "identity") +
-    geom_segment(data = mean_dirs,
-                 aes(x = mean_deg, xend = mean_deg,
-                     y = 0, yend = Inf,
-                     color = .data[[group_col]]),
-                 linewidth = 0.9, linetype = "dashed", alpha = 0.85) +
-    coord_polar(theta = "x", start = -pi / 2, direction = 1) +
-    scale_x_continuous(
-      limits = c(0, 360),
-      breaks = seq(0, 315, by = 45),
-      labels = c("0\n(+CoIA1)", "45", "90\n(+CoIA2)",
-                 "135", "180\n(-CoIA1)", "225", "270\n(-CoIA2)", "315")
-    ) +
-    scale_y_continuous(expand = c(0, 0)) +
-    scale_fill_manual(values  = palette, name = group_label) +
-    scale_color_manual(values = palette, guide = "none") +
-    facet_wrap(reformulate(group_col), ncol = min(length(valid_groups), 3)) +
-    theme_bw(base_size = 10) +
-    labs(title    = sprintf("L2-C: CoIA Direction Density by %s", group_label),
-         subtitle = "von Mises kernel density (circular) with mean direction",
-         x = NULL, y = NULL) +
-    theme(plot.title       = element_text(face = "bold", hjust = 0.5, size = 11),
-          plot.subtitle    = element_text(hjust = 0.5, size = 8.5, color = "grey50"),
-          axis.text.y      = element_blank(),
-          axis.ticks.y     = element_blank(),
-          panel.grid.minor = element_blank(),
-          strip.text       = element_text(face = "bold", size = 9))
+  # 独立图：用默认 show_color_legend = TRUE（横向分面，有标签）
+  p_rose_standalone <- plot_rose(
+    list(group_col = group_col, kde_df = kde_df,
+         mean_dirs = mean_dirs, rayleigh = rayleigh_res),
+    palette,
+    show_color_legend = TRUE
+  )
   
-  n_g   <- length(valid_groups)
+  n_g   <- length(valid_groups_ordered)
   fname <- sprintf("analysis/output/figures/L2_Arrow_Direction_rose_%s.png",
                    tolower(str_replace_all(group_label, " ", "_")))
-  ggsave(here(fname), plot = p_rose,
-         width = min(4 + n_g * 3, 16), height = 8, dpi = 600, bg = "white")
+  ggsave(here(fname), plot = p_rose_standalone,
+         width = min(n_g * 2.8 + 1, 18), height = 4.5, dpi = 300, bg = "white")
   cat(sprintf("图已保存：%s\n", basename(fname)))
-  list(desc = circ_desc, rayleigh = rayleigh_res, watson = watson_res)
+  
+  # 组合图用：传入原始数据和配置，供组合图阶段按需重建
+  list(desc      = circ_desc,
+       rayleigh  = rayleigh_res,
+       watson    = watson_res,
+       kde_df    = kde_df,
+       mean_dirs = mean_dirs,
+       group_col = group_col,
+       palette   = palette,
+       p_rose    = p_rose_standalone)
 }
 
-res_circ_layer    <- run_circular_analysis("layer",        "Layer",       layer_pal)
-res_circ_rawmat   <- run_circular_analysis("raw_material", "Raw_Material",rawmat_pal)
-res_circ_coretype <- run_circular_analysis("core_type",    "Core_Type",   coretype_pal)
+res_circ_layer    <- run_circular_analysis("layer",        "Layer",
+                                           layer_pal,    LAYER_ORDER)
+res_circ_rawmat   <- run_circular_analysis("raw_material", "Raw_Material",
+                                           rawmat_pal)
+res_circ_coretype <- run_circular_analysis("core_type",    "Core_Type",
+                                           coretype_pal, CORETYPE_ORDER)
 
 
 # ------------------------------------------------------------------------------
-# L2-D：spectral_entropy × Typology / Layer / Raw_mat【新增，与 EXP 对齐】
+# L2-D：spectral_entropy × Layer / Raw_mat / Core_type
 # ------------------------------------------------------------------------------
 
 cat("\n---------- L2-D：spectral_entropy 分组分析 ----------\n")
@@ -1307,8 +1441,6 @@ se_df_base <- meta_arch %>%
   select(ID, layer, raw_material, core_type,
          SE_direction, SE_morphology)
 
-# KW + 事后检验通用函数（Holm 校正）
-# 2组时用 Wilcoxon 替代 dunnTest（dunnTest 在 k=2 时内部排序会报错）
 run_kw_dunn_se <- function(df, y_col, group_col, label) {
   sub_df <- df %>%
     filter(!is.na(.data[[y_col]]), !is.na(.data[[group_col]]),
@@ -1328,7 +1460,6 @@ run_kw_dunn_se <- function(df, y_col, group_col, label) {
               ifelse(kw$p.value < 0.05, "组间有显著差异", "差异不显著")))
   
   if (n_groups == 2) {
-    # 只有2组：直接用 Wilcoxon，构造与 Dunn 输出相同结构的 tibble
     cat("  [注] 仅2组，使用 Wilcoxon 检验替代 Dunn 检验\n")
     grp_levels <- levels(sub_df[[group_col]])
     wt <- wilcox.test(
@@ -1337,7 +1468,7 @@ run_kw_dunn_se <- function(df, y_col, group_col, label) {
       exact = FALSE
     )
     p_raw <- wt$p.value
-    p_adj <- p_raw   # 只有1对，Holm 校正 = 原始 p
+    p_adj <- p_raw
     dunn <- tibble(
       Comparison   = paste(grp_levels[1], "-", grp_levels[2]),
       group1       = grp_levels[1],
@@ -1353,10 +1484,8 @@ run_kw_dunn_se <- function(df, y_col, group_col, label) {
         p_adj < 0.05  ~ "*",   p_adj < 0.10 ~ ".", TRUE ~ "ns")
     )
     cat(sprintf("  Wilcoxon: W = %.1f, p = %.4f (%s)\n",
-                wt$statistic, p_raw,
-                dunn$p.signif))
+                wt$statistic, p_raw, dunn$p.signif))
   } else {
-    # 3组及以上：使用 dunnTest（Holm 校正）
     dunn_raw <- dunnTest(x = sub_df[[y_col]], g = sub_df[[group_col]],
                          method = "holm")$res
     dunn <- dunn_raw %>%
@@ -1379,24 +1508,21 @@ run_kw_dunn_se <- function(df, y_col, group_col, label) {
        y_col = y_col, group_col = group_col)
 }
 
-# SE 描述统计输出函数
 se_desc_stats <- function(df, y_col, group_col) {
   df %>%
     filter(!is.na(.data[[y_col]]), !is.na(.data[[group_col]]),
            .data[[group_col]] != "Other") %>%
     group_by(.data[[group_col]]) %>%
-    summarise(n            = n(),
-              mean_val     = round(mean(.data[[y_col]],   na.rm = TRUE), 4),
-              median_val   = round(median(.data[[y_col]], na.rm = TRUE), 4),
-              sd_val       = round(sd(.data[[y_col]],     na.rm = TRUE), 4),
+    summarise(n          = n(),
+              mean_val   = round(mean(.data[[y_col]],   na.rm = TRUE), 4),
+              median_val = round(median(.data[[y_col]], na.rm = TRUE), 4),
+              sd_val     = round(sd(.data[[y_col]],     na.rm = TRUE), 4),
               .groups = "drop") %>%
     mutate(SE_type    = y_col,
            group_type = group_col)
 }
 
-# 箱线图绘制函数（与 EXP make_se_boxplot 对齐）
-make_se_boxplot <- function(res_obj, y_label, title_suffix, fname,
-                            palette) {
+make_se_boxplot <- function(res_obj, y_label, title_suffix, fname, palette) {
   if (is.null(res_obj)) return(invisible(NULL))
   df        <- res_obj$sub_df
   y_col     <- res_obj$y_col
@@ -1409,36 +1535,27 @@ make_se_boxplot <- function(res_obj, y_label, title_suffix, fname,
   y_range   <- diff(range(y_vals, na.rm = TRUE))
   step      <- y_range * 0.10
   
-  sig_pairs   <- dunn_res %>% filter(p.adj < 0.05)
-  trend_pairs <- dunn_res %>% filter(p < 0.05, p.adj >= 0.05)
+  sig_pairs <- dunn_res %>% filter(p.adj < 0.05)
   
-  all_annot_base <- bind_rows(
-    sig_pairs   %>% mutate(annot_type = "sig"),
-    trend_pairs %>% mutate(annot_type = "trend")
-  )
-  sig_annot <- if (nrow(all_annot_base) > 0) {
-    all_annot_base %>%
-      mutate(x1    = match(group1, type_lvls),
+  sig_annot <- if (nrow(sig_pairs) > 0) {
+    sig_pairs %>%
+      mutate(annot_type = "sig",
+             group1 = as.character(group1),
+             group2 = as.character(group2),
+             x1    = match(group1, type_lvls),
              x2    = match(group2, type_lvls),
              y_bar = y_max + step * row_number(),
              x_mid = (x1 + x2) / 2,
-             label = if_else(annot_type == "sig", p.adj.signif, "\u2020"))
+             label = p.adj.signif) %>%
+      filter(!is.na(x1), !is.na(x2))
   } else NULL
   
   p <- ggplot(df, aes(x = .data[[group_col]], y = .data[[y_col]],
                       fill = .data[[group_col]], color = .data[[group_col]])) +
-    geom_boxplot(outlier.shape = NA, alpha = 0.55, linewidth = 0.55, width = 0.55) +
-    geom_jitter(width = 0.14, size = 2.2, alpha = 0.80, stroke = 0.3,
-                shape = 21, color = "grey20", fill = NA, show.legend = FALSE) +
-    stat_summary(
-      fun.data = function(x) {
-        ypos <- min(x, na.rm = TRUE) - y_range * 0.04
-        data.frame(y = ypos, ymin = ypos, ymax = ypos,
-                   label = paste0("n=", length(x)))
-      },
-      geom = "text", aes(label = after_stat(label)),
-      size = 2.8, color = "grey45", vjust = 1, show.legend = FALSE
-    ) +
+    geom_boxplot(outlier.shape = NA, alpha = 0.25, linewidth = 0.5) +
+    geom_jitter(width = 0.15, size = 2.5, alpha = 0.7, shape = 16) +
+    stat_summary(fun = mean, geom = "point",
+                 shape = 16, size = 4, color = "white") +
     {
       if (!is.null(sig_annot) && nrow(sig_annot) > 0) {
         tip <- y_range * 0.012
@@ -1458,28 +1575,29 @@ make_se_boxplot <- function(res_obj, y_label, title_suffix, fname,
           geom_text(data = sig_annot,
                     aes(x = x_mid, y = y_bar + y_range * 0.015, label = label),
                     inherit.aes = FALSE, size = 3.2, color = "grey25"),
-          scale_linetype_manual(values = c("sig" = "solid", "trend" = "dashed"),
-                                guide = "none")
+          scale_linetype_manual(values = c("sig" = "solid"), guide = "none")
         )
       } else NULL
     } +
     annotate("text", x = Inf, y = Inf,
-             label = sprintf("Kruskal-Wallis\nchi^2 = %.2f, p = %.3f",
+             label = sprintf("Kruskal-Wallis\nchi\u00b2 = %.2f, p = %.3f",
                              kw_res$statistic, kw_res$p.value),
-             hjust = 1.05, vjust = 1.15, size = 3.0,
-             color = ifelse(kw_res$p.value < 0.05, "#C0392B", "grey50")) +
+             hjust = 1.05, vjust = 1.2, size = 4,
+             color = ifelse(kw_res$p.value < 0.05, "#802520", "grey50")) +
     scale_fill_manual(values  = palette, guide = "none") +
     scale_color_manual(values = palette, guide = "none") +
-    scale_y_continuous(expand = expansion(mult = c(0.07, 0.08))) +
-    theme_bw(base_size = 11) +
-    labs(title    = sprintf("L2-D: Spectral Entropy by %s — %s", title_suffix, y_label),
-         subtitle = "Solid bracket: Holm p.adj < 0.05; dashed bracket: raw p < 0.05 trend",
-         x = NULL, y = y_label) +
-    theme(plot.title         = element_text(face = "bold", hjust = 0.5, size = 12),
-          plot.subtitle      = element_text(hjust = 0.5, size = 8.5, color = "grey55"),
-          axis.text.x        = element_text(angle = 25, hjust = 1, size = 9),
-          panel.grid.major.x = element_blank(),
-          panel.grid.minor   = element_blank())
+    scale_x_discrete(expand = expansion(add = 0.6)) +
+    scale_y_continuous(expand = expansion(mult = c(0.07, 0.15))) +
+    theme_bw() +
+    theme(
+      panel.grid.major.x = element_blank(),
+      panel.grid.major.y = element_blank(),
+      panel.grid.minor   = element_blank(),
+      axis.text.x        = element_text(angle = 30, hjust = 1, size = 9.5),
+      axis.text.y        = element_text(size = 9.5),
+      legend.position    = "none"
+    ) +
+    labs(x = NULL, y = y_label)
   
   n_grp <- length(unique(df[[group_col]]))
   ggsave(here(fname), plot = p,
@@ -1495,9 +1613,9 @@ res_se_dir_layer   <- run_kw_dunn_se(se_df_base, "SE_direction",  "layer", "SE�
 res_se_morph_layer <- run_kw_dunn_se(se_df_base, "SE_morphology", "layer", "SE（形态）× Layer")
 
 make_se_boxplot(res_se_dir_layer,   "Spectral Entropy (Scar Direction)", "Layer",
-                "analysis/output/figures/L2D_SE_Direction_Layer_boxplot.png", layer_pal)
+                "analysis/output/figures/L2D_SE_Direction_Layer_boxplot.png",   layer_pal)
 make_se_boxplot(res_se_morph_layer, "Spectral Entropy (Morphology)",     "Layer",
-                "analysis/output/figures/L2D_SE_Morphology_Layer_boxplot.png", layer_pal)
+                "analysis/output/figures/L2D_SE_Morphology_Layer_boxplot.png",  layer_pal)
 
 # ---- 按 Raw Material 分析 ----
 cat("\n==== SE x Raw Material ====\n")
@@ -1505,9 +1623,9 @@ res_se_dir_rawmat   <- run_kw_dunn_se(se_df_base, "SE_direction",  "raw_material
 res_se_morph_rawmat <- run_kw_dunn_se(se_df_base, "SE_morphology", "raw_material", "SE（形态）× Raw Material")
 
 make_se_boxplot(res_se_dir_rawmat,   "Spectral Entropy (Scar Direction)", "Raw Material",
-                "analysis/output/figures/L2D_SE_Direction_RawMat_boxplot.png", rawmat_pal)
+                "analysis/output/figures/L2D_SE_Direction_RawMat_boxplot.png",   rawmat_pal)
 make_se_boxplot(res_se_morph_rawmat, "Spectral Entropy (Morphology)",     "Raw Material",
-                "analysis/output/figures/L2D_SE_Morphology_RawMat_boxplot.png", rawmat_pal)
+                "analysis/output/figures/L2D_SE_Morphology_RawMat_boxplot.png",  rawmat_pal)
 
 # ---- 按 Core Type 分析 ----
 cat("\n==== SE x Core Type ====\n")
@@ -1515,9 +1633,9 @@ res_se_dir_coretype   <- run_kw_dunn_se(se_df_base, "SE_direction",  "core_type"
 res_se_morph_coretype <- run_kw_dunn_se(se_df_base, "SE_morphology", "core_type", "SE（形态）× Core Type")
 
 make_se_boxplot(res_se_dir_coretype,   "Spectral Entropy (Scar Direction)", "Core Type",
-                "analysis/output/figures/L2D_SE_Direction_CoreType_boxplot.png", coretype_pal)
+                "analysis/output/figures/L2D_SE_Direction_CoreType_boxplot.png",   coretype_pal)
 make_se_boxplot(res_se_morph_coretype, "Spectral Entropy (Morphology)",     "Core Type",
-                "analysis/output/figures/L2D_SE_Morphology_CoreType_boxplot.png", coretype_pal)
+                "analysis/output/figures/L2D_SE_Morphology_CoreType_boxplot.png",  coretype_pal)
 
 # ---- 汇总描述统计与 Dunn 结果 ----
 se_desc_all <- bind_rows(
@@ -1548,14 +1666,14 @@ cat("已保存：L2D_SE_dunn_results.csv\n")
 # ==============================================================================
 
 circ_desc_all <- bind_rows(
-  res_circ_layer$desc,
-  res_circ_rawmat$desc,
-  res_circ_coretype$desc
+  if (!is.null(res_circ_layer))    res_circ_layer$desc,
+  if (!is.null(res_circ_rawmat))   res_circ_rawmat$desc,
+  if (!is.null(res_circ_coretype)) res_circ_coretype$desc
 )
 rayleigh_all <- bind_rows(
-  res_circ_layer$rayleigh,
-  res_circ_rawmat$rayleigh,
-  res_circ_coretype$rayleigh
+  if (!is.null(res_circ_layer))    res_circ_layer$rayleigh,
+  if (!is.null(res_circ_rawmat))   res_circ_rawmat$rayleigh,
+  if (!is.null(res_circ_coretype)) res_circ_coretype$rayleigh
 )
 if (nrow(circ_desc_all) > 0 && nrow(rayleigh_all) > 0) {
   left_join(circ_desc_all, rayleigh_all, by = c("group_var", "group")) %>%
@@ -1571,9 +1689,87 @@ scores_combined %>%
 cat("已保存：L2_arrow_stats.csv\n")
 
 scores_combined %>%
-  write_csv(here("analysis/data/derived_data/CIA_scores_full.csv"))
-cat("已保存：CIA_scores_full.csv\n")
+  write_csv(here("analysis/data/derived_data/CoIA_scores_full.csv"))
+cat("已保存：CoIA_scores_full.csv\n")
 
+morph_ilr_arch %>%
+  rownames_to_column("ID") %>%
+  write_csv(here("analysis/data/derived_data/SDG_morph_ILR_scores.csv"))
+cat("已保存：SDG_morph_ILR_scores.csv\n")
+
+scar_ilr_arch %>%
+  rownames_to_column("ID") %>%
+  write_csv(here("analysis/data/derived_data/SDG_scar_ILR_scores.csv"))
+cat("已保存：SDG_scar_ILR_scores.csv\n")
+
+
+# ==============================================================================
+# ---- 组合图：CoIA × 箭头长度 × 方向（3行 × 3列）----
+# ==============================================================================
+# 布局说明：
+#   - 列 1（CoIA双标图）：颜色图例隐藏，仅保留 Endpoint shape 图例（左下角）
+#   - 列 2（箭头长度箱线图）：x轴标签隐藏（颜色即分组）
+#   - 列 3（方向KDE图）：分面标签隐藏，颜色图例显示在最右侧
+# ==============================================================================
+
+cat("\n==== 组合图：CoIA / 箭头长度 / 方向 ====\n")
+
+# 重建组合图用的方向图
+make_rose_for_composite <- function(res_circ) {
+  if (is.null(res_circ)) return(NULL)
+  plot_rose(
+    list(group_col = res_circ$group_col,
+         kde_df    = res_circ$kde_df,
+         mean_dirs = res_circ$mean_dirs,
+         rayleigh  = res_circ$rayleigh),
+    res_circ$palette,
+    show_color_legend = FALSE
+  ) + theme(plot.margin = margin(4, 4, 4, 4))
+}
+
+strip_margin <- function(p) p + theme(plot.margin = margin(4, 4, 4, 4))
+get_len_plot <- function(res_len) {
+  if (is.null(res_len)) return(NULL)
+  res_len$p + theme(plot.margin = margin(4, 4, 4, 4))
+}
+
+make_composite_row <- function(p_coia, p_len, res_circ, row_tag) {
+  p_rose <- make_rose_for_composite(res_circ)
+  if (is.null(p_coia) || is.null(p_len) || is.null(p_rose)) {
+    cat(sprintf("  [跳过] %s 行：子图不完整\n", row_tag))
+    return(NULL)
+  }
+  (strip_margin(p_coia) | get_len_plot(p_len) | p_rose) +
+    plot_layout(widths = c(5, 2, 2))
+}
+
+row_layer    <- make_composite_row(p_coia_layer,    res_len_layer,    res_circ_layer,    "Layer")
+row_rawmat   <- make_composite_row(p_coia_rawmat,   res_len_rawmat,   res_circ_rawmat,   "Raw Material")
+row_coretype <- make_composite_row(p_coia_coretype, res_len_coretype, res_circ_coretype, "Core Type")
+
+rows_valid <- Filter(Negate(is.null), list(row_layer, row_rawmat, row_coretype))
+
+if (length(rows_valid) > 0) {
+  p_composite <- Reduce(`/`, rows_valid) +
+    plot_layout(heights = rep(1, length(rows_valid))) +
+    plot_annotation(
+      tag_levels = list(LETTERS[seq_len(length(rows_valid) * 3)]),
+      theme = theme(plot.tag = element_text(size = 11, face = "bold"))
+    )
+  
+  n_rows <- length(rows_valid)
+  ggsave(
+    here("analysis/output/figures/L_CoIA_composite.png"),
+    plot   = p_composite,
+    width  = 12,
+    height = n_rows * 5,
+    dpi    = 300,
+    bg     = "white"
+  )
+  cat(sprintf("组合图已保存：L_CoIA_composite.png（%d 行 × 3 列）\n", n_rows))
+} else {
+  cat("  [跳过] 所有行均无有效子图，未生成组合图\n")
+}
 
 # ==============================================================================
 # ========== 第三层：PERMANOVA ==========
@@ -1636,7 +1832,6 @@ pairwise_permanova <- function(dist_mat, group_vec, group_name,
   })
 }
 
-# 构建子距离矩阵
 if (!is.null(meta_layer)) {
   D_morph_layer <- extract_subdist(D_morph_arch, meta_layer$ID)
   D_scar_layer  <- extract_subdist(D_scar_arch,  meta_layer$ID)
@@ -1686,7 +1881,6 @@ permdisp_results <- bind_rows(
 
 cat("\n==== L3-3：两两 PERMANOVA ====\n")
 
-# 【修改4】Holm 校正（原脚本为 FDR）
 pairwise_results <- bind_rows(
   if (!is.null(meta_layer)) bind_rows(
     pairwise_permanova(D_morph_layer,    meta_layer$layer,         "Layer",        "Morphology"),
@@ -1713,121 +1907,6 @@ cat("\n两两 PERMANOVA（Holm 校正）：\n")
 pairwise_results %>%
   mutate(across(c(R2, F_value, p_raw, p_holm), ~ round(.x, 4))) %>%
   print(n = Inf)
-
-# R² 比较图
-p_r2_compare <- permanova_results %>%
-  mutate(
-    sig_label = case_when(
-      p_value < 0.001 ~ "***", p_value < 0.01 ~ "**",
-      p_value < 0.05  ~ "*",   TRUE            ~ "ns"
-    ),
-    domain   = factor(domain,   levels = c("Morphology", "Scar Direction")),
-    grouping = factor(grouping, levels = c("Layer", "Raw Material", "Core Type"))
-  ) %>%
-  ggplot(aes(x = grouping, y = R2, fill = domain)) +
-  geom_col(position = position_dodge(width = 0.7),
-           width = 0.6, alpha = 0.85) +
-  geom_text(aes(label = sig_label, y = R2 + 0.003),
-            position = position_dodge(width = 0.7),
-            vjust = 0, size = 3.5, fontface = "bold") +
-  geom_hline(yintercept = 0, linewidth = 0.4, color = "grey40") +
-  scale_fill_manual(
-    values = c("Morphology" = "#A1C2E6", "Scar Direction" = "#FFBAE0"),
-    name   = "Domain"
-  ) +
-  scale_y_continuous(labels = scales::percent_format(accuracy = 0.1),
-                     expand = expansion(mult = c(0, 0.12))) +
-  theme_bw(base_size = 10) +
-  labs(title    = "L3: PERMANOVA — Proportion of Variance Explained (R²)",
-       subtitle = "*** p<0.001  ** p<0.01  * p<0.05  ns = not significant",
-       x = "Grouping factor", y = "R² (proportion of variance)") +
-  theme(plot.title      = element_text(face = "bold", hjust = 0.5, size = 11),
-        plot.subtitle   = element_text(hjust = 0.5, size = 8.5, color = "grey50"),
-        legend.position = "right")
-
-ggsave(here("analysis/output/figures/L3_PERMANOVA_R2.png"),
-       plot = p_r2_compare, width = 8, height = 5, dpi = 300, bg = "white")
-cat("图已保存：L3_PERMANOVA_R2.png\n")
-
-# CAP 图
-plot_cap <- function(dist_mat, meta_df, group_col, title_str, palette_vec) {
-  df_group   <- data.frame(group = meta_df[[group_col]])
-  cap_res    <- capscale(dist_mat ~ group, data = df_group)
-  all_scores <- scores(cap_res, display = "sites", choices = 1:2)
-  cap_scores <- as.data.frame(all_scores) %>%
-    mutate(ID = meta_df$ID, group = meta_df[[group_col]])
-  x_col <- colnames(cap_scores)[1]
-  y_col <- colnames(cap_scores)[2]
-  eig_all <- eigenvals(cap_res)
-  eig_pos <- eig_all[eig_all > 0]
-  eig_df  <- tibble(name = names(eig_all), value = as.numeric(eig_all))
-  pct_df  <- eig_df %>%
-    filter(name %in% c(x_col, y_col)) %>%
-    mutate(pct = round(value / sum(eig_pos) * 100, 1))
-  x_lab <- sprintf("%s (%.1f%%)", x_col, pct_df$pct[pct_df$name == x_col])
-  y_lab <- sprintf("%s (%.1f%%)", y_col, pct_df$pct[pct_df$name == y_col])
-  ggplot(cap_scores,
-         aes(x = .data[[x_col]], y = .data[[y_col]], color = group)) +
-    stat_ellipse(aes(fill = group), geom = "polygon",
-                 alpha = 0.08, level = 0.9,
-                 linetype = "dashed", linewidth = 0.5) +
-    geom_hline(yintercept = 0, linetype = "dotted",
-               color = "grey60", linewidth = 0.35) +
-    geom_vline(xintercept = 0, linetype = "dotted",
-               color = "grey60", linewidth = 0.35) +
-    geom_point(size = 2.8, alpha = 0.85) +
-    geom_text_repel(aes(label = ID), size = 2.0, color = "grey40",
-                    max.overlaps = 6, show.legend = FALSE) +
-    scale_color_manual(values = palette_vec, name = group_col,
-                       aesthetics = c("color", "fill")) +
-    theme_bw(base_size = 10) +
-    labs(title = title_str, x = x_lab, y = y_lab) +
-    theme(plot.title      = element_text(face = "bold", hjust = 0.5, size = 10),
-          legend.position = "right")
-}
-
-save_cap_pair <- function(meta_obj, D_m, D_s, group_col, palette, tag) {
-  if (is.null(meta_obj)) {
-    cat(sprintf("  [跳过] %s CAP 图：有效分组不足\n", tag))
-    return(invisible(NULL))
-  }
-  get_stat <- function(dom) {
-    permanova_results %>%
-      filter(domain == dom, grouping == tag) %>%
-      summarise(lab = sprintf("R²=%.3f, p=%.3f", R2, p_value)) %>%
-      pull(lab)
-  }
-  p1 <- plot_cap(D_m, meta_obj, group_col,
-                 sprintf("Morphology — CAP by %s", tag), palette)
-  p2 <- plot_cap(D_s, meta_obj, group_col,
-                 sprintf("Scar Direction — CAP by %s", tag), palette)
-  p_combined <- (p1 | p2) +
-    plot_annotation(
-      title = sprintf(
-        "CAP — %s  |  Morphology: %s  |  Scar Direction: %s", tag,
-        ifelse(nrow(filter(permanova_results,
-                           domain == "Morphology", grouping == tag)) > 0,
-               get_stat("Morphology"), "—"),
-        ifelse(nrow(filter(permanova_results,
-                           domain == "Scar Direction", grouping == tag)) > 0,
-               get_stat("Scar Direction"), "—")
-      ),
-      theme = theme(plot.title = element_text(face = "bold",
-                                              size = 10, hjust = 0.5))
-    )
-  fname <- sprintf("analysis/output/figures/L3_PERMANOVA_CAP_%s.png",
-                   tolower(str_replace_all(tag, " ", "_")))
-  ggsave(here(fname), plot = p_combined,
-         width = 14, height = 6, dpi = 300, bg = "white")
-  cat(sprintf("图已保存：%s\n", basename(fname)))
-}
-
-save_cap_pair(meta_layer,    D_morph_layer,    D_scar_layer,
-              "layer",        layer_pal,    "Layer")
-save_cap_pair(meta_rawmat,   D_morph_rawmat,   D_scar_rawmat,
-              "raw_material", rawmat_pal,   "Raw Material")
-save_cap_pair(meta_coretype, D_morph_coretype, D_scar_coretype,
-              "core_type",   coretype_pal, "Core Type")
 
 
 # ==============================================================================
@@ -1909,18 +1988,23 @@ permanova_results %>%
   arrange(domain, grouping) %>%
   print()
 
-cat("\n【桑基图】L1_CIA_Sankey.png\n")
+cat("\n【CoIA 双标图】L1_CoIA_Biplot_layer.png / raw_material.png / core_type.png\n")
+cat("【组合图】L_CoIA_composite.png（CoIA | 箭头长度 | 方向，3行 × 3列）\n")
+cat("【桑基图】L1_CoIA_Sankey.png\n")
 
 cat("\n\n========== SDG 分析全部完成 ==========\n")
 cat("主要输出文件：\n")
 cat("  L1_results.csv\n")
-cat("  L1_CIA_Sankey.png\n")
+cat("  L1_CoIA_Sankey.png\n")
+cat("  L_CoIA_composite.png\n")
 cat("  L2_grouped_mantel.csv\n")
 cat("  L2_arrow_stats.csv\n")
 cat("  L2_circular_stats.csv\n")
 cat("  L2D_SE_desc_stats.csv\n")
 cat("  L2D_SE_dunn_results.csv\n")
 cat("  L3_permanova.csv\n")
-cat("  CIA_scores_full.csv\n")
-cat("  CIA_coords_full.csv\n")
+cat("  CoIA_scores_full.csv\n")
+cat("  CoIA_coords_full.csv\n")
 cat("  PCA_CoIA_contribution.csv\n")
+cat("  SDG_morph_ILR_scores.csv\n")
+cat("  SDG_scar_ILR_scores.csv\n")

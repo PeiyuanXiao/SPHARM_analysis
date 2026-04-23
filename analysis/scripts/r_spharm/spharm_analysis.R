@@ -441,9 +441,9 @@ p_adj_vec <- c(
   0.1455, 0.1572, 0.0001,
   0.8816, 0.0040, 0.0421,
   # Fabric E+I（Holm）
-  0.030, 0.010, 0.224, 0.080,
-  0.243, 0.586, 0.010,
-  0.761, 0.010, 0.010,
+  0.010, 0.010, 0.357, 0.072,
+  0.055, 0.357, 0.010,
+  0.804, 0.010, 0.012,
   # Direction SPHARM（Holm）
   0.436, 0.010, 0.030, 0.010,
   0.010, 0.164, 0.012,
@@ -471,7 +471,7 @@ p_bubble <- ggplot(
   aes(x = Method, y = Pair)
 ) +
   geom_point(aes(fill = Sig),
-             shape = 21, size = 14, color = "white", stroke = 0.1, alpha = 0.7) +
+             shape = 21, size = 10, color = "white", stroke = 0.1, alpha = 0.7) +
   geom_text(aes(label = case_when(
     Sig == "p ≤ 0.001" ~ "***",
     Sig == "p ≤ 0.01"  ~ "**",
@@ -565,3 +565,4 @@ combined_panel <- (left_col | p_bubble) +
 ggsave(here("analysis/output/figures/Combined_panel.png"),
        plot = combined_panel, width = 10, height = 12,
        dpi = 300, bg = "white")
+
