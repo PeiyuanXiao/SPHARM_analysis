@@ -28,7 +28,7 @@ library(tidyverse)
 library(readxl)
 library(ggrepel)
 library(patchwork)
-conflicted::conflict_prefer("select", "dplyr")
+conflicted::conflicts_prefer(dplyr::select)
 conflicted::conflicts_prefer(dplyr::filter)
 conflicted::conflicts_prefer(base::`%*%`)
 

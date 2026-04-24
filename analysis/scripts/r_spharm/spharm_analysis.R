@@ -555,7 +555,7 @@ p_dir_plot <- ggplot(res_dir$scores,
 left_col <- (p_SPI_box / p_benn_wrap / p_dir_plot) +
   plot_layout(ncol = 1, heights = c(1, 1, 1))
 
-combined_panel <- (left_col | p_bubble) +
+exp_method_compare_combined <- (left_col | p_bubble) +
   plot_layout(ncol = 2, widths = c(1, 0.5)) +
   plot_annotation(
     tag_levels = "A",
@@ -563,6 +563,6 @@ combined_panel <- (left_col | p_bubble) +
   )
 
 ggsave(here("analysis/output/figures/Combined_panel.png"),
-       plot = combined_panel, width = 10, height = 12,
+       plot = exp_method_compare_combined, width = 10, height = 12,
        dpi = 300, bg = "white")
 

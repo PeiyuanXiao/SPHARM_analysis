@@ -2,7 +2,7 @@
 # exp_cores_statistics.R
 #
 # 分析框架：
-#   L1   ：整体 Mantel + CoIA
+#   L1   ：Global Mantel + CoIA
 #   L1-3 ：CoIA 桑基图
 #   L2-A ：分组 Mantel
 #   L2-B ：CoIA 箭头长度分组差异
@@ -38,6 +38,8 @@
 #   EXP_L2D_SE_dunn_results.csv
 #   SENS_global.csv
 #   SENS_grouped.csv
+#   EXP_morph_ILR_scores.csv
+#   EXP_scar_ILR_scores.csv
 # ==============================================================================
 
 library(here)
@@ -160,7 +162,8 @@ watson_perm_test <- function(x1, x2, B = 9999) {
 # ---- 数据准备 ----
 # ==============================================================================
 
-POWER_COLS <- paste0("power_l", 1:5)
+POWER_COLS_DIR   <- paste0("power_l", 1:6)   # 方向谱 l=1-6
+POWER_COLS_MORPH <- paste0("power_l", 1:8)  # 形态谱 l=1-8
 
 SPHARM_direction  <- read_csv(here("analysis/data/derived_data/SPHARM_direction.csv"),
                               show_col_types = FALSE)
@@ -173,15 +176,15 @@ metric_data <- read_xlsx(here("analysis/data/raw_data/SDG_core_metric.xlsx")) %>
 SPHARM_morphology <- SPHARM_morphology %>%
   left_join(SPHARM_direction %>% select(ID, Typology), by = "ID")
 
-filter_spharm <- function(df, meta = NULL) {
+filter_spharm <- function(df, power_cols, meta = NULL) {
   result <- df %>%
-    select(ID, Typology, SHE, spectral_entropy, all_of(POWER_COLS))
+    select(ID, Typology, SHE, spectral_entropy, all_of(power_cols))
   if (!is.null(meta)) result <- left_join(result, meta, by = "ID")
   result
 }
 
-SPHARM_direction_filter  <- filter_spharm(SPHARM_direction,  metric_data)
-SPHARM_morphology_filter <- filter_spharm(SPHARM_morphology, metric_data)
+SPHARM_direction_filter  <- filter_spharm(SPHARM_direction,  POWER_COLS_DIR,   metric_data)
+SPHARM_morphology_filter <- filter_spharm(SPHARM_morphology, POWER_COLS_MORPH, metric_data)
 
 split_by_group <- function(df) {
   list(
@@ -205,11 +208,11 @@ cat("共有标本：", length(common_ids),
     "；ID 完全匹配：", all(df_morph_all$ID == df_scar_all$ID), "\n\n")
 
 morph_power_all <- df_morph_all %>%
-  select(all_of(POWER_COLS)) %>%
+  select(all_of(POWER_COLS_MORPH)) %>%
   rename_with(~ paste0("M", seq_along(.))) %>%
   as.data.frame()
 scar_power_all  <- df_scar_all %>%
-  select(all_of(POWER_COLS)) %>%
+  select(all_of(POWER_COLS_DIR)) %>%
   rename_with(~ paste0("S", seq_along(.))) %>%
   as.data.frame()
 rownames(morph_power_all) <- df_morph_all$ID
@@ -227,7 +230,9 @@ rownames(scar_ilr_all)  <- rownames(scar_power_clean)
 D_morph_all <- dist(morph_ilr_all)
 D_scar_all  <- dist(scar_ilr_all)
 
-exp_ids <- rownames(morph_power_clean)[!str_starts(rownames(morph_power_clean), "IM_")]
+exp_ids <- rownames(morph_power_clean)[
+  !str_starts(rownames(morph_power_clean), "IM_") &
+    rownames(morph_power_clean) != "EXP43_Biface"]
 cat("纯实验标本数量（不含 IM_）：", length(exp_ids), "\n")
 
 morph_exp     <- morph_power_clean[exp_ids, ]
@@ -1048,7 +1053,7 @@ run_arrow_length_analysis <- function(group_col, group_label, palette) {
     stat_summary(fun = mean, geom = "point",
                  shape = 16, size = 4, color = "white") +
     annotate("text", x = Inf, y = Inf,
-             label = sprintf("Kruskal-Wallis\nP = %.3f",
+             label = sprintf("Kruskal-Wallis\nchi² = %.2f, P = %.3f",
                              kw$statistic, kw$p.value),
              hjust = 1.05, vjust = 1.2, size = 4, color = "grey40") +
     scale_fill_manual(values  = palette) +
@@ -1513,6 +1518,16 @@ scores_combined %>%
   write_csv(here("analysis/data/derived_data/EXP_CIA_scores_full.csv"))
 cat("已保存：EXP_CIA_scores_full.csv\n")
 
+# 输出 ILR 得分
+morph_ilr_exp %>%
+  rownames_to_column("ID") %>%
+  write_csv(here("analysis/data/derived_data/EXP_morph_ILR_scores.csv"))
+cat("已保存：EXP_morph_ILR_scores.csv\n")
+
+scar_ilr_exp %>%
+  rownames_to_column("ID") %>%
+  write_csv(here("analysis/data/derived_data/EXP_scar_ILR_scores.csv"))
+cat("已保存：EXP_scar_ILR_scores.csv\n")
 
 # ==============================================================================
 # ---- 汇总打印 ----
