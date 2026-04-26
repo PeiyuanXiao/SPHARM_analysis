@@ -103,6 +103,127 @@ list(
         kw_arrow_p       = round(res_len_typology$kw$p.value, 3)
       )
     })
-  )
-  
+  ),
+
+tar_target(
+  sdg_cia_analysis,
+  local({
+    source(here::here("analysis/scripts/r_statistics/SDG_cores_statistics.R"),
+           local = TRUE)
+    list(
+      mantel_global_r          = round(mantel_global$statistic, 3),
+      mantel_global_p          = round(mantel_global$signif, 3),
+      rv                       = round(coin_arch$RV, 3),
+      rv_p                     = round(rv_test$pvalue, 3),
+      
+      # CoIA 轴方差解释
+      cia_ax1_pct              = round(cia_inertia[1], 1),
+      cia_ax2_pct              = round(cia_inertia[2], 1),
+      cia_total_pct            = round(sum(cia_inertia[1:2]), 1),
+      
+      # L2-B：箭头长度 KW
+      kw_arrow_layer_chi2      = round(res_len_layer$kw$statistic, 2),
+      kw_arrow_layer_p         = round(res_len_layer$kw$p.value, 3),
+      kw_arrow_rawmat_chi2     = round(res_len_rawmat$kw$statistic, 2),
+      kw_arrow_rawmat_p        = round(res_len_rawmat$kw$p.value, 3),
+      kw_arrow_type_chi2       = round(res_len_coretype$kw$statistic, 2),
+      kw_arrow_type_p          = round(res_len_coretype$kw$p.value, 3),
+      
+      # L2-C：Rayleigh（Unifacial_unidirection）
+      rayleigh_uni_U           = round(
+        res_circ_coretype$rayleigh$rayleigh_U[
+          res_circ_coretype$rayleigh$group == "Unifacial_unidirection"], 3),
+      rayleigh_uni_p           = round(
+        res_circ_coretype$rayleigh$rayleigh_p[
+          res_circ_coretype$rayleigh$group == "Unifacial_unidirection"], 3),
+      mean_dir_uni             = round(
+        res_circ_coretype$desc$mean_dir_deg[
+          res_circ_coretype$desc$group == "Unifacial_unidirection"], 0),
+      
+      # L2-D：SE 方向谱 × 类型
+      kw_se_dir_type_chi2      = round(res_se_dir_coretype$kw$statistic, 3),
+      kw_se_dir_type_p         = round(res_se_dir_coretype$kw$p.value, 3),
+      dunn_se_multi_uni_p      = round(
+        res_se_dir_coretype$dunn$p.adj[
+          res_se_dir_coretype$dunn$Comparison ==
+            "Multifacial - Unifacial_centripetal"], 3),
+      
+      # L2-D：SE 形态谱 × 层位 / 原料 / 类型
+      kw_se_morph_layer_chi2   = round(res_se_morph_layer$kw$statistic, 3),
+      kw_se_morph_layer_p      = round(res_se_morph_layer$kw$p.value, 3),
+      kw_se_morph_rawmat_chi2  = round(res_se_morph_rawmat$kw$statistic, 3),
+      kw_se_morph_rawmat_p     = round(res_se_morph_rawmat$kw$p.value, 3),
+      kw_se_morph_type_chi2    = round(res_se_morph_coretype$kw$statistic, 3),
+      kw_se_morph_type_p       = round(res_se_morph_coretype$kw$p.value, 3),
+      
+      # L3：PERMANOVA — Core Type
+      perm_morph_type_r2       = round(permanova_results$R2[
+        permanova_results$domain == "Morphology" &
+          permanova_results$grouping == "Core Type"], 3),
+      perm_morph_type_f        = round(permanova_results$F_value[
+        permanova_results$domain == "Morphology" &
+          permanova_results$grouping == "Core Type"], 2),
+      perm_morph_type_p        = round(permanova_results$p_value[
+        permanova_results$domain == "Morphology" &
+          permanova_results$grouping == "Core Type"], 3),
+      perm_scar_type_r2        = round(permanova_results$R2[
+        permanova_results$domain == "Scar Direction" &
+          permanova_results$grouping == "Core Type"], 3),
+      perm_scar_type_f         = round(permanova_results$F_value[
+        permanova_results$domain == "Scar Direction" &
+          permanova_results$grouping == "Core Type"], 2),
+      perm_scar_type_p         = round(permanova_results$p_value[
+        permanova_results$domain == "Scar Direction" &
+          permanova_results$grouping == "Core Type"], 3),
+      
+      # L3：PERMANOVA — Raw Material
+      perm_morph_rawmat_r2     = round(permanova_results$R2[
+        permanova_results$domain == "Morphology" &
+          permanova_results$grouping == "Raw Material"], 3),
+      perm_morph_rawmat_f      = round(permanova_results$F_value[
+        permanova_results$domain == "Morphology" &
+          permanova_results$grouping == "Raw Material"], 2),
+      perm_morph_rawmat_p      = round(permanova_results$p_value[
+        permanova_results$domain == "Morphology" &
+          permanova_results$grouping == "Raw Material"], 3),
+      perm_rawmat_pairwise_p   = round(pairwise_results$p_holm[
+        pairwise_results$domain == "Morphology" &
+          pairwise_results$grouping == "Raw Material" &
+          pairwise_results$group1 == "chert" &
+          pairwise_results$group2 == "sandstone"], 3),
+      perm_scar_rawmat_r2      = round(permanova_results$R2[
+        permanova_results$domain == "Scar Direction" &
+          permanova_results$grouping == "Raw Material"], 3),
+      perm_scar_rawmat_f       = round(permanova_results$F_value[
+        permanova_results$domain == "Scar Direction" &
+          permanova_results$grouping == "Raw Material"], 3),
+      perm_scar_rawmat_p       = round(permanova_results$p_value[
+        permanova_results$domain == "Scar Direction" &
+          permanova_results$grouping == "Raw Material"], 3),
+      
+      # L3：PERMANOVA — Layer
+      perm_morph_layer_r2      = round(permanova_results$R2[
+        permanova_results$domain == "Morphology" &
+          permanova_results$grouping == "Layer"], 3),
+      perm_morph_layer_f       = round(permanova_results$F_value[
+        permanova_results$domain == "Morphology" &
+          permanova_results$grouping == "Layer"], 3),
+      perm_morph_layer_p       = round(permanova_results$p_value[
+        permanova_results$domain == "Morphology" &
+          permanova_results$grouping == "Layer"], 3),
+      perm_scar_layer_r2       = round(permanova_results$R2[
+        permanova_results$domain == "Scar Direction" &
+          permanova_results$grouping == "Layer"], 3),
+      perm_scar_layer_f        = round(permanova_results$F_value[
+        permanova_results$domain == "Scar Direction" &
+          permanova_results$grouping == "Layer"], 3),
+      perm_scar_layer_p        = round(permanova_results$p_value[
+        permanova_results$domain == "Scar Direction" &
+          permanova_results$grouping == "Layer"], 3),
+      
+      fig_coia_composite = p_final,
+      fig_se_composite   = p_se_composite
+    )
+  })
+)
 )
