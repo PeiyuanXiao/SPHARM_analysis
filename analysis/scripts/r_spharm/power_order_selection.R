@@ -5,7 +5,6 @@
 # 分析内容：
 #   1. 各阶描述性指标汇总（均值、标准差、方差、变异系数、衰减率、SNR）
 #   2. 四联可视化图：方差图、变异系数图、衰减率图、累积能量图
-#      —— 分别输出 EXP 版与 SDG 版，以及 EXP+SDG 合并对比版
 #
 # 输入：
 #   analysis/data/derived_data/SPHARM_direction.csv
