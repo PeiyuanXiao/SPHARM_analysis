@@ -93,45 +93,83 @@ Against this background, the present study proposes a new quantitative analytica
 
 **2.1 Materials**
 
-Ideal core models: one ideal model per core type, sourced from @lin2024.
+本文的研究材料来源于三个数据集，其中，Ideal digital cores以测试球谐函数方法对标准片疤模式的敏感性，并通过球谐功率谱可视化和系数重建直观展示不同片疤模式在球谐方法上的表现；Experimental knapping cores主要用于在更大方差中检验片疤模式分析方法，并结合形态信息测试本文提出的统计框架；Archaeological specimens则基于上述测试的统计框架进行分析，用以展示球谐方法在考古标本中的实际意义。
 
-Experimental knapping models by Clarkson: 1–22 specimens per core type, 59 specimens in total, sourced from Lin et al. (2024) (awaiting email confirmation).
+Ideal digital cores: one ideal model per core type, sourced from @lin2024. 标准化的数字石核模型来源于\@lin2024，这些模型包括8种理想石核类型，包括Cylinderical, Conical, Discoid, Levallois (Preferential, Convergent, Laminar), Biface, Polyhedral。其中每类石核对应不同的片疤模式，如Cylinderical石核包括Unipolar和Bipolar片疤模式，Discoid包括Bifacial和Unifacial两类等，详见附属材料。
 
-Archaeological specimens from the Sandinggai site: after excluding incomplete cores and tested cores, 55 specimens remain. Specimens derive from Layers 2, 3, and 4 of the site; however, as only two specimens come from Layer 2, statistical analyses in this study are restricted to Layers 3 and 4. Data sourced from Li et al. (2022).
+Experimental knapping cores: 实验石核由Chris Clarkson教授制作，共58件，类型包括Unidirectional cores 16件，Bidirectional cores 6件，Levallois cores 21件（包含Preferential 10件，Convergent 5件，Nubian 2件，Recurrent 2件，Laminar 2件），Discoidal cores 5件，Multiplatform cores 10件。这些标本目前存放在the School of Social Sciences at the University of Queensland，有Sam Lin教授对这些标本使用 Polyga HDI Compact C210 结构光扫描仪和 FlexiScan3D 软件对石核进行了数字化处理，并使用Geomagic Wrap 软件对扫描模型进行后期处理，包括填补微小孔洞以及修正非流形边缘（non-manifold edges）和自相交（self-intersections）等细微错误。
+
+Archaeological specimens: Archaeological specimens are excavated from the Sandinggai site (后续简写为SDG), Hunan province, China. These specimens have been reported @li2022. SDG分为三个文化层，L2、L3和L4.OSL测年结果显示文化层年代为距今约10-2万年。在\@li2022的研究中，SDG遗址主要存在不同的两套操作序列：其一为以使用chert为主的小型石片体系，其二为使用quartz sandstone为主的大型石片-大型切割工具体系。
+
+本文选取SDG遗址已报道的石核进行分析。After excluding incomplete cores, highly abrasion cores and tested cores, 51 complete well-preserved cores, which show clear technological information remain. Cores derive from Layers 2, 3, and 4 of the site; however, as only two specimens come from Layer 2, statistical analyses in this study are restricted to Layers 3 and 4. 石核分类方式遵循@li2022 的研究，操作细节见原始文献。具体石核类型和原料信息见表。全部石核均使用SHINING 3D的EinScan Pro XS 雕刻专用手持3D扫描仪，配合置物台和相机架实现固定扫描。模型拼接和导出使用扫描设备配套的EinScan-Pro series_v3.1.0.4软件完成，模型处理则在Meshlab和Geomagic Wrap中进行，包括填补微小孔洞以及修正非流形边缘（non-manifold edges）和自相交（self-intersections）等细微错误。
 
 **2.2 Methods**
 
 **2.2.1 Data Extraction**
 
-Scar orientations were digitized in Geomagic Wrap 2021, and their vector coordinates were exported directly.
+石核片疤方向的标定方式遵循@lin2024 的方法，选择＞5 mm的片疤，以向量的首尾两端的两个三维坐标点的形式收集片疤方向数据，使用Geomagic Wrap 2021软件完成并导出。此外，同样遵循@lin2024 的方法，在Geomagic Wrap 2021软件中对石核模型拟合最佳平面，导出该平面的中心点坐标和法向量坐标，以待后续进行模型对齐。
+
+我们使用两种方式对齐石核模型，旨在消除原始的相位差异。其一是@lin2024 的方法，通过石核模型的最佳拟合平面进行对齐，具体流程为：1. 将最佳拟合平面的法向量对齐到三维坐标的Z轴；2.筛选出最长片疤，将其片疤起始点平移至全局原点处。本研究使用R脚本完成上述流程，并导出可交互式html，以直观查看每件模型的对齐结果。第二种方法是本研究首次提出的，基于片疤本身的空间信息进行对齐。具体流程为：1.对每个片疤计算单位向量，然后使用奇异值分解，选择第三个奇异向量作为对齐平面的法向量，其代表了与整体片疤方向相关度最低的方向；2.将法向量与Z轴旋转对齐；3.基于全部片疤坐标计算全局质心，将该质心平移至全局原点处；4.使用SVD第一奇异向量作为整体片疤主方向，将主方向对齐到X轴。
+
+原始向量和两种方法对齐后的向量用于检验不同片疤模式定量指数的旋转不变性。
 
 **2.2.2 Spherical Harmonic Analysis**
 
-Spherical harmonic analysis represents the three-dimensional extension of elliptic Fourier analysis. Its mathematical foundations... Several studies have already applied spherical harmonic methods to lithic analysis: @sholts2017 used spherical harmonics to quantify three-dimensional asymmetry in Clovis points, while @muller2023 and Ye et al. (2026, in reviewed) applied the method to investigate the morphology of spheroids.
+Spherical harmonic analysis (SPHARM or SHA) represents the three-dimensional extension of elliptic Fourier analysis. 这个方法可以使用少量的形态描述符来表征封闭、零亏格物体表面，且这些描述符在旋转、平移和缩放时具有不变性；此外，球谐函数方法也允许通过这些描述符逆向构建物体的原始三维形态。SPHARM的实现是基于Brechbühler等提出的表面参数化方法，通过使用等效坐标 $x(\theta, \phi)$, $y(\theta, \phi)$ 和 $z(\theta, \phi)$，将表面上的每个顶点唯一地映射到单位球面 $S^2$ 上。
 
-In the present study, we apply this method to scar orientation data for the first time, performing spherical harmonic analysis on core scars. For morphological data... For orientation data, a continuous density surface is first fitted using von Mises–Fisher spherical kernel density estimation based on directional statistics, which is then decomposed into spherical harmonics. The spherical harmonic variance and power spectrum are subsequently computed, and an appropriate spectral degree is selected by inspecting the variance contribution across degrees.
+最初，球谐函数方法在医学成像领域被首次使用，用于脑部形态计量分析。此后，随着方法的不断完善，从最初的体素模型，扩展至三角网格模型，球谐函数方法被越来越多地用于不同领域的三维形态分析中。如医学成像、生物形态计量学、工程力学领域的粒子模拟和重建等。最近，Several studies have already applied spherical harmonic methods to lithic analysis: @sholts2017 used spherical harmonics to quantify three-dimensional asymmetry in Clovis points, while @muller2023 and @ye2026 applied the method to investigate the morphology of spheroids. 这些研究表明球谐函数方在三维形态计量分析中已成熟应用，具有实际价值。
+
+然而，球谐函数方法的价值不仅限于形态分析。已有研究表示，形态数据能够使用方向统计方法开展分析，形态和方向数据间存在数学关联。近期，已有文章使用球谐函数方法表征建筑设计的空间桁架结构中节点力的方向，上述研究表明球谐函数方法能够很好地处理方向数据。In our study, we apply this method to scar orientation data for the first time, performing spherical harmonic analysis on core flaking scars. 我们的方法流程如下： 首先，对片疤向量进行von Mises–Fisher spherical kernel density estimation (VMF-sKDE)，使离散的片疤数据转化为球面上的连续密度，表达式为:
+
+$$
+f(\mathbf{g}) = \frac{1}{n} \sum_{i=1}^{n} \exp\left(\kappa \, \mathbf{g} \cdot \mathbf{x}_i\right)
+$$
+
+式中，$\mathbf{g}$是球面网格上的单位向量，$\mathbf{x}_i$是是第i个片疤方向的单位向量，$\mathbf{κ}$是vMF核的集中度参数，由带宽$\mathbf{h}$控制。由式可知：
+
+$$
+\kappa = \frac{1}{h^2}
+$$
+
+带宽与$\mathbf{κ}$呈反比，即带宽越小，$\mathbf{κ}$越大，密度分布越尖锐，反之亦然。本研究中，我们选择0.35作为带宽，此时$\mathbf{κ}$约等于8.16，这个值较为折中。如果$\mathbf{κ}$过大，核密度趋近于Dirac delta函数，球谐展开需要极高的截断阶数才能充分逼近；$\mathbf{κ}$过小，相邻方向的密度贡献相互重叠，导致方向分辨率下降，不同分布模式之间的差异被模糊。该参数值的选择通过原始形态重建得到验证，不同的片疤模式能直接观测到球谐形态差异，表明当前所选带宽能够良好表征方向分布差异。
+
+接着，我们将KDE插值到64×128的Driscoll-Healy网格中，以符合pyshtools球面栅格化要求。而后，对得到的球面坐标进行球谐展开， Each shape $f(\theta, \phi)$ is first mapped onto a unit sphere and then expressed as a combination of spherical harmonic basis functions $Y_l^m(\theta, \phi)$ according to
+
+$$
+f(\theta, \phi) = \sum_{l=0}^{\infty} \sum_{m=-l}^{l} \hat{f}(l, m) \, Y_l^m(\theta, \phi)
+$$
+
+where the set of coefficients $\hat{f}(l, m)$ quantifies how much each basis function contributes to the overall shape. Here, θ and ϕ are angles in spherical coordinates, l and m are order and degree respectively. 在这里，我们对l进行初步筛选，阈值设定为$l_{\max} = 20$，以平衡计算量。已有文献表明，$l_{\max} = 20$足以充分捕捉石制品形态细节。在当前阶数下，我们计算球谐系数，球谐系数包含了相位信息，可以用于重建原始形态；但相位信息会对形态比较的统计分析中引入噪声，因此我们基于球谐系数，计算球谐功率，以功率谱的形式表征无相位信息的纯净球谐形态。功率谱由不同阶的相对比例构成，其总和为1.
+
+对于石核形态分析，方法流程基于\@ye2026，即对三维模型（.stl）进行降采样至20000面，而后通过Laplacian平滑消除局部噪声，使顶点分布均匀；接着，进行质心归一化和主成分主轴对齐，使形态顶点坐标处于相同的笛卡尔坐标系中，而后将该坐标系转换为球坐标系。最后进行球谐展开，在，$l_{\max} = 20$的条件下计算球谐系数和球谐功率谱。整体流程如图所示。
 
 **2.2.3 Data Analysis**
 
-*Rotation Invariance Assessment.* To evaluate whether different scar pattern metrics are rotation-invariant, we employed the Bland–Altman approach. The Bland–Altman analysis is widely used to assess agreement between two sets of measurements and provides a quantitative evaluation through the Bland–Altman plot. In this plot, the x-axis represents the mean of the two measurements, while the y-axis represents their difference. The mean difference is defined as the bias, and the 95% limits of agreement (LoA) are calculated based on this bias. A high level of agreement is inferred when the limits of agreement are narrow, approximately 95% of the data points fall within these limits, and the differences are randomly distributed without systematic trends.
+[Rotation Invariance Assessment.]{.underline} To evaluate whether different scar pattern metrics are rotation-invariant, we employed the Bland–Altman approach. The Bland–Altman analysis is widely used to assess agreement between two sets of measurements and provides a quantitative evaluation through the Bland–Altman plot. In this plot, the x-axis represents the mean of the two measurements, while the y-axis represents their difference. The mean difference is defined as the bias, and the 95% limits of agreement (LoA) are calculated based on this bias. A high level of agreement is inferred when the limits of agreement are narrow, approximately 95% of the data points fall within these limits, and the differences are randomly distributed without systematic trends.
 
-In this study, the Bland–Altman framework was used to test the rotation invariance of three metrics: SPI, fabric analysis (Elongation and Isotropy), and the SPHARM power spectrum. Specifically, each metric was computed under three conditions: (1) using the original scar-vector data, (2) using morphological plane aligned data, and (3) using technological plane aligned data. Pairwise Bland–Altman comparisons were then conducted among these conditions. High agreement between the paired measurements was interpreted as evidence of rotation invariance for the corresponding metric.
+In this study, the Bland–Altman framework was used to test the rotation invariance of three metrics: SPI, fabric analysis (Elongation and Isotropy), and the SP-SPHARM power spectrum. Specifically, each metric was computed under three conditions: (1) using the original scar-vector data, (2) using morphological plane aligned data, and (3) using technological plane aligned data. Pairwise Bland–Altman comparisons were then conducted among these conditions. High agreement between the paired measurements was interpreted as evidence of rotation invariance for the corresponding metric.
 
-*Method comparison.* To evaluate the effectiveness of spherical harmonic analysis for characterizing scar patterns, we compare the classificatory performance of three methods — SPI, Lin's fabric analysis, and spherical harmonics — using the ideal models. Since only one ideal model exists per type, we assess performance using pairwise Euclidean distances: specifically, how far apart different ideal model types are in a standardized feature space. Greater pairwise distances indicate stronger differentiation between types, thereby serving as a measure of each method's discriminatory power. Results are visualized as heatmaps, and mean pairwise distances are calculated for each method.
+[Method comparison.]{.underline} 为对比不同片疤模式分析方法的有效性，我们将使用理想模型数据集和实验石核数据集进行测试。当前的球谐功率阶数为20，为防止在统计模型中引入维度灾难和噪声，在分析前需要对功率谱阶数进行进一步筛选。我们主要通过计算每阶的变异系数、累积功率贡献来综合判断。
 
-To evaluate the differences in information captured by each method, we applied Multiple Regression on Distance Matrices (MRM). Conceptually, MRM is equivalent to standard multiple linear regression; however, it operates on the lower-triangular elements of distance matrices as observational units and employs permutation tests instead of parametric inference to account for the non-independence among matrix entries.
+Since only one ideal model exists per type, we assess performance using pairwise Euclidean distances: specifically, how far apart different ideal model types are in a standardized feature space. Greater pairwise distances indicate stronger differentiation between types, thereby serving as a measure of each method's discriminatory power. Results are visualized as heatmaps, and mean pairwise distances are calculated for each method.
 
-The analytical procedure consisted of four steps. First, distance matrices for the three scar pattern metrics were constructed using standardized Euclidean distance. Second, each method was treated in turn as the dependent variable, with the remaining two distance matrices used as predictors, resulting in three separate MRM models. The coefficient of determination (R²) from each model represents the proportion of variance in the focal method’s distance structure explained jointly by the other two methods, whereas 1 − R² reflects the proportion of method-specific (unique) information.
+对于打制实验石核，我们使用显著性检验框架查看不同片疤模式定量指标的实际表现。如果某个方法能检验出最多石核类型对的差异，则认为该方法具有优势。对于SPI，由于其属于单变量指标，因此我们使用Kruskal-Wallis检验；对于Fabric metrics和SP-SPHARM，我们使用PERMANOVA和PERMDISP，其中PERMANOVA检验整体结构差异，PERMIDSP检验组内离散度。如果PERMIDSP显著，则说明离散度在一定程度上影响整体差异，PERMANOVA的结果需要谨慎解读。为确保统计结果稳定，置换数均设定为9999次。
 
-Third, with the SPHARM power spectrum distance matrix as the dependent variable, we constructed a full model including both SPI and Fabric as predictors, along with two reduced models each containing a single predictor. Based on standard variance partitioning, the total variance in SPHARM was decomposed into four components: the unique contribution of SPI, the unique contribution of Fabric, the shared contribution of both predictors, and the unexplained variance. The latter component represents the proportion of information uniquely captured by SPHARM relative to SPI and Fabric.
+如果前述检验显著，则进一步开展事后检验，我们使用Holm-Bonferroni方法校正事后检验P值，以平衡I类错误和II类错误的发生概率。
 
-Finally, the residual matrix was extracted from the full model. Positive residuals indicate specimen pairs for which dissimilarity in SPHARM space exceeds the joint prediction from SPI and Fabric, suggesting that SPHARM captures additional directional distribution differences for these pairs; negative residuals indicate the opposite pattern. By ranking standardized residuals, specimen pairs that most strongly reflect the unique discriminative capacity of SPHARM were identified and subsequently visualized.
+[Techno-morphological statistical analytical framework.]{.underline} 基于形态球谐功率谱和片疤模式功率谱，我们采用如下框架进行技术-形态分析：首先，检验形态和片疤模式整体是否存在协变关系。其次，通过联合降维，进一步查看形态和片疤模式的互作模式。
 
-*Dimensionality reduction.* Because spherical harmonics describe a nonlinear manifold, linear methods such as PCA are ill-suited to recovering the global structure of spherical harmonic data. We therefore apply UMAP to reduce the dimensionality of the spherical harmonic power spectra.
+*Mantel test and RV coefficient.* 我们采用Mantel检验和基于RV系数的置换检验考察整体协变关系。Mantel检验用于评估两个距离矩阵之间的相关性，其基本原理是通过计算两个矩阵对应元素之间的相关系数，并利用随机置换方法检验相关性的显著性。该方法能够有效检验不同变量体系之间整体结构的一致性。本研究采用斯皮尔曼等级相关系数，置换数设定为9999次。RV系数是一种用于衡量两个多变量数据集整体相关程度的统计指标，RV系数的取值范围为0–1，数值越接近1，表示两个数据集在整体结构上越相似。本研究使用置换检验评估RV系数的显著性，置换数设定为9999次。由于Mantel检验主要关注距离矩阵之间的相关性，而RV系数更强调多变量整体结构的协变关系，因此同时使用两种方法能够从不同统计视角综合评估数据集之间的一致性，从而提高结果解释的可靠性与稳健性。
 
-*Correlation analysis and Mantel test.* Spearman rank correlation coefficients and Mantel tests are used to explore whether systematic associations exist between the technological and morphological characteristics of cores.
+*Co-inertia analysis.* CoIA是一种用于比较两个多变量数据集整体结构关联性的统计方法，其核心思想是寻找两个数据表中变化方向尽可能一致的共同结构，并最大化它们之间的协变关系。该方法通常先分别对两个数据集进行PCA，再通过投影识别两者在样本层面的对应关系，以及变量层面的共同变化模式。与单纯相关分析相比，协惯性分析不仅可以判断两个数据集是否相关，还能够揭示这种相关性主要由哪些样本或变量驱动，因此特别适合用于比较不同物理意义但具有相同样本单位的数据。
 
-*Co-inertia analysis.* This method performs joint dimensionality reduction on two data matrices simultaneously, and is used here to interpret the overall covariation between technological and morphological patterns across cores.
+在CoIA结果图中，坐标轴代表协惯性分析提取的主要协变轴，其解释的是两个数据集之间共享变异的主要方向。每个样本通常以两个点表示，分别对应其在两个数据集中的投影位置，并通过线段相连接。线段的长度反映同一样本在两个数据空间中的差异程度：连线越短，说明该样本在两个数据集中的结构位置越一致，即二者具有较强的对应关系；连线越长，则表明两个数据集对该样本的结构表达差异较大。线段的方向则反映两个数据集在协变空间中的对应变化趋势：若不同样本的连线方向整体较为一致，说明两个数据集之间存在稳定且一致的协变模式；若方向较为离散，则表明二者之间的结构关联较弱或存在局部差异。
+
+为进一步检验CoIA图中样本对应关系的统计特征，本研究采用Kruskal-Wallis检验对连线长度进行比较，以判断不同组样本在两个数据空间中的一致性是否存在显著差异；同时采用Rayleigh检验对连线方向进行检验，以评估连线方向是否呈显著集中分布。前者用于识别样本在两个数据集之间偏离程度的组间差异，后者用于判断连线方向是否具有显著的非随机聚集性。需要指出的是，由于CoIA中的连线方向本质上表示两个数据空间之间的轴向对应关系，而非具有固定起点与终点的单向向量，因此本研究将其视为轴向数据，即相差180°的方向被视为等价方向。在此基础上进行Rayleigh检验，可以有效判断连线方向是否存在显著的非随机聚集性。将两种检验结合使用，可以从“距离”和“方向”两个层面同时评估两个数据集之间的耦合强度与结构一致性，从而提高CoIA结果解释的完整性与可靠性。
+
+**2.2.4 Data Availiability**
+
+本研究的数据和代码全部公开。
 
 # Results
 
@@ -189,7 +227,7 @@ These results suggest that the three methods are complementary. SP-SPHARM descri
 
 **3.2 Joint Analysis of Scar Patterns and Core Morphology in Experimental Knapping Specimens**
 
-The analyses above demonstrate that SP-SPHARM descriptors exhibit broadly valid and significant differences across core types. To explore morphological variation among types, we further performed PERMANOVA tests using M-SPHARM descriptors. No significant differences in overall core morphology were detected across types ($R^2$ = `r sa$perm_morph_r2`, $P$ = `r sa$perm_morph_p`), suggesting that core morphology and reduction strategies may constitute two independent dimensions of variation. To test this hypothesis, we integrated morphological and SP-SPHARM descriptors using Mantel tests and Co-Inertia Analysis (CoIA). The global Mantel test revealed no significant correlation between the two descriptor sets (Mantel's $r$ = `r cia$mantel_global_r`, $P$ = `r cia$mantel_global_p`), and the RV coefficient derived from CoIA likewise did not reach significance ($RV$ = `r cia$rv`, $P$ = `r cia$rv_p`). 
+The analyses above demonstrate that SP-SPHARM descriptors exhibit broadly valid and significant differences across core types. To explore morphological variation among types, we further performed PERMANOVA tests using M-SPHARM descriptors. No significant differences in overall core morphology were detected across types ($R^2$ = `r sa$perm_morph_r2`, $P$ = `r sa$perm_morph_p`), suggesting that core morphology and reduction strategies may vary along largely decoupled axes at the assemblage level. To test this hypothesis, we integrated morphological and SP-SPHARM descriptors using Mantel tests and Co-Inertia Analysis (CoIA). The global Mantel test revealed no significant correlation between the two descriptor sets (Mantel's $r$ = `r cia$mantel_global_r`, $P$ = `r cia$mantel_global_p`), and the RV coefficient derived from CoIA likewise did not reach significance ($RV$ = `r cia$rv`, $P$ = `r cia$rv_p`).
 
 The CoIA results provide further detail on the covariation between morphology and scar patterns. The first two CoIA axes together account for 88.8% of total covariation (Axis 1 = 70.3%, Axis 2 = 18.5%; @fig-exp-cia). Axis 1 primarily contrasts cores with elongated morphologies and longitudinally scars against those with flatter shape and more centripetal scar arrangements. Axis 2 captures residual variation in scar asymmetry and lateral organisation: on the scar pattern side, it distinguishes bidirectional removals from unidirectional flaking pattern; on the morphology side, it reflects differences in core thickness relative to width — that is, how plump or flat the core is in cross-section (@fig-exp-cia).
 
@@ -225,9 +263,7 @@ sdg$fig_coia_composite
 
 To examine how line features derived from CoIA vary across grouping conditions, we analyzed line length and direction separately. Kruskal–Wallis tests showed no significant differences in line length among layers (χ² = `r sdg$kw_arrow_layer_chi2`, df = 1, p = `r sdg$kw_arrow_layer_p`), raw materials (χ² = `r sdg$kw_arrow_rawmat_chi2`, df = 1, p = `r sdg$kw_arrow_rawmat_p`), or core types (χ² = `r sdg$kw_arrow_type_chi2`, df = 5, p = `r sdg$kw_arrow_type_p`; @fig-coia-composite), indicating that the decoupling between morphology and scar patterns is consistent in magnitude across all grouping conditions. Rayleigh tests on line direction showed random distributions for most groups and core types, with the only exception of Unifacial unidirectional cores, which exhibited significantly concentrated directionality (U = `r sdg$rayleigh_uni_U`, p = `r sdg$rayleigh_uni_p`) with a mean direction of approximately `r sdg$mean_dir_uni`°, indicating that their techno–morphology relationship is specifically structured along Axis 1. More specifically, regardless of how individual specimens vary in morphology and scar pattern space, Unifacial unidirectional cores consistently shift toward the flattened end of the morphological spectrum and the unidirectional end of the scar pattern spectrum — a directional tendency that is stable across all specimens of this type.
 
-To explore the factors driving variation in morphology and scar patterns, PERMANOVA tests were conducted for the three grouping variables. Core type had a significant effect on both morphological variation (R² = `r sdg$perm_morph_type_r2`, F = `r sdg$perm_morph_type_f`, p = `r sdg$perm_morph_type_p`) and scar pattern variation (R² = `r sdg$perm_scar_type_r2`, F = `r sdg$perm_scar_type_f`, p = `r sdg$perm_scar_type_p`), indicating systematic differences in both dimensions among core types. Raw material had a significant effect on morphology (R² = `r sdg$perm_morph_rawmat_r2`, F = `r sdg$perm_morph_rawmat_f`, p = `r sdg$perm_morph_rawmat_p`), though pairwise comparisons between chert and sandstone did not survive Holm correction (p = `r sdg$perm_rawmat_pairwise_p`). Raw material had no significant effect on scar direction variation (R² = `r sdg$perm_scar_rawmat_r2`, F = `r sdg$perm_scar_rawmat_f`,
-p = `r sdg$perm_scar_rawmat_p`), indicating that knappers applied consistent reduction strategies regardless of raw material — the physical properties of raw materials shaped core morphology outcomes but did not influence technological decision-making. Layer had no significant effect on either morphology (R² = `r sdg$perm_morph_layer_r2`, F = `r sdg$perm_morph_layer_f`, P = `r sdg$perm_morph_layer_p`) or scar pattern (R² = `r sdg$perm_scar_layer_r2`, F = `r sdg$perm_scar_layer_f`,
-p = `r sdg$perm_scar_layer_p`), suggesting continuity in reduction strategies across layers, with no clear evidence of technological change.
+To explore the factors driving variation in morphology and scar patterns, PERMANOVA tests were conducted for the three grouping variables. Core type had a significant effect on both morphological variation (R² = `r sdg$perm_morph_type_r2`, F = `r sdg$perm_morph_type_f`, p = `r sdg$perm_morph_type_p`) and scar pattern variation (R² = `r sdg$perm_scar_type_r2`, F = `r sdg$perm_scar_type_f`, p = `r sdg$perm_scar_type_p`), indicating systematic differences in both dimensions among core types. Raw material had a significant effect on morphology (R² = `r sdg$perm_morph_rawmat_r2`, F = `r sdg$perm_morph_rawmat_f`, p = `r sdg$perm_morph_rawmat_p`), though pairwise comparisons between chert and sandstone did not survive Holm correction (p = `r sdg$perm_rawmat_pairwise_p`). Raw material had no significant effect on scar direction variation (R² = `r sdg$perm_scar_rawmat_r2`, F = `r sdg$perm_scar_rawmat_f`, p = `r sdg$perm_scar_rawmat_p`), indicating that knappers applied consistent reduction strategies regardless of raw material — the physical properties of raw materials shaped core morphology outcomes but did not influence technological decision-making. Layer had no significant effect on either morphology (R² = `r sdg$perm_morph_layer_r2`, F = `r sdg$perm_morph_layer_f`, P = `r sdg$perm_morph_layer_p`) or scar pattern (R² = `r sdg$perm_scar_layer_r2`, F = `r sdg$perm_scar_layer_f`, p = `r sdg$perm_scar_layer_p`), suggesting continuity in reduction strategies across layers, with no clear evidence of technological change.
 
 Taken together, the core assemblage from Sandinggai shows a systematic decoupling between core morphology and reduction strategy. This decoupling is not limited to any specific condition but appears as a general pattern across different time periods, raw materials, and core types. Morphological variation is primarily associated with raw material and core type, while scar direction variation shows no significant response to these factors. This suggests that reduction strategies may be relatively stable and largely independent of changes in raw material or core type — possibly reflecting a consistent technological tradition maintained by knappers throughout the core reduction process.
 
