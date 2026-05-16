@@ -83,9 +83,15 @@ sdg         <- tar_read(sdg_cia_analysis)
 
 # Introduction
 
-Cores preserve the most complete record of reduction strategies among all lithic artifact types, making them indispensable for understanding hominin technological behavior. Traditional analyses have relied primarily on the *chaîne opératoire* framework, employing qualitative observations of scar patterns and core morphology to infer reduction strategies. Over the past two decades, lithic studies have witnessed a marked shift toward quantitative approaches, substantially enhancing the scientific rigor and reproducibility of lithic analysis. These advances include the application of multivariate statistical methods, 2D geometric morphometric analyses based on landmarks or Fourier series, and morphological analyses derived from 3D models.
+Cores preserve the most informative record of reduction strategies in lithic assemblage, 是理解石制品组合中消减策略的最直接的证据. 基于对石核的分析，能够探讨打制者的技术策略、个体技术水平、石制品组合的技术传统；而也可以推广到认知能力、流动模式和居址类型和社会学习机制等更宏观层面的议题。
 
-Despite these developments, existing quantitative studies have largely focused on morphological description, leaving the systematic analysis of flaking direction comparatively underdeveloped. To date, only two studies have addressed this issue directly — @clarkson2006 and @lin2024 — yet both rely on one or two variables to characterize overall scar patterns, inevitably entailing a loss of information. This limitation is evident in their capacity to discriminate certain scar configurations: the SPI method struggles to differentiate discoidal cores from Levallois cores, while the Lin's method has difficulty distinguishing unipolar from bipolar reduction patterns. More broadly, most existing approaches are methodologically fragmented, with variables selected *a priori* to match predefined technological categories. This constrains their applicability across different core types and assemblages from different periods, and ultimately limits their generalizability.
+长期以来，对于石核的分析集中于类型学，即通过对每件石核标本给定具体类型，并结合组合中剥坯产物的技术特征来理解消减策略。这些石核类型往往是一系列不同层级离散特征的集体反映，如整体形态、片疤模式、剥片顺序、片疤角度、剥片面和台面特征等，定义了如Levallois石核、discoidal石核、Laminar石核等具体的石核类型。但是，这些类型往往不处于统一的描述框架中，不同类型可能使用完全不同的术语；此外，即便这些术语和技术类型已有详细定义，但在实践中，仍存在较高的不确定性，从而导致观察者之间的分类差异，甚至个体内部的观察差异。一个例子是对中国Levallois技术的争议。即便研究者普遍参考Boeda的详细鉴定标准来识别Levallois石核，但对Shiyu遗址和Guanyindong遗址的部分石核是否属于Levallois石核，至今仍有不同意见。一些学者尝试采用统一术语的石核分类框架，如@conard2004的构建的“Unified Lithic Taxonomy”，和Logic analytical system中对不同volumetric structures of exploitation (VSE)的定义，这些方法使用相同的术语和观测标准，在一定程度上能够降低不同个体分类实践的差异。
+
+然而，无论使用哪种术语体系和分类框架，多数研究在石核观测和分析层面上仍然是定性主导的。令人欣喜的是，近年来越来越多的研究注重精确度更高，且具备可复现性的定量分析，尤其体现在三维技术的使用上。这些对石核的三维研究主要有Traditional analyses have relied primarily on the *chaîne opératoire* framework, employing qualitative observations of scar patterns and core morphology to infer reduction strategies. Over the past two decades, lithic studies have witnessed a marked shift toward quantitative approaches, substantially enhancing the scientific rigor and reproducibility of lithic analysis. These advances include the application of multivariate statistical methods, 2D geometric morphometric analyses based on landmarks or Fourier series, and morphological analyses derived from 3D models.
+
+Despite these developments, existing quantitative studies have largely focused on morphological description, leaving the systematic analysis of flaking direction comparatively underdeveloped. To date, only two studies have addressed this issue directly — @clarkson2006 and @lin2024 — 前者创建了一个单变量指数Scar Pattern Index (SPI)，后者基于埋藏学的Fabric analysis框架，以双变量指数的形式表征石核片疤模式.目前，这两种方法已在多个研究中被广泛使用。但是，这两种方法也存在限制。 例如，the SPI method struggles to differentiate discoidal cores from Levallois cores, while the fabric method has difficulty distinguishing unidirectional from bidirectional reduction patterns. 
+
+More broadly, most existing approaches are methodologically fragmented, with variables selected *a priori* to match predefined technological categories. This constrains their applicability across different core types and assemblages from different periods, and ultimately limits their generalizability.
 
 Against this background, the present study proposes a new quantitative analytical framework for cores, designed to address two interrelated problems: (1) to improve methods for analyzing flaking pattern on cores; and (2) to integrate scar pattern analysis and morphological analysis within a unified mathematical framework, supported by multivariate statistical methods. By presenting this comprehensive analytical framework, the study aims to offer a methodological contribution to the quantitative study of core analysis.
 
@@ -101,15 +107,15 @@ Experimental knapping cores: 实验石核由Chris Clarkson教授制作，共58�
 
 Archaeological specimens: Archaeological specimens are excavated from the Sandinggai site (后续简写为SDG), Hunan province, China. These specimens have been reported @li2022. SDG分为三个文化层，L2、L3和L4.OSL测年结果显示文化层年代为距今约10-2万年。在\@li2022的研究中，SDG遗址主要存在不同的两套操作序列：其一为以使用chert为主的小型石片体系，其二为使用quartz sandstone为主的大型石片-大型切割工具体系。
 
-本文选取SDG遗址已报道的石核进行分析。After excluding incomplete cores, highly abrasion cores and tested cores, 51 complete well-preserved cores, which show clear technological information remain. Cores derive from Layers 2, 3, and 4 of the site; however, as only two specimens come from Layer 2, statistical analyses in this study are restricted to Layers 3 and 4. 石核分类方式遵循@li2022 的研究，操作细节见原始文献。具体石核类型和原料信息见表。全部石核均使用SHINING 3D的EinScan Pro XS 雕刻专用手持3D扫描仪，配合置物台和相机架实现固定扫描。模型拼接和导出使用扫描设备配套的EinScan-Pro series_v3.1.0.4软件完成，模型处理则在Meshlab和Geomagic Wrap中进行，包括填补微小孔洞以及修正非流形边缘（non-manifold edges）和自相交（self-intersections）等细微错误。
+本文选取SDG遗址已报道的石核进行分析。After excluding incomplete cores, highly abrasion cores and tested cores, 51 complete well-preserved cores, which show clear technological information remain. Cores derive from Layers 2, 3, and 4 of the site; however, as only two specimens come from Layer 2, statistical analyses in this study are restricted to Layers 3 and 4. 石核分类方式遵循\@li2022 的研究，操作细节见原始文献。具体石核类型和原料信息见表。全部石核均使用SHINING 3D的EinScan Pro XS 雕刻专用手持3D扫描仪，配合置物台和相机架实现固定扫描。模型拼接和导出使用扫描设备配套的EinScan-Pro series_v3.1.0.4软件完成，模型处理则在Meshlab和Geomagic Wrap中进行，包括填补微小孔洞以及修正非流形边缘（non-manifold edges）和自相交（self-intersections）等细微错误。
 
 **2.2 Methods**
 
 **2.2.1 Data Extraction**
 
-石核片疤方向的标定方式遵循@lin2024 的方法，选择＞5 mm的片疤，以向量的首尾两端的两个三维坐标点的形式收集片疤方向数据，使用Geomagic Wrap 2021软件完成并导出。此外，同样遵循@lin2024 的方法，在Geomagic Wrap 2021软件中对石核模型拟合最佳平面，导出该平面的中心点坐标和法向量坐标，以待后续进行模型对齐。
+石核片疤方向的标定方式遵循\@lin2024 的方法，选择＞5 mm的片疤，以向量的首尾两端的两个三维坐标点的形式收集片疤方向数据，使用Geomagic Wrap 2021软件完成并导出。此外，同样遵循\@lin2024 的方法，在Geomagic Wrap 2021软件中对石核模型拟合最佳平面，导出该平面的中心点坐标和法向量坐标，以待后续进行模型对齐。
 
-我们使用两种方式对齐石核模型，旨在消除原始的相位差异。其一是@lin2024 的方法，通过石核模型的最佳拟合平面进行对齐，具体流程为：1. 将最佳拟合平面的法向量对齐到三维坐标的Z轴；2.筛选出最长片疤，将其片疤起始点平移至全局原点处。本研究使用R脚本完成上述流程，并导出可交互式html，以直观查看每件模型的对齐结果。第二种方法是本研究首次提出的，基于片疤本身的空间信息进行对齐。具体流程为：1.对每个片疤计算单位向量，然后使用奇异值分解，选择第三个奇异向量作为对齐平面的法向量，其代表了与整体片疤方向相关度最低的方向；2.将法向量与Z轴旋转对齐；3.基于全部片疤坐标计算全局质心，将该质心平移至全局原点处；4.使用SVD第一奇异向量作为整体片疤主方向，将主方向对齐到X轴。
+我们使用两种方式对齐石核模型，旨在消除原始的相位差异。其一是\@lin2024 的方法，通过石核模型的最佳拟合平面进行对齐，具体流程为：1. 将最佳拟合平面的法向量对齐到三维坐标的Z轴；2.筛选出最长片疤，将其片疤起始点平移至全局原点处。本研究使用R脚本完成上述流程，并导出可交互式html，以直观查看每件模型的对齐结果。第二种方法是本研究首次提出的，基于片疤本身的空间信息进行对齐。具体流程为：1.对每个片疤计算单位向量，然后使用奇异值分解，选择第三个奇异向量作为对齐平面的法向量，其代表了与整体片疤方向相关度最低的方向；2.将法向量与Z轴旋转对齐；3.基于全部片疤坐标计算全局质心，将该质心平移至全局原点处；4.使用SVD第一奇异向量作为整体片疤主方向，将主方向对齐到X轴。
 
 原始向量和两种方法对齐后的向量用于检验不同片疤模式定量指数的旋转不变性。
 
@@ -167,9 +173,9 @@ Since only one ideal model exists per type, we assess performance using pairwise
 
 为进一步检验CoIA图中样本对应关系的统计特征，本研究采用Kruskal-Wallis检验对连线长度进行比较，以判断不同组样本在两个数据空间中的一致性是否存在显著差异；同时采用Rayleigh检验对连线方向进行检验，以评估连线方向是否呈显著集中分布。前者用于识别样本在两个数据集之间偏离程度的组间差异，后者用于判断连线方向是否具有显著的非随机聚集性。需要指出的是，由于CoIA中的连线方向本质上表示两个数据空间之间的轴向对应关系，而非具有固定起点与终点的单向向量，因此本研究将其视为轴向数据，即相差180°的方向被视为等价方向。在此基础上进行Rayleigh检验，可以有效判断连线方向是否存在显著的非随机聚集性。将两种检验结合使用，可以从“距离”和“方向”两个层面同时评估两个数据集之间的耦合强度与结构一致性，从而提高CoIA结果解释的完整性与可靠性。
 
-**2.2.4 Data Availiability**
+**2.2.4 Reproducibility and open source materials**
 
-本研究的数据和代码全部公开。
+To enable re-use of our materials and improve reproducibility and transparency, we include the entire R code used for all the analysis and visualizations contained in this paper in our online repository at xx. Also in this version-controlled compendium are the raw data for all the tests reported here, as well as an R package that makes these methods available for use with other datasets. All of the figures, tables and statistical test results presented here can be independently reproduced with the code and data in this repository.
 
 # Results
 
