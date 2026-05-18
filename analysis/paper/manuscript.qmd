@@ -83,15 +83,19 @@ sdg         <- tar_read(sdg_cia_analysis)
 
 # Introduction
 
-Cores preserve the most informative record of reduction strategies in lithic assemblage, 是理解石制品组合中消减策略的最直接的证据. 基于对石核的分析，能够探讨打制者的技术策略、个体技术水平、石制品组合的技术传统；也可以推广到认知能力、流动模式和居址类型和社会学习机制等更宏观层面的议题。
+石核保存了石制品组合中最直接、最丰富的消减策略信息，因此是理解打制者技术行为的关键证据。基于石核分析，不仅可以讨论古人类的技术策略、个体技术水平以及石制品组合所体现的技术传统，还可以进一步延伸到认知能力、流动模式、居址类型以及社会学习机制等更加宏观的考古学问题。
 
-长期以来，对于石核的分析集中于类型学，即通过对每件石核标本给定具体类型，并结合组合中剥坯产物的技术特征来理解消减策略。这些石核类型往往是一系列不同层级离散特征的集体反映，如整体形态、片疤模式、剥片角度、剥片面和台面特征等，定义了如Levallois石核、discoidal石核、Laminar石核等具体的石核类型。但是，这些类型往往不处于统一的描述框架中，不同类型可能使用完全不同的术语；此外，即便这些术语和技术类型已有详细定义，但在实践中，仍存在较高的不确定性，从而导致观察者之间的分类差异，甚至个体内部的观察差异。一个例子是对中国Levallois技术的争议。即便研究者普遍参考Boeda的详细鉴定标准来识别Levallois石核，但对Shiyu遗址和Guanyindong遗址的部分石核是否属于Levallois石核，至今仍有不同意见。一些学者尝试采用统一术语的石核分类框架，如@conard2004的构建的“Unified Lithic Taxonomy”，和Logic analytical system中对不同volumetric structures of exploitation (VSE)的定义，这些方法使用相同的术语和观测标准，在一定程度上能够降低不同个体分类实践的差异。
+长期以来，对石核的分析主要建立在类型学基础之上，即通过为每件石核赋予特定类型，有时结合剥坯产物的技术特征来理解消减策略。不同石核类型通常反映了一系列分层次的离散特征，包括整体形态、片疤模式、剥片角度、剥片面与台面特征等，由此定义出Levallois石核、discoidal石核、laminar石核等具体类型。然而，这类类型学框架往往并不统一，不同类型之间可能采用完全不同的描述术语；即便相关术语和技术定义已较为详细，但是在实际观测中仍然存在较高的不确定性，进而导致不同分析者之间，甚至同一分析者在不同时间点上产生分类差异。中国Levallois技术的争议便是一个典型案例，尽管研究者通常依据\@boeda1995提出的详细标准识别Levallois石核，但对于Shiyu遗址和Guanyindong遗址中的部分石核是否应被归入Levallois类型，迄今仍存在分歧。为降低这种分类不一致，一些学者尝试建立统一术语的石核分类框架，例如\@conard2004提出的“Unified Lithic Taxonomy”，以及Logic analytical system中对不同 volumetric structures of exploitation (VSE) 的定义。这些类型学方法通过共享同一套术语和观测标准，在一定程度上减少了个体之间在分类实践上的差异。
 
-然而，无论使用哪种术语体系和分类框架，多数研究在石核观测和分析层面上仍然是定性主导的。令人欣喜的是，近年来越来越多的石制品研究注重精确度更高，且具备可复现性的定量分析；3D模型技术提供了超越以往线性测量数据的高精度数据提取方式。虽然目前的3D分析已在多个议题中广泛使用，但针对石核的3D定量分析仍然有限。从这些石核3D分析可以发现，当前的3D石核分析主要有两条路径，其一是在3D模型上提取定制化的技术指标，如石核台面角度、石皮比例、消减程度、体积比、片疤模式等。这些指标往往来源于作者的预设，旨在反映石核的某一个方面的信息。其二则是对石核整体形态进行捕获和分析，多使用Landmark方法，近期有学者将球谐函数方法用于分析石球和多面体石核的形态。需要指出的是，两条路径不是分离的，而是互补的，已有研究结合两条路径得到了深入认识。
+然而，无论使用哪种术语体系或分类框架，多数研究在石核观测和分析层面总体上仍以定性判断为主导。近年来，随着石制品研究对精确性与可复现性的要求不断提高，定量分析方法开始受到越来越多关注。其中，3D模型技术为石制品研究提供了比传统线性测量和定性观测更高精度的数据获取方式，且已在多个议题或不同石制品类型中得到广泛应用。但是，当前针对石核的3D定量研究仍相对有限。现有的石核3D分析大体可归纳为两条路径：其一是在3D模型上提取定制化的技术指标，如石核台面角度、石皮比例、消减程度、体积比、片疤模式等；这些指标往往基于研究者的预设，旨在捕捉石核的某一特定技术维度。其二则侧重于石核整体形态的识别与分析，这类研究多使用Landmark方法，近期也有学者将球谐函数引入石球和多面体石核的形态研究。需要指出的是，这两条路径并非彼此割裂，而是具有明显的互补性，已有研究正是在结合二者之后获得了更深入的认识。
 
-然而，这些方法也存在限制。正如@muller2026所指出的，对整体形态采用Landmark方法，把连续的形态坐标用硬性截断的少数landmark表征，会很大程度地压缩信息。此外，landmark存在同源性假设，目前的研究中对石核边缘放置landmark，石核表面放置semi-landmark的方法，仅适用于Levallois石核这类具有高标准化的技术类型，对多面体石核这类具有更高变异的类型并不适用；即便仅针对Levallois石核，不同研究者的landmark配置方案也存在差异，导致形态空间无法直接对比。虽然已有学者对球谐函数方法进行了探索，其对形态的捕获精度要高于landmark方法，但目前的研究仅针对石球和多面体石核等类型，这些类型整体接近球形，天然适合球谐函数方法，但对于形态变异更大的其他石核类型，则尚未开展实践。此外，当前研究对于片疤模式的探索仍然有限。仅@clarkson2006和@lin2024提出了定量解决方案。前者创建了一个单变量指数Scar Pattern Index (SPI)，用合成向量长度与总长度的比值来衡量方向集中程度；后者基于埋藏学的Fabric analysis框架，用方向张量的特征值来描述方向在两个正交维度下的离散程度，这两个研究为推动片疤模式分析的定量化做出显著贡献。然而，这两个方法均通过将片疤向量压缩至一个或几个参数值，实质上都是在回答“片疤分布有多离散”的问题，而非直接表征片疤模式的结构。这样势必会产生信息丢失，事实上，这也已经体现在论文的结果中了，the SPI method struggles to differentiate discoidal cores from Levallois cores, while the fabric method has difficulty distinguishing unidirectional from bidirectional reduction patterns.因此，亟需开发新的三维分析方法，以解决上述问题。
+尽管这些方法已经显著拓展了石核研究的技术手段，并弥补了传统分析方法的部分局限，但其自身仍存在若干不足。正如\@muller2026所指出的，landmark方法需要将连续的形态变化压缩为少数离散点位，从而不可避免地造成信息损失。此外，landmark方法依赖同源性假设，当前研究中对石核边缘放置landmark，石核表面放置semi-landmark的配置方案，主要适用于Levallois这类标准化程度较高的技术类型；对多面体石核等变异更大的类型，或不同石核类型之间的比较分析，则难以实践；即便限定在Levallois石核内部，不同研究者采用的landmark配置方案也存在差异，从而导致不同研究的形态空间难以直接比较。相比之下，球谐函数方法不依赖同源性假设，能够更完整地捕获形态信息，并且具备跨类型比较的潜力。其基于球谐系数计算的功率谱还具有旋转不变性，因此不需要对石核进行人工定向。然而，目前该方法的应用仍主要集中于石球和多面体石核等整体形态接近球体的类型；对于形态变异更大的其他石核类型，仍缺乏实践。
 
-Against this background, the present study proposes a new quantitative analytical framework for cores, designed to address two interrelated problems: (1) to improve methods for analyzing flaking pattern on cores; and (2) to integrate scar pattern analysis and morphological analysis within a unified mathematical framework, supported by multivariate statistical methods. By presenting this comprehensive analytical framework, the study aims to offer a methodological contribution to the quantitative study of core analysis.
+同时，关于片疤模式的定量研究也相对有限。目前仅有\@clarkson2006和@lin2024提出了较系统的量化方案。前者构建了单变量指标 Scar Pattern Index (SPI)，通过合成向量长度与总长度之比衡量方向集中程度；后者则借鉴埋藏学中的 fabric analysis 框架，利用方向张量的特征值描述片疤方向在两个正交维度上的离散程度。二者都为片疤模式的定量化做出了重要贡献，但本质上都将复杂的片疤向量压缩为一个或少数几个参数，回答的主要是“片疤分布有多离散”这一问题，而非直接表征片疤模式本身的结构特征。由此不可避免地带来信息损失，而这一局限也已体现在相关研究结果中：SPI和fabric方法在区分宏观模式时较为有效，例如能够识别以unidirectional、bidirectional等单一或对向台面剥坯为特征的石核，以及Levallois、discoidal等存在相交剥片面的石核；但在这些大类内部的进一步区分上，其能力则相对有限。上述限制表明，现有方法体系仍存在拓展空间。
+
+此外，片疤组织与石核形态之间存在怎样的关联，一直是石核研究中的核心问题之一。已有研究表明，打制者会通过不同的剥片组织方式塑造特定形态，或在消减过程中对石核形态进行持续管理；但是，石核形态同样可能受到原料属性、消减程度等客观因素的制约，并不完全由技术意图所决定。因此，目前仍缺乏一种能够在统一分析框架中同时表征技术组织与石核形态，并直接检验二者协变关系的定量方法。这一局限使得现有研究尚难以进一步厘定石核消减序列中“技术意图”与“客观约束”的相对作用。
+
+在此背景下，本研究系统探索了球谐函数方法在石核分析上的应用，并据此建立技术与形态整合的量化框架。在形态分析方面，我们使用球谐函数方法检验其对不同类型石核的适用性，而不将其限定于整体近球形的石核类型。在片疤模式分析方面，我们同样采用球谐函数来表征石核的整体片疤组织。由于单个石核上的片疤数据通常较为稀疏，我们首先通过核密度估计将离散的片疤向量转换为连续分布，尽可能地保留其原始空间分布模式；随后，对这一连续分布进行球谐展开，计算球谐系数和功率谱等描述子。借助这一流程，技术信息与形态信息得以置于同一数学框架内，从而减少了在整合不同量纲数据时对标准化方案和权重设定的主观依赖。在此基础上，我们进一步引入 Co-inertial Analysis方法，将不同数据集的降维结果投影到同一协方差坐标系中，从而在统一的特征空间中观察每件石核的技术—形态协变模式。结合球谐函数的可重建性，我们还可以沿 CoIA 协变轴直接重建技术和形态的变化轨迹，使统计结果能够回到具体的考古学情境中解释。由此，石核变异不再只是静态类型的排列，而是可以在一个连续谱系中被理解和讨论。
 
 # Material and Methods
 
@@ -162,6 +166,8 @@ Since only one ideal model exists per type, we assess performance using pairwise
 如果前述检验显著，则进一步开展事后检验，我们使用Holm-Bonferroni方法校正事后检验P值，以平衡I类错误和II类错误的发生概率。
 
 [Techno-morphological statistical analytical framework.]{.underline} 基于形态球谐功率谱和片疤模式功率谱，我们采用如下框架进行技术-形态分析：首先，检验形态和片疤模式整体是否存在协变关系。其次，通过联合降维，进一步查看形态和片疤模式的互作模式。
+
+*Isometric log-ratio transformation.* 由于球谐功率谱符合成分数据特性，即功率谱总和为固定值，因此单独阶功率的变化会导致其他阶功率共变，在数据空间中存在“伪相关性”，违反数据独立性假设。因此，本研究采用Isometric log-ratio transformation (ILR)处理功率谱数据。ILR变换基于CoDA理论，通过对各阶功率进行对数比计算，将数据投影在欧式空间中，而后进行统计分析，从而消除闭合效应带来的统计学偏差。
 
 *Mantel test and RV coefficient.* 我们采用Mantel检验和基于RV系数的置换检验考察整体协变关系。Mantel检验用于评估两个距离矩阵之间的相关性，其基本原理是通过计算两个矩阵对应元素之间的相关系数，并利用随机置换方法检验相关性的显著性。该方法能够有效检验不同变量体系之间整体结构的一致性。本研究采用斯皮尔曼等级相关系数，置换数设定为9999次。RV系数是一种用于衡量两个多变量数据集整体相关程度的统计指标，RV系数的取值范围为0–1，数值越接近1，表示两个数据集在整体结构上越相似。本研究使用置换检验评估RV系数的显著性，置换数设定为9999次。由于Mantel检验主要关注距离矩阵之间的相关性，而RV系数更强调多变量整体结构的协变关系，因此同时使用两种方法能够从不同统计视角综合评估数据集之间的一致性，从而提高结果解释的可靠性与稳健性。
 
@@ -272,6 +278,13 @@ To explore the factors driving variation in morphology and scar patterns, PERMAN
 Taken together, the core assemblage from Sandinggai shows a systematic decoupling between core morphology and reduction strategy. This decoupling is not limited to any specific condition but appears as a general pattern across different time periods, raw materials, and core types. Morphological variation is primarily associated with raw material and core type, while scar direction variation shows no significant response to these factors. This suggests that reduction strategies may be relatively stable and largely independent of changes in raw material or core type — possibly reflecting a consistent technological tradition maintained by knappers throughout the core reduction process.
 
 # Discussion
+
+3D方法已广泛应用。
+球谐函数方法优势，目前已有应用。我们的研究拓展了这一方法。
+我们引入coia方法，分析框架在实验石核中发现了全局解耦和levallois 特殊性。
+在SDG分析中，先前的研究发现了...。我们的新方法验证了部分结论，也发现了新的更具体的结果。此外，Unifacial unidirectional cores需要更多关注。
+但是，我们的分析也存在局限性。样本量限制导致探索性结果，并不是实证结论。就方法本身，做的是整体层级的分析，需要结合更多定制化技术指标进行更多细致的分析。但不论怎样，我们提出了创新的方法和系统的分析框架，未来可以在框架中进行拓展。
+对于更宏观的方面，我们的方法强化了石核的定量分析。为当前的考古学问题提供了潜在的解决方案。例如，中国地区的Levallois技术争议。再如，勒瓦娄哇技术与阿舍利技术的演化关联，已有文献基于landmark方法评估勒瓦娄哇石核、预制石核和阿舍利两面器，但正如引言提到的，该方法难以统合不同研究者的研究结果，限制了更大层面的分析，我们的方法能够提供解决方案。此外，技术-形态的关联长期以来重要问题，是不是存在关联？原料、消减程度和文化传统对这一关联均有什么影响？目前已有文章讨论这一议题，并存在不同认识。我们的方法也能为探讨这一议题提供帮助。目前，已有基于系统发育分析的研究，使用傅里叶级数，但仅用了剥片产品的形态；而球谐函数方法作为傅里叶级数的拓展，能够整合到系统发育分析中，尤其是本研究提供的片疤模式分析，能为认识古人类的消减策略提供直接证据，未来结合系统发育分析也许能够为探讨人群技术交流、社会学习等方面提供重要证据。
 
 # Conclusion
 
