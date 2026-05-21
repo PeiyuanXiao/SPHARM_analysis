@@ -29,3 +29,5 @@ figure origin/
 
 analysis/output/figures/reconstruction/
 analysis/output/figures/reconstruction_sdg/
+.Rproj.user
+.positai

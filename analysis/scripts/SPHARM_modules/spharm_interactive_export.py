@@ -450,8 +450,9 @@ function downloadBlob(data,filename,mime){{
   const blob=new Blob([data],{{type:mime}});
   const url=URL.createObjectURL(blob);
   const a=document.createElement('a');
-  a.href=url;a.download=filename;a.click();
-  URL.revokeObjectURL(url);
+  a.href=url;a.download=filename;
+  document.body.appendChild(a);a.click();document.body.removeChild(a);
+  setTimeout(()=>URL.revokeObjectURL(url),1000);
 }}
 
 /* ================================================================
@@ -821,14 +822,14 @@ document.getElementById('btnSnap').addEventListener('click',()=>{{
     ctx.font='12px JetBrains Mono, monospace';ctx.fillStyle='#7878a0';
     const info=DATA[curIdx].id+(showMean?' (type mean)':'')+' | l≤'+curDeg+' | '+curMatKey;
     ctx.fillText(info,20,c.height-15);
-    downloadBlob(c.toDataURL('image/png').split(',')[1]?c.toDataURL('image/png'):'',
-      'spharm_'+DATA[curIdx].id+'_l'+curDeg+'.png','image/png');
-    // actually use blob approach
     c.toBlob(blob=>{{
+      if(!blob)return;
       const url=URL.createObjectURL(blob);
-      const a=document.createElement('a');a.href=url;
-      a.download='spharm_'+DATA[curIdx].id.replace(/\\s/g,'_')+'_l'+curDeg+'.png';
-      a.click();URL.revokeObjectURL(url);
+      const a=document.createElement('a');
+      a.href=url;
+      a.download='spharm_'+DATA[curIdx].id.replace(/[\\s\\/]/g,'_')+'_l'+curDeg+'.png';
+      document.body.appendChild(a);a.click();document.body.removeChild(a);
+      setTimeout(()=>URL.revokeObjectURL(url),1000);
     }},'image/png');
   }}
   imgM.onload=done;imgS.onload=done;
@@ -839,22 +840,31 @@ document.getElementById('btnSnap').addEventListener('click',()=>{{
    Export: OBJ
    ================================================================ */
 document.getElementById('btnOBJ').addEventListener('click',()=>{{
-  const name=DATA[curIdx].id.replace(/\\s/g,'_');
-  let obj='';
+  const name=DATA[curIdx].id.replace(/[\\s\\/]/g,'_');
+  let obj='';let vOffset=0;
   const gM=vpM.getGeom();
-  if(gM)obj+=geometryToOBJ(gM,'morph_'+name)+'\\n';
+  if(gM){{
+    obj+='# morph: '+name+'\\n';
+    const pos=gM.getAttribute('position');
+    const idx=gM.getIndex();
+    for(let i=0;i<pos.count;i++)
+      obj+='v '+pos.array[i*3].toFixed(6)+' '+pos.array[i*3+1].toFixed(6)+' '+pos.array[i*3+2].toFixed(6)+'\\n';
+    if(idx)for(let i=0;i<idx.count;i+=3)
+      obj+='f '+(idx.array[i]+1)+' '+(idx.array[i+1]+1)+' '+(idx.array[i+2]+1)+'\\n';
+    vOffset=pos.count;
+  }}
   const gS=vpS.getGeom();
   if(gS){{
-    // offset vertex indices for second object
-    const vCountM=gM?gM.getAttribute('position').count:0;
-    obj+='# scar\\n';
-    const pos=gS.getAttribute('position');const idx=gS.getIndex();
+    obj+='\\n# scar: '+name+'\\n';
+    const pos=gS.getAttribute('position');
+    const idx=gS.getIndex();
     for(let i=0;i<pos.count;i++)
-      obj+='v '+pos.getX(i).toFixed(6)+' '+(pos.getY(i)+2.5).toFixed(6)+' '+pos.getZ(i).toFixed(6)+'\\n';
+      obj+='v '+pos.array[i*3].toFixed(6)+' '+(pos.array[i*3+1]+2.5).toFixed(6)+' '+pos.array[i*3+2].toFixed(6)+'\\n';
     if(idx)for(let i=0;i<idx.count;i+=3)
-      obj+='f '+(idx.getX(i)+1+vCountM)+' '+(idx.getX(i+1)+1+vCountM)+' '+(idx.getX(i+2)+1+vCountM)+'\\n';
+      obj+='f '+(idx.array[i]+1+vOffset)+' '+(idx.array[i+1]+1+vOffset)+' '+(idx.array[i+2]+1+vOffset)+'\\n';
   }}
-  if(obj)downloadBlob(obj,'spharm_'+name+'_l'+curDeg+'.obj','text/plain');
+  if(obj)downloadBlob(obj,'spharm_'+name+'_l'+curDeg+'.obj','model/obj');
+  else alert('No mesh data to export');
 }});
 
 /* ================================================================
