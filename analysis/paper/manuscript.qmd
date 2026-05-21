@@ -83,7 +83,7 @@ sdg         <- tar_read(sdg_cia_analysis)
 
 # Introduction
 
-Cores preserve the most direct and information-rich evidence of reduction strategies within lithic assemblages and therefore constitute critical evidence for understanding knapping behavior. Through core analysis, researchers can not only investigate hominin technological strategies, knapping skill, and the technological traditions represented within lithic assemblages, but also address broader archaeological questions concerning cognitive capacities, mobility patterns, site function, and mechanisms of social learning.
+Cores preserve the most direct and information-rich evidence of reduction strategies within lithic assemblages and therefore constitute critical evidence for understanding knapping behavior. Through core analysis, researchers can not only investigate hominin technological strategies, knapping skill, and the technological traditions represented within lithic assemblages, but also address broader archaeological questions concerning cognitive capacities, mobility patterns, site function, and mechanisms of social learning. @bakkerAppliedMultivariateStatistics @abrunhosa2019
 
 Traditionally, core analysis has been grounded primarily in typological approaches, whereby individual cores are assigned to specific categories, sometimes in conjunction with the technological characteristics of detached products, in order to reconstruct reduction strategies. Different core types are generally defined by hierarchically organized sets of discrete attributes, including overall morphology, scar patterning, flaking angles, and the characteristics of flaking surfaces and platforms, thereby giving rise to categories such as Levallois, discoidal, and laminar cores. However, such typological frameworks are often far from standardized, and different types may rely on entirely different descriptive vocabularies. Even where terminology and technological definitions are relatively detailed, substantial uncertainty remains during practical observation, resulting in classification inconsistencies both between analysts and within the same analyst over time. The long-standing debate surrounding Levallois technology in China represents a typical example. Although researchers commonly identify Levallois cores according to the detailed criteria proposed by Éric Boëda, disagreements persist regarding whether certain cores from the Shiyu Site and Guanyindong Site should be classified as Levallois. To reduce such inconsistencies, several scholars have attempted to establish unified classificatory frameworks, including the “Unified Lithic Taxonomy” proposed by Nicholas Conard and the definitions of different volumetric structures of exploitation (VSE) within the Logic Analytical System. By employing shared terminology and standardized observational criteria, these approaches have partially reduced inter-observer variability in classification practice.
 
@@ -135,23 +135,17 @@ However, the value of spherical harmonic methods extends beyond morphology alone
 
 Our analytical workflow is as follows. First, scar vectors are transformed using von Mises–Fisher spherical kernel density estimation (VMF-sKDE), converting discrete scar orientations into a continuous density distribution on the sphere:
 
-$$
-f(\mathbf{g}) = \frac{1}{n} \sum_{i=1}^{n} \exp\left(\kappa \, \mathbf{g} \cdot \mathbf{x}_i\right)
-$$
+$$f(\mathbf{g}) = \frac{1}{n} \sum_{i=1}^{n} \exp\left(\kappa \, \mathbf{g} \cdot \mathbf{x}_i\right)$$
 
 where $\mathbf{g}$ is a unit vector on the spherical grid, $\mathbf{x}_i$ is the unit vector representing the orientation of the i-th scar, and $\mathbf{κ}$ is the concentration parameter of the von Mises–Fisher kernel, controlled by the bandwidth parameter $\mathbf{h}$. The relationship between $\mathbf{κ}$ and $\mathbf{h}$ is given by:
 
-$$
-\kappa = \frac{1}{h^2}
-$$
+$$\kappa = \frac{1}{h^2}$$
 
 The bandwidth is inversely related to $\mathbf{κ}$: smaller bandwidth values produce larger $\mathbf{κ}$ values and consequently sharper density distributions, whereas larger bandwidths generate smoother distributions. In the present study, a bandwidth value of 0.35 was selected, corresponding to $\mathbf{κ}$ ≈ 8.16, which provides a balanced compromise between oversmoothing and overfitting. If $\mathbf{κ}$ is excessively large, the kernel density approaches a Dirac delta function, requiring very high truncation orders in the spherical harmonic expansion to achieve sufficient approximation. Conversely, if $\mathbf{κ}$ is too small, density contributions from neighboring orientations overlap excessively, reducing directional resolution and obscuring differences between scar-pattern distributions. The suitability of this parameter choice was validated through reconstruction of the original distributions, in which distinct scar-pattern organizations remained directly observable within the reconstructed spherical harmonic morphologies, indicating that the selected bandwidth adequately captures directional variation.
 
 The KDE distributions were subsequently interpolated onto a 64×128 Driscoll–Healy grid to satisfy the spherical rasterization requirements of pyshtools. Spherical harmonic expansion was then performed on the resulting spherical coordinates. Each shape $f(\theta, \phi)$ was first mapped onto the unit sphere and subsequently represented as a weighted combination of spherical harmonic basis functions $Y_l^m(\theta, \phi)$:
 
-$$
-f(\theta, \phi) = \sum_{l=0}^{\infty} \sum_{m=-l}^{l} \hat{f}(l, m) \, Y_l^m(\theta, \phi)
-$$
+$$f(\theta, \phi) = \sum_{l=0}^{\infty} \sum_{m=-l}^{l} \hat{f}(l, m) \, Y_l^m(\theta, \phi)$$
 
 where the coefficients $\hat{f}(l, m)$ quantify the contribution of each basis function to the overall shape. Here, θ and ϕ denote spherical coordinate angles, while l and m represent the order and degree, respectively. In this study, preliminary parameter screening resulted in the selection of a truncation threshold of $l_{\max} = 20$ in order to balance computational efficiency and descriptive accuracy. Previous studies have demonstrated that $l_{\max} = 20$ is sufficient to capture detailed lithic morphological variation. Under this truncation order, spherical harmonic coefficients were calculated. These coefficients retain phase information and can therefore be used to reconstruct original morphologies. However, phase information may introduce noise into comparative statistical analyses of shape variation. Accordingly, spherical harmonic power spectra were calculated from the coefficients in order to represent phase-independent spherical harmonic morphology. The resulting power spectrum consists of the relative contributions of different harmonic orders, with the total normalized to 1.
 

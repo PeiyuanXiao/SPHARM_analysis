@@ -8,11 +8,14 @@
 #   4. 分类型平均重建    — EXP均值 + IM逐个对比
 #   5. 轴连续变化轨迹    — Axis1/2 × 形态/疤痕，多视角渲染（EXP + SDG）
 #   6. ILR轴连续变化轨迹 — 每个ILR轴 × 形态/疤痕（EXP + SDG）
+#   7. 交互式HTML导出    — EXP / IM / SDG 三组，双视口(morph+scar)，
+#                          同步旋转，wireframe开关，视角预设，标本信息提示
 # ==============================================================================
 
 import os
 os.environ['PYVISTA_OFF_SCREEN'] = 'true'
 
+import json
 import numpy as np
 import pandas as pd
 import pyshtools as pysh
@@ -37,6 +40,7 @@ OUT_DIR         = "analysis/output/figures/reconstruction"
 OUT_ILR_DIR     = os.path.join(OUT_DIR, "ILR_trajectory")
 OUT_SDG_DIR     = "analysis/output/figures/reconstruction_sdg"
 OUT_SDG_ILR_DIR = os.path.join(OUT_SDG_DIR, "ILR_trajectory")
+OUT_HTML_DIR    = "analysis/output/figures/reconstruction_interactive"
 
 os.makedirs(OUT_DIR, exist_ok=True)
 os.makedirs(OUT_ILR_DIR, exist_ok=True)
@@ -45,6 +49,7 @@ os.makedirs(os.path.join(OUT_DIR, "IM_individual"), exist_ok=True)
 os.makedirs(OUT_SDG_DIR, exist_ok=True)
 os.makedirs(OUT_SDG_ILR_DIR, exist_ok=True)
 os.makedirs(os.path.join(OUT_SDG_DIR, "SDG_individual"), exist_ok=True)
+os.makedirs(OUT_HTML_DIR, exist_ok=True)
 
 # ── 全局常量 ──────────────────────────────────────────────────────────────────
 LMAX = 20
@@ -900,6 +905,710 @@ def _ilr_summary_panel(df_morph, df_scar,
     print(f"  已保存：{out}")
 
 
+# ══════════════════════════════════════════════════════════════════════════════
+#  7. 交互式 HTML 导出
+# ══════════════════════════════════════════════════════════════════════════════
+
+def _mesh_to_json_dict(pv_mesh, scalars, decimals: int = 4) -> dict:
+    """将 PyVista 三角网格序列化为 Three.js BufferGeometry 所需的字典。"""
+    if not isinstance(pv_mesh, pv.PolyData):
+        pv_mesh = pv_mesh.extract_surface()
+
+    pts = np.asarray(pv_mesh.points, dtype=float)
+
+    # 归一化：将网格缩放到单位大小，保证 morph 和 scar 视觉尺寸一致
+    center = pts.mean(axis=0)
+    pts_centered = pts - center
+    max_extent = np.abs(pts_centered).max()
+    if max_extent > 1e-10:
+        pts_centered = pts_centered / max_extent
+    else:
+        pts_centered = pts_centered
+
+    faces_raw = np.asarray(pv_mesh.faces)
+    idx = []
+    i = 0
+    while i < len(faces_raw):
+        n_verts = faces_raw[i]
+        idx.extend(faces_raw[i + 1: i + 1 + n_verts].tolist())
+        i += 1 + n_verts
+    return {
+        'vertices': np.round(pts_centered, decimals).tolist(),
+        'indices':  idx,
+        'rMin':     float(np.round(scalars.min(), decimals)),
+        'rMax':     float(np.round(scalars.max(), decimals)),
+    }
+
+
+def _build_specimen_data(df_morph: pd.DataFrame,
+                         df_scar: pd.DataFrame,
+                         ids: list,
+                         meta_df: pd.DataFrame = None) -> list:
+    """为一组标本 ID 构建 morph+scar 的网格 JSON 列表。"""
+    records = []
+    for sid in ids:
+        morph_row = df_morph[df_morph['ID'] == sid]
+        scar_row  = df_scar[df_scar['ID'] == sid]
+        if morph_row.empty and scar_row.empty:
+            print(f"  [跳过 HTML] {sid}：morph 和 scar 均无数据")
+            continue
+
+        entry = {'id': sid, 'morph': None, 'scar': None, 'meta': {}}
+
+        # 元数据
+        if meta_df is not None:
+            meta_rows = meta_df[meta_df['ID'] == sid]
+            if not meta_rows.empty:
+                mr = meta_rows.iloc[0]
+                for col in meta_rows.columns:
+                    if col == 'ID' or col.startswith('coeff_'):
+                        continue
+                    val = mr[col]
+                    if pd.isna(val):
+                        continue
+                    entry['meta'][col] = str(val)
+
+        # morph 网格
+        if not morph_row.empty:
+            try:
+                cilm = get_coeff_array(morph_row.iloc[0])
+                grid = cilm_to_grid(cilm)
+                mesh, scalars = grid_to_mesh(grid)
+                entry['morph'] = _mesh_to_json_dict(mesh, scalars)
+            except Exception as e:
+                print(f"  [跳过 HTML morph] {sid}: {e}")
+
+        # scar 网格
+        if not scar_row.empty:
+            try:
+                cilm = get_coeff_array(scar_row.iloc[0])
+                grid = cilm_to_grid(cilm)
+                mesh, scalars = grid_to_mesh(grid)
+                entry['scar'] = _mesh_to_json_dict(mesh, scalars)
+            except Exception as e:
+                print(f"  [跳过 HTML scar] {sid}: {e}")
+
+        if entry['morph'] is not None or entry['scar'] is not None:
+            records.append(entry)
+            print(f"  HTML 数据 ✓ {sid}")
+
+    return records
+
+
+def _generate_html(records: list, group_name: str) -> str:
+    """生成自包含的交互式 HTML 字符串。"""
+
+    data_json = json.dumps(records, separators=(',', ':'))
+
+    html = f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SPHARM Interactive — {group_name}</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@300;400;600&display=swap');
+
+  *, *::before, *::after {{ box-sizing: border-box; margin: 0; padding: 0; }}
+
+  :root {{
+    --bg: #0e0e12;
+    --surface: #1a1a22;
+    --surface2: #24242e;
+    --border: #333340;
+    --text: #e0e0e8;
+    --text-dim: #8888a0;
+    --accent: #7eb8da;
+    --accent2: #daa87e;
+    --mesh-color: 0xf7f7d7;
+    --wire-color: 0x616161;
+  }}
+
+  body {{
+    font-family: 'IBM Plex Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }}
+
+  .header {{
+    padding: 20px 28px 14px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    flex-wrap: wrap;
+  }}
+
+  .header h1 {{
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 16px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    color: var(--accent);
+    white-space: nowrap;
+  }}
+
+  .controls {{
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+  }}
+
+  select {{
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 13px;
+    background: var(--surface2);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 6px 12px;
+    cursor: pointer;
+    outline: none;
+    max-width: 340px;
+  }}
+  select:hover {{ border-color: var(--accent); }}
+
+  .btn {{
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    background: var(--surface2);
+    color: var(--text-dim);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 5px 12px;
+    cursor: pointer;
+    transition: all 0.15s;
+    white-space: nowrap;
+  }}
+  .btn:hover {{ border-color: var(--accent); color: var(--text); }}
+  .btn.active {{ background: var(--accent); color: var(--bg); border-color: var(--accent); }}
+
+  .separator {{
+    width: 1px;
+    height: 22px;
+    background: var(--border);
+    flex-shrink: 0;
+  }}
+
+  .viewport-wrapper {{
+    display: flex;
+    width: 100%;
+    height: calc(100vh - 70px);
+  }}
+
+  .viewport {{
+    flex: 1;
+    position: relative;
+    border-right: 1px solid var(--border);
+  }}
+  .viewport:last-child {{ border-right: none; }}
+
+  .viewport-label {{
+    position: absolute;
+    top: 12px;
+    left: 16px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    z-index: 10;
+    pointer-events: none;
+    user-select: none;
+  }}
+  .viewport:first-child .viewport-label {{ color: var(--accent); }}
+  .viewport:last-child .viewport-label  {{ color: var(--accent2); }}
+
+  .no-data {{
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    color: var(--text-dim);
+    font-style: italic;
+  }}
+
+  canvas {{ display: block; }}
+
+  .info-panel {{
+    position: absolute;
+    bottom: 14px;
+    left: 16px;
+    right: 16px;
+    background: rgba(26, 26, 34, 0.92);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-size: 12px;
+    line-height: 1.6;
+    max-height: 140px;
+    overflow-y: auto;
+    z-index: 10;
+    display: none;
+    backdrop-filter: blur(6px);
+  }}
+  .info-panel.visible {{ display: block; }}
+  .info-panel .meta-key {{
+    color: var(--text-dim);
+    font-family: 'IBM Plex Mono', monospace;
+    margin-right: 6px;
+  }}
+  .info-panel .meta-val {{
+    color: var(--text);
+  }}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>SPHARM ● {group_name}</h1>
+  <div class="controls">
+    <select id="specimenSelect"></select>
+    <div class="separator"></div>
+    <button class="btn active" data-view="iso">Iso</button>
+    <button class="btn" data-view="top">Top</button>
+    <button class="btn" data-view="front">Front</button>
+    <div class="separator"></div>
+    <button class="btn active" id="wireToggle">Wireframe</button>
+    <button class="btn" id="infoToggle">Info</button>
+  </div>
+</div>
+
+<div class="viewport-wrapper">
+  <div class="viewport" id="vpMorph">
+    <span class="viewport-label">Morphology</span>
+    <div class="no-data" id="ndMorph" style="display:none;">No morph data</div>
+    <div class="info-panel" id="infoMorph"></div>
+  </div>
+  <div class="viewport" id="vpScar">
+    <span class="viewport-label">Scar Direction</span>
+    <div class="no-data" id="ndScar" style="display:none;">No scar data</div>
+    <div class="info-panel" id="infoScar"></div>
+  </div>
+</div>
+
+<script type="importmap">
+{{
+  "imports": {{
+    "three": "https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.module.min.js"
+  }}
+}}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+
+// ── OrbitControls inline (r128 compat) ──
+class OrbitControls {{
+  constructor(camera, domElement) {{
+    this.camera = camera;
+    this.domElement = domElement;
+    this.target = new THREE.Vector3();
+    this.enableDamping = true;
+    this.dampingFactor = 0.08;
+    this.rotateSpeed = 0.8;
+    this.zoomSpeed = 1.0;
+    this.panSpeed = 0.6;
+    this._spherical = new THREE.Spherical();
+    this._sphericalDelta = new THREE.Spherical();
+    this._scale = 1;
+    this._panOffset = new THREE.Vector3();
+    this._rotateStart = new THREE.Vector2();
+    this._panStart = new THREE.Vector2();
+    this._state = 0; // 0=none, 1=rotate, 2=zoom, 3=pan
+    this._pointers = [];
+    this._pointerPositions = {{}};
+    const offset = new THREE.Vector3();
+    offset.copy(camera.position).sub(this.target);
+    this._spherical.setFromVector3(offset);
+
+    domElement.addEventListener('pointerdown', e => this._onPointerDown(e));
+    domElement.addEventListener('pointermove', e => this._onPointerMove(e));
+    domElement.addEventListener('pointerup', e => this._onPointerUp(e));
+    domElement.addEventListener('wheel', e => this._onWheel(e), {{passive:false}});
+    domElement.addEventListener('contextmenu', e => e.preventDefault());
+  }}
+
+  _onPointerDown(e) {{
+    this.domElement.setPointerCapture(e.pointerId);
+    this._pointers.push(e.pointerId);
+    this._pointerPositions[e.pointerId] = new THREE.Vector2(e.clientX, e.clientY);
+    if (this._pointers.length === 1) {{
+      if (e.button === 0) {{ this._state = 1; this._rotateStart.set(e.clientX, e.clientY); }}
+      else if (e.button === 2) {{ this._state = 3; this._panStart.set(e.clientX, e.clientY); }}
+    }} else if (this._pointers.length === 2) {{
+      this._state = 4; // pinch
+      const dx = this._pointerPositions[this._pointers[0]].x - this._pointerPositions[this._pointers[1]].x;
+      const dy = this._pointerPositions[this._pointers[0]].y - this._pointerPositions[this._pointers[1]].y;
+      this._pinchStart = Math.sqrt(dx*dx+dy*dy);
+    }}
+  }}
+
+  _onPointerMove(e) {{
+    if (!this._pointerPositions[e.pointerId]) return;
+    this._pointerPositions[e.pointerId].set(e.clientX, e.clientY);
+    const rect = this.domElement.getBoundingClientRect();
+    if (this._state === 1) {{
+      const dx = (e.clientX - this._rotateStart.x) / rect.height * Math.PI * this.rotateSpeed;
+      const dy = (e.clientY - this._rotateStart.y) / rect.height * Math.PI * this.rotateSpeed;
+      this._sphericalDelta.theta -= dx;
+      this._sphericalDelta.phi -= dy;
+      this._rotateStart.set(e.clientX, e.clientY);
+    }} else if (this._state === 3) {{
+      const dx = (e.clientX - this._panStart.x) / rect.height * this.panSpeed;
+      const dy = (e.clientY - this._panStart.y) / rect.height * this.panSpeed;
+      const offset = new THREE.Vector3();
+      offset.copy(this.camera.position).sub(this.target);
+      let targetDist = offset.length();
+      const up = new THREE.Vector3().copy(this.camera.up).normalize();
+      const right = new THREE.Vector3().crossVectors(up, offset).normalize();
+      this._panOffset.add(right.multiplyScalar(-dx * targetDist));
+      this._panOffset.add(up.multiplyScalar(dy * targetDist));
+      this._panStart.set(e.clientX, e.clientY);
+    }} else if (this._state === 4 && this._pointers.length === 2) {{
+      const dx = this._pointerPositions[this._pointers[0]].x - this._pointerPositions[this._pointers[1]].x;
+      const dy = this._pointerPositions[this._pointers[0]].y - this._pointerPositions[this._pointers[1]].y;
+      const dist = Math.sqrt(dx*dx+dy*dy);
+      this._scale *= this._pinchStart / dist;
+      this._pinchStart = dist;
+    }}
+  }}
+
+  _onPointerUp(e) {{
+    this.domElement.releasePointerCapture(e.pointerId);
+    this._pointers = this._pointers.filter(id => id !== e.pointerId);
+    delete this._pointerPositions[e.pointerId];
+    if (this._pointers.length === 0) this._state = 0;
+  }}
+
+  _onWheel(e) {{
+    e.preventDefault();
+    if (e.deltaY > 0) this._scale *= 1 + 0.05 * this.zoomSpeed;
+    else this._scale *= 1 - 0.05 * this.zoomSpeed;
+  }}
+
+  update() {{
+    const offset = new THREE.Vector3();
+    offset.copy(this.camera.position).sub(this.target);
+    this._spherical.setFromVector3(offset);
+    if (this.enableDamping) {{
+      this._spherical.theta += this._sphericalDelta.theta * this.dampingFactor;
+      this._spherical.phi += this._sphericalDelta.phi * this.dampingFactor;
+    }} else {{
+      this._spherical.theta += this._sphericalDelta.theta;
+      this._spherical.phi += this._sphericalDelta.phi;
+    }}
+    this._spherical.phi = Math.max(0.01, Math.min(Math.PI - 0.01, this._spherical.phi));
+    this._spherical.radius *= this._scale;
+    this._spherical.radius = Math.max(0.1, Math.min(50, this._spherical.radius));
+    this.target.add(this._panOffset);
+    offset.setFromSpherical(this._spherical);
+    this.camera.position.copy(this.target).add(offset);
+    this.camera.lookAt(this.target);
+    if (this.enableDamping) {{
+      this._sphericalDelta.theta *= (1 - this.dampingFactor);
+      this._sphericalDelta.phi *= (1 - this.dampingFactor);
+    }} else {{
+      this._sphericalDelta.set(0, 0, 0);
+    }}
+    this._scale = 1;
+    this._panOffset.set(0, 0, 0);
+  }}
+
+  getState() {{
+    return {{
+      theta: this._spherical.theta,
+      phi: this._spherical.phi,
+      radius: this._spherical.radius,
+      target: this.target.clone()
+    }};
+  }}
+
+  setState(s) {{
+    this._spherical.theta = s.theta;
+    this._spherical.phi = s.phi;
+    this._spherical.radius = s.radius;
+    this.target.copy(s.target);
+    const offset = new THREE.Vector3().setFromSpherical(this._spherical);
+    this.camera.position.copy(this.target).add(offset);
+    this.camera.lookAt(this.target);
+    this._sphericalDelta.set(0, 0, 0);
+    this._scale = 1;
+    this._panOffset.set(0, 0, 0);
+  }}
+}}
+
+// ── 数据 ──
+const DATA = {data_json};
+
+// ── 状态 ──
+let showWireframe = true;
+let showInfo = false;
+let currentIndex = 0;
+
+// ── 场景构建 ──
+function createViewport(containerId) {{
+  const container = document.getElementById(containerId);
+  const scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x0e0e12);
+
+  const camera = new THREE.PerspectiveCamera(35, 1, 0.01, 100);
+  camera.position.set(2.5, 1.8, 2.5);
+
+  const renderer = new THREE.WebGLRenderer({{ antialias: true, alpha: false }});
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  container.appendChild(renderer.domElement);
+
+  const controls = new OrbitControls(camera, renderer.domElement);
+  controls.enableDamping = true;
+
+  // 灯光
+  const amb = new THREE.AmbientLight(0xffffff, 0.35);
+  scene.add(amb);
+  const dir1 = new THREE.DirectionalLight(0xffffff, 0.8);
+  dir1.position.set(3, 5, 4);
+  scene.add(dir1);
+  const dir2 = new THREE.DirectionalLight(0xffffff, 0.3);
+  dir2.position.set(-3, 2, -2);
+  scene.add(dir2);
+
+  let surfaceMesh = null;
+  let wireMesh = null;
+
+  function loadMesh(data) {{
+    if (surfaceMesh) {{ scene.remove(surfaceMesh); surfaceMesh.geometry.dispose(); surfaceMesh = null; }}
+    if (wireMesh) {{ scene.remove(wireMesh); wireMesh.geometry.dispose(); wireMesh = null; }}
+    if (!data) return;
+
+    const geom = new THREE.BufferGeometry();
+    const verts = new Float32Array(data.vertices.flat());
+    geom.setAttribute('position', new THREE.BufferAttribute(verts, 3));
+    geom.setIndex(data.indices);
+    geom.computeVertexNormals();
+
+    const surfMat = new THREE.MeshPhongMaterial({{
+      color: {_hex_to_threejs('#F7F7D7')},
+      transparent: true,
+      opacity: 0.55,
+      shininess: 120,
+      specular: 0x444444,
+      side: THREE.DoubleSide,
+      depthWrite: false,
+    }});
+    surfaceMesh = new THREE.Mesh(geom, surfMat);
+    scene.add(surfaceMesh);
+
+    const wireGeom = new THREE.WireframeGeometry(geom);
+    const wireMat = new THREE.LineBasicMaterial({{
+      color: {_hex_to_threejs('#616161')},
+      transparent: true,
+      opacity: 0.18,
+    }});
+    wireMesh = new THREE.LineSegments(wireGeom, wireMat);
+    wireMesh.visible = showWireframe;
+    scene.add(wireMesh);
+
+    // 自动缩放
+    geom.computeBoundingSphere();
+    const r = geom.boundingSphere.radius;
+    const c = geom.boundingSphere.center;
+    controls.target.copy(c);
+    const dist = r / Math.sin(Math.PI * camera.fov / 360);
+    camera.position.copy(c).add(new THREE.Vector3(dist*0.6, dist*0.45, dist*0.6));
+    camera.lookAt(c);
+  }}
+
+  function setWireVisible(v) {{
+    if (wireMesh) wireMesh.visible = v;
+  }}
+
+  function resize() {{
+    const w = container.clientWidth;
+    const h = container.clientHeight;
+    camera.aspect = w / h;
+    camera.updateProjectionMatrix();
+    renderer.setSize(w, h);
+  }}
+
+  function render() {{ renderer.render(scene, camera); }}
+
+  return {{ scene, camera, renderer, controls, loadMesh, setWireVisible, resize, render, container }};
+}}
+
+const vpMorph = createViewport('vpMorph');
+const vpScar  = createViewport('vpScar');
+
+// ── 下拉框填充 ──
+const sel = document.getElementById('specimenSelect');
+DATA.forEach((d, i) => {{
+  const opt = document.createElement('option');
+  opt.value = i;
+  opt.textContent = d.id;
+  sel.appendChild(opt);
+}});
+
+// ── 加载标本 ──
+function loadSpecimen(idx) {{
+  currentIndex = idx;
+  const rec = DATA[idx];
+
+  vpMorph.loadMesh(rec.morph);
+  vpScar.loadMesh(rec.scar);
+
+  document.getElementById('ndMorph').style.display = rec.morph ? 'none' : 'flex';
+  document.getElementById('ndScar').style.display = rec.scar ? 'none' : 'flex';
+
+  // 元数据面板
+  const metaHtml = Object.entries(rec.meta || {{}}).map(
+    ([k,v]) => `<span class="meta-key">${{k}}:</span><span class="meta-val">${{v}}</span>`
+  ).join('<br>');
+  const idLine = `<span class="meta-key">ID:</span><span class="meta-val">${{rec.id}}</span>`;
+  const fullHtml = idLine + (metaHtml ? '<br>' + metaHtml : '');
+  document.getElementById('infoMorph').innerHTML = fullHtml;
+  document.getElementById('infoScar').innerHTML = fullHtml;
+}}
+
+sel.addEventListener('change', () => loadSpecimen(parseInt(sel.value)));
+
+// ── 视角预设 ──
+const VIEW_PRESETS = {{
+  iso:   {{ theta: Math.PI / 4, phi: Math.PI / 3, radius: null }},
+  top:   {{ theta: 0,           phi: 0.01,         radius: null }},
+  front: {{ theta: Math.PI / 2, phi: Math.PI / 2,  radius: null }},
+}};
+
+document.querySelectorAll('[data-view]').forEach(btn => {{
+  btn.addEventListener('click', () => {{
+    document.querySelectorAll('[data-view]').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    const preset = VIEW_PRESETS[btn.dataset.view];
+    [vpMorph, vpScar].forEach(vp => {{
+      const st = vp.controls.getState();
+      st.theta = preset.theta;
+      st.phi = preset.phi;
+      if (preset.radius) st.radius = preset.radius;
+      vp.controls.setState(st);
+    }});
+  }});
+}});
+
+// ── Wireframe 开关 ──
+const wireBtn = document.getElementById('wireToggle');
+wireBtn.addEventListener('click', () => {{
+  showWireframe = !showWireframe;
+  wireBtn.classList.toggle('active', showWireframe);
+  vpMorph.setWireVisible(showWireframe);
+  vpScar.setWireVisible(showWireframe);
+}});
+
+// ── Info 开关 ──
+const infoBtn = document.getElementById('infoToggle');
+infoBtn.addEventListener('click', () => {{
+  showInfo = !showInfo;
+  infoBtn.classList.toggle('active', showInfo);
+  document.getElementById('infoMorph').classList.toggle('visible', showInfo);
+  document.getElementById('infoScar').classList.toggle('visible', showInfo);
+}});
+
+// ── 旋转同步 ──
+let syncSource = null;
+
+function syncControls(source, target) {{
+  const s = source.controls.getState();
+  target.controls.setState(s);
+}}
+
+vpMorph.container.addEventListener('pointermove', () => {{ syncSource = 'morph'; }});
+vpScar.container.addEventListener('pointermove', () => {{ syncSource = 'scar'; }});
+vpMorph.container.addEventListener('wheel', () => {{ syncSource = 'morph'; }}, {{passive:true}});
+vpScar.container.addEventListener('wheel', () => {{ syncSource = 'scar'; }}, {{passive:true}});
+
+// ── 尺寸自适应 ──
+function onResize() {{
+  vpMorph.resize();
+  vpScar.resize();
+}}
+window.addEventListener('resize', onResize);
+onResize();
+
+// ── 渲染循环 ──
+function animate() {{
+  requestAnimationFrame(animate);
+  vpMorph.controls.update();
+  vpScar.controls.update();
+
+  if (syncSource === 'morph') syncControls(vpMorph, vpScar);
+  else if (syncSource === 'scar') syncControls(vpScar, vpMorph);
+
+  vpMorph.render();
+  vpScar.render();
+}}
+
+loadSpecimen(0);
+animate();
+
+</script>
+</body>
+</html>"""
+    return html
+
+
+def _hex_to_threejs(hex_color: str) -> str:
+    """'#F7F7D7' → '0xF7F7D7'"""
+    return '0x' + hex_color.lstrip('#')
+
+
+def export_interactive_html(df_morph: pd.DataFrame,
+                            df_scar: pd.DataFrame,
+                            out_dir: str = OUT_HTML_DIR):
+    """为 EXP / IM / SDG 三组分别生成交互式 HTML 文件。"""
+    print("\n" + "=" * 60)
+    print("交互式 HTML 导出")
+    print("=" * 60)
+    os.makedirs(out_dir, exist_ok=True)
+
+    # 合并元数据（从 scar 表取 Typology 等非系数列）
+    meta_cols = [c for c in df_scar.columns
+                 if not c.startswith('coeff_') and c != 'ID']
+    meta_df = df_scar[['ID'] + meta_cols].drop_duplicates(subset='ID')
+
+    # ── 分组定义 ──
+    all_ids_morph = set(df_morph['ID'].tolist())
+    all_ids_scar  = set(df_scar['ID'].tolist())
+    all_ids       = sorted(all_ids_morph | all_ids_scar)
+
+    groups = {
+        'EXP': sorted([i for i in all_ids if i.startswith('EXP')]),
+        'IM':  sorted([i for i in all_ids if i.startswith('IM_')]),
+        'SDG': sorted([i for i in all_ids if i.startswith('SDG')]),
+    }
+
+    for group_name, ids in groups.items():
+        if not ids:
+            print(f"\n  [{group_name}] 无标本，跳过")
+            continue
+
+        print(f"\n  [{group_name}] 共 {len(ids)} 件标本，构建网格数据...")
+        records = _build_specimen_data(df_morph, df_scar, ids, meta_df)
+
+        if not records:
+            print(f"  [{group_name}] 无有效数据，跳过")
+            continue
+
+        html_str = _generate_html(records, group_name)
+        out_path = os.path.join(out_dir, f"interactive_{group_name}.html")
+        with open(out_path, 'w', encoding='utf-8') as f:
+            f.write(html_str)
+
+        size_mb = os.path.getsize(out_path) / (1024 * 1024)
+        print(f"  ✓ 已保存：{out_path}（{size_mb:.1f} MB，{len(records)} 件标本）")
+
+
 # ── 主程序 ────────────────────────────────────────────────────────────────────
 
 if __name__ == '__main__':
@@ -1047,8 +1756,16 @@ if __name__ == '__main__':
         out_dir=OUT_SDG_ILR_DIR,
     )
 
+    # ── 交互式 HTML 导出 ─────────────────────────────────────────────────────
+    export_interactive_html(
+        df_morph=df_morph,
+        df_scar=df_scar,
+        out_dir=OUT_HTML_DIR,
+    )
+
     print("\n全部完成。")
     print(f"  EXP 输出目录：{OUT_DIR}")
     print(f"  EXP ILR 轨迹：{OUT_ILR_DIR}")
     print(f"  SDG 输出目录：{OUT_SDG_DIR}")
     print(f"  SDG ILR 轨迹：{OUT_SDG_ILR_DIR}")
+    print(f"  交互式 HTML：{OUT_HTML_DIR}")
