@@ -24,3 +24,7 @@ __pycache__/
 
 .env
 figure origin/
+.Rproj.user
+.positai
+
+analysis/output/figures/reconstruction/
