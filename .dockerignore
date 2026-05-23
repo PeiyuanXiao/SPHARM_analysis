@@ -31,3 +31,10 @@ analysis/data/**/*.tmp
 # derived data
 analysis/data/derived_data/
 **/*.npy
+
+_targets/
+analysis/paper/_targets/
+analysis/output/
+figure origin/
+*.RData
+*.rds

@@ -1,7 +1,7 @@
 首次创建容器（只需运行一次）
 docker run -d --name spharm-processor -p 8787:8787 ^
-    -v "/mnt/h/SPHRAM_analysis:/project" ^
-    -e PASSWORD=sphram ^
+    -v "H:\SPHARM_analysis:/project" ^
+    -e PASSWORD=spharm ^
     sphram_analysis
 
 

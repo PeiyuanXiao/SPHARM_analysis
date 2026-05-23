@@ -38,9 +38,10 @@ ENV RENV_PATHS_CACHE=/opt/renv/cache
 # B. Create directories and give 'rstudio' user permission
 RUN mkdir -p /opt/renv && chown -R rstudio:rstudio /opt/renv
 
-# C. Remove the pre-installed system ggplot2 (v3.5.1)
-# This forces R to use the v4.0.1 version that renv installs below.
-RUN rm -rf /usr/local/lib/R/site-library/ggplot2
+# C. Remove ALL pre-installed system R packages to avoid renv conflicts
+#    rocker/geospatial ships ~280 packages in the system library that
+#    collide with renv's project library during restore.
+RUN rm -rf /usr/local/lib/R/site-library/*
 
 # D. Install renv and restore
 RUN R -e "install.packages('renv', repos='https://cloud.r-project.org')" && \
@@ -53,3 +54,8 @@ RUN conda tos accept --override-channels --channel https://repo.anaconda.com/pkg
   
 RUN git config --global --add safe.directory /project
 RUN /opt/conda/envs/spharm/bin/pip install pymeshfix networkx openpyxl
+
+# --- 7. Fix libtiff/libjpeg conflict between system libs and conda ---
+#    rocker/geospatial's system libtiff conflicts with conda's Pillow.
+#    Force-reinstall Pillow so it bundles its own compatible libraries.
+RUN /opt/conda/envs/spharm/bin/pip install --force-reinstall --no-deps Pillow
