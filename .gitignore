@@ -1,43 +1,60 @@
-# Ignore 3D model
+# ==============================================================================
+# 3D models & large binary data (host on Zenodo)
+# ==============================================================================
 *.stl
 *.STL
+*.ply
+*.obj
+*.las
+*.laz
 **/3D_models_cores/
-*.npz
-*.csv
 
-# Ignore RStudio & R cache
+# ==============================================================================
+# Generated data — all reproducible via tar_make()
+# ==============================================================================
+analysis/data/derived_data/
+*.npy
+*.npz
+*.rds
+
+# ==============================================================================
+# targets cache — reproducible via tar_make()
+# ==============================================================================
+_targets/
+analysis/paper/_targets/
+
+# ==============================================================================
+# Analysis output (figures, HTML, rendered docs)
+# ==============================================================================
+analysis/output/
+*.html
+*.docx
+figure origin/
+
+# ==============================================================================
+# R / RStudio
+# ==============================================================================
 .Rhistory
 .RData
 .Rproj.user/
 .Rapp.history
+.httr-oauth
+renv/library/
+renv/staging/
+renv/python/
 
-# Ignore Python cache
+# ==============================================================================
+# Python
+# ==============================================================================
 __pycache__/
 *.pyc
+*.pyo
+.ipynb_checkpoints/
 
-# Ignore HTML result files
-*.html
-.Rproj.user
-.httr-oauth
+# ==============================================================================
+# System / IDE
+# ==============================================================================
 .DS_Store
-.quarto
-
 .env
-figure origin/
-.Rproj.user
-.positai
-
-analysis/output/figures/reconstruction/
-analysis/output/figures/reconstruction_sdg/
-.Rproj.user
-.positai
-.Rproj.user
-.positai
-.Rproj.user
-.positai
-.Rproj.user
-.positai
-.Rproj.user
-.positai
-.Rproj.user
-.positai
+.quarto/
+.positai/

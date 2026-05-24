@@ -67,16 +67,13 @@ Highlights: `r rmarkdown::metadata$highlights`
 #| include: false
 library(targets)
 library(tidyverse)
-tar_config_set(store = "_targets")
-
+tar_config_set(store = "/project/analysis/paper/_targets")
 sa          <- tar_read(spharm_analysis)
 ph          <- sa$spharm_posthoc
-
 im          <- tar_read(im_comparison)
 dist_spi    <- im$dist_spi
 dist_fabric <- im$dist_fabric
 dist_spharm <- im$dist_spharm
-
 cia         <- tar_read(exp_cia_analysis)
 sdg         <- tar_read(sdg_cia_analysis)
 ```

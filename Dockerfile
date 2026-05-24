@@ -51,11 +51,13 @@ RUN R -e "install.packages('renv', repos='https://cloud.r-project.org')" && \
 RUN conda tos accept --override-channels --channel https://repo.anaconda.com/pkgs/main && \
     conda tos accept --override-channels --channel https://repo.anaconda.com/pkgs/r && \
     conda env create -f analysis/scripts/environment.yml --solver=libmamba
-  
-RUN git config --global --add safe.directory /project
-RUN /opt/conda/envs/spharm/bin/pip install pymeshfix networkx openpyxl
 
-# --- 7. Fix libtiff/libjpeg conflict between system libs and conda ---
-#    rocker/geospatial's system libtiff conflicts with conda's Pillow.
-#    Force-reinstall Pillow so it bundles its own compatible libraries.
-RUN /opt/conda/envs/spharm/bin/pip install --force-reinstall --no-deps Pillow
+RUN git config --global --add safe.directory /project
+
+# --- 7. Pin binary Python geospatial/image stack inside the conda env ---
+#    These packages must come from the same conda-forge solve to avoid
+#    libtiff/libjpeg ABI mismatches when SPHARM imports PIL/VTK.
+RUN conda install -n spharm -c conda-forge --override-channels \
+    vtk libtiff libjpeg-turbo pillow pymeshfix networkx openpyxl \
+    && conda clean -afy
+    

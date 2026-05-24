@@ -1,27 +1,16 @@
 # ==============================================================================
 # _targets.R
-# 完整可复现分析流水线：R 预处理 → Python SPHARM → R 统计
+# 完整可复现分析流水线：R 预处理 -> Python SPHARM -> R 统计
 #
 # 审稿人复现步骤：
 #   1. docker run ...              # 启动容器
 #   2. targets::tar_make()         # 运行全部流水线
 #   3. quarto render paper.qmd     # 渲染论文
 #
-# DAG 结构：
-#   ┌─ align_svd_csvs ─────────────────────────────────────────────────────┐
-#   │  ├─ spharm_direction_csv (Python: KDE → SPHARM)                     │
-#   │  │    └─ spharm_analysis → exp_cia_analysis                         │
-#   │  │                       → sdg_cia_analysis                         │
-#   │  │                       → im_comparison                            │
-#   │  ├─ align_lin2024_csv ──┐                                           │
-#   │  ├─ rotate_svd_csv ────┐│                                           │
-#   │  │                     ││                                           │
-#   │  │  spharm_direction_validation_csvs (Python: --source all) ◄───┘   │
-#   │  │    └─ p_rotational_invariance_validity                           │
-#   │  │                                                                  │
-#   ├─ spharm_morphology_csv (Python: STL → SPHARM)                      │
-#   │    └─ spharm_analysis (同上)                                        │
-#   └──────────────────────────────────────────────────────────────────────┘
+# Note:
+#   Python targets are executed as separate Python processes instead of via
+#   reticulate. This avoids shared-library conflicts between rocker/geospatial's
+#   system geospatial stack and conda packages such as PIL/VTK/libtiff.
 # ==============================================================================
 
 library(targets)
@@ -36,8 +25,7 @@ tar_option_set(
                "readxl", "vegan", "FSA", "RVAideMemoire",
                "ggrepel", "conflicted",
                "linkET", "compositions", "ade4", "circular",
-               "rsvg", "png", "grid",
-               "reticulate")
+               "rsvg", "png", "grid")
 )
 
 # 统一声明所有包冲突
@@ -65,10 +53,7 @@ conflicted::conflicts_prefer(ggplot2::annotate)
 
 PYTHON_BIN <- "/opt/conda/envs/spharm/bin/python"
 
-#' 延迟初始化 Python 环境：仅在首次调用时执行 use_python()，
-#' 且仅当 Docker 内的 Python 路径存在时才设置。
-#' 在 Docker 外运行纯 R target 时不会报错。
-ensure_python <- function() {
+check_python <- function() {
   if (!file.exists(PYTHON_BIN)) {
     stop(
       "Python 环境未找到：", PYTHON_BIN, "\n",
@@ -78,7 +63,48 @@ ensure_python <- function() {
       call. = FALSE
     )
   }
-  reticulate::use_python(PYTHON_BIN, required = TRUE)
+}
+
+python_env <- function() {
+  old_ld <- Sys.getenv("LD_LIBRARY_PATH", unset = "")
+  ld_paths <- c("/opt/conda/envs/spharm/lib", "/opt/conda/lib")
+  if (nzchar(old_ld)) {
+    ld_paths <- c(ld_paths, old_ld)
+  }
+  
+  c(
+    "MPLBACKEND=Agg",
+    "PYTHONPATH=/project/analysis/scripts/SPHARM_main:/project/analysis/scripts",
+    paste0("LD_LIBRARY_PATH=", paste(ld_paths, collapse = ":"))
+  )
+}
+
+run_python_code <- function(code) {
+  check_python()
+  
+  script <- tempfile(fileext = ".py")
+  on.exit(unlink(script), add = TRUE)
+  
+  writeLines(code, script)
+  
+  status <- system2(
+    PYTHON_BIN,
+    args = script,
+    env = python_env(),
+    stdout = "",
+    stderr = ""
+  )
+  
+  if (!identical(status, 0L)) {
+    stop("Python script failed with exit status: ", status, call. = FALSE)
+  }
+}
+
+check_output_file <- function(path) {
+  if (!file.exists(path)) {
+    stop("Expected output file was not created: ", path, call. = FALSE)
+  }
+  path
 }
 
 # ==============================================================================
@@ -90,16 +116,14 @@ ensure_python <- function() {
 #' @param output_dir 输出目录
 #' @return 输出 CSV 路径（供 format = "file" 追踪）
 run_spharm_morphology <- function(input_dir, output_dir) {
-  ensure_python()
-  reticulate::py_run_string(sprintf("
-import sys, matplotlib
-matplotlib.use('Agg')
-sys.path.insert(0, '/project/analysis/scripts/SPHARM_main')
-sys.path.insert(0, '/project/analysis/scripts')
+  code <- sprintf("
 from SPHARM_main import batch_process
-batch_process('%s', '%s')
-", input_dir, output_dir))
-  file.path(output_dir, "SPHARM_morphology.csv")
+batch_process(%s, %s)
+", shQuote(input_dir), shQuote(output_dir))
+  
+  run_python_code(code)
+  
+  check_output_file(file.path(output_dir, "SPHARM_morphology.csv"))
 }
 
 #' 运行 kde_to_spharm_main.py 的 run_pipeline()
@@ -107,33 +131,44 @@ batch_process('%s', '%s')
 #' @param validation 是否为验证模式
 #' @return 输出 CSV 路径
 run_spharm_direction <- function(source = "svd", validation = FALSE) {
-  ensure_python()
   val_str <- ifelse(validation, "True", "False")
-  reticulate::py_run_string(sprintf("
-import sys, matplotlib
-matplotlib.use('Agg')
-sys.path.insert(0, '/project/analysis/scripts/SPHARM_main')
-sys.path.insert(0, '/project/analysis/scripts')
+  
+  code <- sprintf("
 from kde_to_spharm_main import run_pipeline
-run_pipeline('%s', validation=%s)
-", source, val_str))
+run_pipeline(%s, validation=%s)
+", shQuote(source), val_str)
+  
+  run_python_code(code)
   
   if (validation) {
-    file.path("/project/analysis/data/derived_data/validation",
-              source, "SPHARM_direction.csv")
+    check_output_file(file.path(
+      "/project/analysis/data/derived_data/validation",
+      source,
+      "SPHARM_direction.csv"
+    ))
   } else {
-    "/project/analysis/data/derived_data/SPHARM_direction.csv"
+    check_output_file("/project/analysis/data/derived_data/SPHARM_direction.csv")
   }
 }
 
 #' 运行 rotate_svd_directions.py
 #' @return 输出 CSV 路径
 run_rotate_svd <- function() {
-  ensure_python()
-  reticulate::py_run_file(
-    "/project/analysis/scripts/SPHARM_main/rotate_svd_directions.py"
+  check_python()
+  
+  status <- system2(
+    PYTHON_BIN,
+    args = c("/project/analysis/scripts/SPHARM_modules/rotate_svd_directions.py"),
+    env = python_env(),
+    stdout = "",
+    stderr = ""
   )
-  "/project/analysis/data/derived_data/directions_aligned_svd_rotated.csv"
+  
+  if (!identical(status, 0L)) {
+    stop("rotate_svd_directions.py failed with exit status: ", status, call. = FALSE)
+  }
+  
+  check_output_file("/project/analysis/data/derived_data/directions_aligned_svd_rotated.csv")
 }
 
 # ==============================================================================
@@ -146,12 +181,12 @@ list(
   # 第一层：R 端预处理 — 方向向量对齐
   # ============================================================================
   
-  # align_svd.R：原始刮痕数据 → 对齐后方向向量
+  # align_svd.R：原始刮痕数据 -> 对齐后方向向量
   # 产出：directions_raw.csv + directions_aligned_svd.csv
   tar_target(
     align_svd_csvs,
     local({
-      source(here::here("analysis/scripts/r_spharm/align_svd.R"),
+      source(here::here("analysis/scripts/r_alignment/align_svd.R"),
              local = TRUE)
       c(here::here("analysis/data/derived_data/directions_raw.csv"),
         here::here("analysis/data/derived_data/directions_aligned_svd.csv"))
@@ -164,7 +199,7 @@ list(
   tar_target(
     align_lin2024_csv,
     local({
-      source(here::here("analysis/scripts/r_spharm/align_lin2024.R"),
+      source(here::here("analysis/scripts/r_alignment/align_lin2024.R"),
              local = TRUE)
       here::here("analysis/data/derived_data/directions_aligned_lin2024.csv")
     }),
@@ -175,7 +210,7 @@ list(
   # 第二层：Python SPHARM 分析
   # ============================================================================
   
-  # --- 形态 SPHARM：STL → 功率谱 ---
+  # --- 形态 SPHARM：STL -> 功率谱 ---
   tar_target(
     spharm_morphology_csv,
     run_spharm_morphology(
@@ -185,11 +220,10 @@ list(
     format = "file"
   ),
   
-  # --- 方向 SPHARM（生产模式）：SVD 对齐方向向量 → KDE → 功率谱 ---
+  # --- 方向 SPHARM（生产模式）：SVD 对齐方向向量 -> KDE -> 功率谱 ---
   tar_target(
     spharm_direction_csv,
     {
-      # 显式依赖：确保 align_svd.R 已执行
       force(align_svd_csvs)
       run_spharm_direction(source = "svd", validation = FALSE)
     },
@@ -206,17 +240,14 @@ list(
     format = "file"
   ),
   
-  # --- 方向 SPHARM（验证模式）：四种对齐 × KDE → 功率谱 ---
-  # 产出四份 CSV：validation/{raw,svd,lin2024,svd_rotated}/SPHARM_direction.csv
+  # --- 方向 SPHARM（验证模式）：四种对齐 x KDE -> 功率谱 ---
   tar_target(
     spharm_direction_validation_csvs,
     {
-      # 显式依赖：确保所有上游数据就绪
       force(align_svd_csvs)
       force(align_lin2024_csv)
       force(rotate_svd_csv)
       
-      # 逐一运行四种 source
       csvs <- vapply(
         c("raw", "svd", "lin2024", "svd_rotated"),
         function(src) run_spharm_direction(source = src, validation = TRUE),
@@ -228,13 +259,12 @@ list(
   ),
   
   # ============================================================================
-  # 第三层：R 统计分析（现有 targets，加上显式依赖声明）
+  # 第三层：R 统计分析
   # ============================================================================
   
   tar_target(
     spharm_analysis,
     {
-      # 显式依赖 Python 产出的 CSV
       force(spharm_morphology_csv)
       force(spharm_direction_csv)
       force(align_svd_csvs)
@@ -260,7 +290,6 @@ list(
   tar_target(
     p_rotational_invariance_validity,
     {
-      # 显式依赖：验证模式的 Python 输出 + 对齐数据
       force(spharm_direction_validation_csvs)
       force(align_svd_csvs)
       force(align_lin2024_csv)
