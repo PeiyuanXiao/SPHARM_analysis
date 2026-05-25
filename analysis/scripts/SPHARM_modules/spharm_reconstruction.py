@@ -22,6 +22,11 @@ import pyshtools as pysh
 import pyvista as pv
 from matplotlib.colors import LinearSegmentedColormap
 
+try:
+    from spharm_interactive_export import generate_html as generate_coeff_html
+except ImportError:
+    generate_coeff_html = None
+
 pv.global_theme.window_size = [1200, 1200]
 pv.global_theme.background = 'white'
 pv.global_theme.font.color = 'black'
@@ -756,6 +761,125 @@ def all_axis_trajectories(df_morph: pd.DataFrame,
     pl.close()
     print(f"  已保存：{out}")
 
+# ── CoIA 轴轨迹交互式 HTML（复用 spharm_interactive_export）────────────────────
+
+def _axis_weighted_cilm_records(df_coeffs: pd.DataFrame,
+                                df_coords: pd.DataFrame,
+                                axis_col: str,
+                                label: str,
+                                axis_name: str,
+                                group_name: str,
+                                n_steps: int = TRAJECTORY_N_STEPS,
+                                bandwidth: float = TRAJECTORY_BANDWIDTH,
+                                pct: float = TRAJECTORY_PERCENTILE) -> list:
+    """把一条 CoIA 轴上的加权平均重建整理成交互 HTML 所需 records。"""
+    if axis_col not in df_coords.columns:
+        print(f"  [跳过 HTML] {group_name} {axis_name} {label}: 缺少坐标列 {axis_col}")
+        return []
+
+    merged = df_coords[['ID', axis_col]].merge(df_coeffs, on='ID', how='inner')
+    if merged.empty:
+        print(f"  [跳过 HTML] {group_name} {axis_name} {label}: 合并后无数据")
+        return []
+
+    positions = merged[axis_col].values.astype(float)
+    lo = np.percentile(positions, pct)
+    hi = np.percentile(positions, 100 - pct)
+    sample_points = np.linspace(lo, hi, n_steps)
+
+    coeff_cols = sorted(
+        [c for c in merged.columns if c.startswith('coeff_')],
+        key=lambda x: int(x.split('_')[1])
+    )
+    coeff_matrix = merged[coeff_cols].values.astype(float)
+
+    records = []
+    for i, pt in enumerate(sample_points, 1):
+        w = gaussian_weights(positions, pt, bandwidth)
+        if w.max() < 1e-6:
+            print(f"  [跳过 HTML] {group_name} {axis_name} {label} step {i}: 权重过小")
+            continue
+
+        cilm_flat = (w[:, np.newaxis] * coeff_matrix).sum(axis=0)
+        cilm = cilm_flat.reshape(2, LMAX + 1, LMAX + 1)
+        effective_n = 1 / (w ** 2).sum()
+
+        record_id = f"{axis_name}_{label}_step{i:02d}_{axis_col}_{pt:.3f}"
+        entry = {
+            'id': record_id,
+            'morph': None,
+            'scar': None,
+            'meta': {
+                'Dataset': group_name,
+                'Record_type': 'CoIA axis reconstruction',
+                'Typology': f"{axis_name} {label}",
+                'Axis': axis_name,
+                'Component': label,
+                'Axis_column': axis_col,
+                'Axis_coordinate': f"{pt:.6f}",
+                'Step': f"{i} / {len(sample_points)}",
+                'Bandwidth': f"{bandwidth:.6f}",
+                'Percentile_range': f"{pct:g}-{100 - pct:g}",
+                'Effective_N': f"{effective_n:.2f}",
+                'Source_N': str(len(merged)),
+            }
+        }
+        entry[label] = np.round(cilm, 8).tolist()
+        records.append(entry)
+
+    return records
+
+
+def export_axis_interactive_html(df_morph: pd.DataFrame,
+                                 df_scar: pd.DataFrame,
+                                 df_coords: pd.DataFrame,
+                                 group_name: str,
+                                 n_steps: int = TRAJECTORY_N_STEPS,
+                                 bandwidth: float = TRAJECTORY_BANDWIDTH,
+                                 out_dir: str = OUT_HTML_DIR,
+                                 coord_morph_axis1: str = 'Morph_Axis1',
+                                 coord_scar_axis1: str = 'Scar_Axis1',
+                                 coord_morph_axis2: str = 'Morph_Axis2',
+                                 coord_scar_axis2: str = 'Scar_Axis2'):
+    """为 CoIA 轴轨迹生成独立交互式 HTML。"""
+    if generate_coeff_html is None:
+        print("  [跳过 HTML] 无法导入 spharm_interactive_export.generate_html")
+        return
+
+    print(f"\n=== {group_name} CoIA 轴轨迹交互式 HTML ===")
+    os.makedirs(out_dir, exist_ok=True)
+
+    configs = [
+        (coord_morph_axis1, df_morph, 'morph', 'Axis1'),
+        (coord_scar_axis1,  df_scar,  'scar',  'Axis1'),
+        (coord_morph_axis2, df_morph, 'morph', 'Axis2'),
+        (coord_scar_axis2,  df_scar,  'scar',  'Axis2'),
+    ]
+
+    records = []
+    for axis_col, df_coeffs, label, axis_name in configs:
+        records.extend(_axis_weighted_cilm_records(
+            df_coeffs=df_coeffs,
+            df_coords=df_coords,
+            axis_col=axis_col,
+            label=label,
+            axis_name=axis_name,
+            group_name=group_name,
+            n_steps=n_steps,
+            bandwidth=bandwidth,
+        ))
+
+    if not records:
+        print(f"  [跳过 HTML] {group_name} 无有效 CoIA 轴轨迹 records")
+        return
+
+    html_str = generate_coeff_html(records, f"{group_name}_CoIA_axes", LMAX)
+    out_path = os.path.join(out_dir, f"interactive_{group_name}_CoIA_axes.html")
+    with open(out_path, 'w', encoding='utf-8') as f:
+        f.write(html_str)
+
+    size_mb = os.path.getsize(out_path) / (1024 * 1024)
+    print(f"  ✓ 已保存：{out_path}（{size_mb:.1f} MB，{len(records)} 个轴采样点）")
 
 def all_ilr_trajectories(df_morph: pd.DataFrame,
                          df_scar: pd.DataFrame,
@@ -1682,6 +1806,15 @@ if __name__ == '__main__':
         bandwidth=TRAJECTORY_BANDWIDTH,
         out_dir=OUT_DIR,
     )
+    export_axis_interactive_html(
+        df_morph=df_morph_exp,
+        df_scar=df_scar_exp,
+        df_coords=df_coords_exp,
+        group_name='EXP',
+        n_steps=TRAJECTORY_N_STEPS,
+        bandwidth=TRAJECTORY_BANDWIDTH,
+        out_dir=OUT_HTML_DIR,
+    )
 
     # ── EXP：ILR 轴连续变化轨迹 ──────────────────────────────────────────────
     print("\n" + "="*60)
@@ -1733,6 +1866,15 @@ if __name__ == '__main__':
         n_steps=TRAJECTORY_N_STEPS,
         bandwidth=TRAJECTORY_BANDWIDTH,
         out_dir=OUT_SDG_DIR,
+    )
+    export_axis_interactive_html(
+        df_morph=df_morph_sdg,
+        df_scar=df_scar_sdg,
+        df_coords=df_coords_sdg,
+        group_name='SDG',
+        n_steps=TRAJECTORY_N_STEPS,
+        bandwidth=TRAJECTORY_BANDWIDTH,
+        out_dir=OUT_HTML_DIR,
     )
 
     # ── SDG：ILR 轴连续变化轨迹 ───────────────────────────────────────────────

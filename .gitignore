@@ -70,3 +70,5 @@ CANCELED
 .env
 .quarto/
 .positai/
+.Rproj.user
+.positai
