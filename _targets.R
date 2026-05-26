@@ -28,7 +28,6 @@ tar_option_set(
                "rsvg", "png", "grid")
 )
 
-# 统一声明所有包冲突
 conflicted::conflicts_prefer(dplyr::filter)
 conflicted::conflicts_prefer(dplyr::select)
 conflicted::conflicts_prefer(dplyr::lag)
@@ -46,6 +45,14 @@ conflicted::conflicts_prefer(ggplot2::aes)
 conflicted::conflicts_prefer(ggplot2::theme_bw)
 conflicted::conflicts_prefer(ggplot2::ggsave)
 conflicted::conflicts_prefer(ggplot2::annotate)
+conflicted::conflicts_prefer(ggplot2::theme_classic)
+conflicted::conflicts_prefer(ggplot2::theme_minimal)
+conflicted::conflicts_prefer(ggplot2::theme_void)
+conflicted::conflicts_prefer(ggplot2::theme_grey)
+conflicted::conflicts_prefer(ggplot2::theme_gray)
+conflicted::conflicts_prefer(ggplot2::theme_light)
+conflicted::conflicts_prefer(ggplot2::theme_dark)
+conflicted::conflicts_prefer(ggplot2::theme_linedraw)
 
 # ==============================================================================
 # Python 环境配置（Docker 内 Conda 环境）
@@ -326,6 +333,7 @@ list(
       force(spharm_morphology_csv)
       force(spharm_direction_csv)
       force(align_svd_csvs)
+      force(spharm_analysis)
       
       local({
         source(here::here("analysis/scripts/r_statistics/exp_cores_statistics.R"),
@@ -366,6 +374,7 @@ list(
     {
       force(spharm_morphology_csv)
       force(spharm_direction_csv)
+      force(spharm_analysis)
       
       local({
         source(here::here("analysis/scripts/r_statistics/SDG_cores_statistics.R"),
