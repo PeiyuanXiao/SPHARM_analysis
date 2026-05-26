@@ -10,9 +10,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # 3. Install Miniconda
-RUN wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh \
-    && bash miniconda.sh -b -p /opt/conda \
-    && rm miniconda.sh
+#    conda 26.3.2 is required for `conda tos accept`.
+RUN wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh && \
+    bash miniconda.sh -b -p /opt/conda && \
+    rm miniconda.sh
 ENV PATH=/opt/conda/bin:$PATH
 
 # --- RSTUDIO PROJECT AUTO-LOAD CONFIG ---
@@ -31,7 +32,7 @@ WORKDIR /project
 COPY . /project
 
 # --- 5. RENV RESTORE ---
-# A. Set RENV paths to location OUTSIDE /project 
+# A. Set RENV paths to location OUTSIDE /project
 ENV RENV_PATHS_LIBRARY=/opt/renv/library
 ENV RENV_PATHS_CACHE=/opt/renv/cache
 
@@ -48,16 +49,19 @@ RUN R -e "install.packages('renv', repos='https://cloud.r-project.org')" && \
     R -e "options(renv.config.cache.symlinks = FALSE); renv::restore(prompt = FALSE)"
 
 # --- 6. Build Python Env ---
+#    environment.yml pins every package including BLAS/LAPACK build hashes.
+#    A single conda solve is sufficient — do NOT add a second `conda install`
+#    step after this, as it would trigger a re-solve and may alter numerical
+#    library builds, breaking floating-point reproducibility.
 RUN conda tos accept --override-channels --channel https://repo.anaconda.com/pkgs/main && \
     conda tos accept --override-channels --channel https://repo.anaconda.com/pkgs/r && \
-    conda env create -f analysis/scripts/environment.yml --solver=libmamba
+    conda env create -f analysis/scripts/environment.yml --solver=libmamba && \
+    conda clean -afy
 
 RUN git config --global --add safe.directory /project
 
-# --- 7. Pin binary Python geospatial/image stack inside the conda env ---
-#    These packages must come from the same conda-forge solve to avoid
-#    libtiff/libjpeg ABI mismatches when SPHARM imports PIL/VTK.
-RUN conda install -n spharm -c conda-forge --override-channels \
-    vtk libtiff libjpeg-turbo pillow pymeshfix networkx openpyxl \
-    && conda clean -afy
-    
+# --- 7. Pre-create targets store directory with correct permissions ---
+#    Prevents occasional tar_make() warning:
+#    "cannot create file 'analysis/paper/_targets/meta/meta'"
+RUN mkdir -p /project/analysis/paper/_targets/meta && \
+    chmod -R 777 /project/analysis/paper/_targets
