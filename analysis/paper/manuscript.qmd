@@ -7,12 +7,14 @@ author:
       institute:
         - ALPHA
         - UCAS
+        - uw
   - Hao Li:
       correspondence: "yes"
-      orcid: 
+      email: lihao@itpcas.ac.cn
+      orcid: 0009-0008-1504-9401
       institute:
         - ALPHA
-        - UCAS
+        - MOE
   - Ben Marwick:
       correspondence: "yes"
       email: bmarwick@uw.edu
@@ -20,9 +22,9 @@ author:
       institute:
         - uw
 institute:
-  - UCAS: University of Chinese Academy of Sciences, Beijing 100049, China
-  - ALPHA: Group of Alpine Paleoecology and Human Adaptation (ALPHA), Institute of Tibetan Plateau Research, Chinese Academy of Sciences, Beijing 100101; 
-  - TPESRE: State Key Laboratory of Tibetan Plateau Earth System, Resources and Environment (TPESRE), Beijing 100101
+  - UCAS: University of Chinese Academy of Sciences, Beijing, China
+  - ALPHA: Alpine Paleoecology and Human Adaptation Group (ALPHA Group), State Key Laboratory of Tibetan Plateau Earth System, Environment and Resources, Institute of Tibetan Plateau Research, Chinese Academy of Sciences, Beijing, China; 
+  - MOE: MOE Key Laboratory of Western China's Environmental System, Center for Excellence in Archaeological Science and Cultural Heritage, Lanzhou University, Lanzhou, China
   - uw: Department of Anthropology, University of Washington, Seattle, WA, USA
 title-block-published: "Last updated"  
 date: now
@@ -39,7 +41,7 @@ execute:
   warning: false
   message: false
   comment: "#>"
-  fig-dpi: 1000
+  fig-dpi: 800
 filters:
   - ../templates/scholarly-metadata.lua
   - ../templates/author-info-blocks.lua
@@ -166,7 +168,7 @@ To further characterize sample correspondences, we employed Kruskal–Wallis tes
 
 **2.2.4 Reproducibility and open source materials**
 
-Computational reproducibility remains an ongoing challenge in archaeological reserch, yet it is essential for the credibility and cumulative progress of quantitative research. To support reproducibility and re-use, all materials necessary to reproduce the analyses presented here are provided in a version-controlled online repository at XX. This includes the complete R and Python scripts used for all analyses and visualizations, the raw datasets underlying all reported results, and an R package that implements the analytical workflows proposed in this study for application to other datasets. The repository is organized following established best practices for research compendia, with a logical folder structure and relative file paths that allow all code to be executed without manual modification. All figures, tables, and statistical results presented in this paper can therefore be independently reproduced from these materials.
+Computational reproducibility remains an ongoing challenge in archaeological science, yet it is essential for the credibility and cumulative progress of quantitative research. To support reproducibility and re-use, all materials necessary to reproduce the analyses presented here are provided in a version-controlled online repository at XX. This includes the complete R and Python scripts used for all analyses and visualizations, and the raw datasets underlying all reported results. The repository is organized following established best practices for research compendia, with a logical folder structure and relative file paths that allow all code to be executed without manual modification. All figures, tables, and statistical results presented in this paper can therefore be independently reproduced from these materials. In addition, we provide an open-source R package (spharmlithic) that implements the essential analytical methods developed in this study, including model alignment, SPI and fabric computation, spherical harmonic analysis of both scar patterns and core morphology, and three-dimensional visual reconstruction. This package is designed as a general-purpose tool to enable other researchers to apply these methods to their own datasets.
 
 # Results
 
@@ -276,7 +278,7 @@ At the level of practical implementation, the three methods also differ in their
 
 Beyond method validation, this study integrates M-SPHARM and SP-SPHARM power spectra into a CoIA framework to directly test whether core morphology and scar-pattern organization covary at the assemblage level. This addresses a long-standing gap in core analysis: the lack of a quantitative method capable of simultaneously characterizing both dimensions within a unified analytical framework. Results from the experimental knapping cores indicate that neither the global Mantel test nor the RV coefficient reaches statistical significance, and CoIA line-direction analyses reveal no consistent evidence of structured techno-morphological covariation within individual core types. Together, these results point to a general decoupling between morphology and scar organization: similar reduction strategies can produce a range of core morphologies, and conversely, similar morphological outcomes can arise from different technological organizations.
 
-This finding has both substantive and methodological implications. Substantively, the decoupling suggests that core morphology and reduction strategy respond to different constraints and should not be treated as interchangeable proxies for one another in archaeological interpretation. Methodologically, it validates the analytical approach adopted here, in which morphology and scar-pattern organization are characterized as separate yet complementary dimensions rather than collapsed into a single typological classification. The CoIA framework, combined with the reconstructive capacity of spherical harmonics, further enables this variation to be visualized as continuous trajectories along covariance gradients rather than as discrete typological categories. In this way, the approach moves beyond static classification toward a dynamic representation of techno-morphological variability, as envisioned in the objectives of this study..
+This finding has both substantive and methodological implications. Substantively, the decoupling suggests that core morphology and reduction strategy respond to different constraints and should not be treated as interchangeable proxies for one another in archaeological interpretation. Methodologically, it validates the analytical approach adopted here, in which morphology and scar-pattern organization are characterized as separate yet complementary dimensions rather than collapsed into a single typological classification. The CoIA framework, combined with the reconstructive capacity of spherical harmonics, further enables this variation to be visualized as continuous trajectories along covariance gradients rather than as discrete typological categories. In this way, the approach moves beyond static classification toward a dynamic representation of techno-morphological variability, as envisioned in the objectives of this study.
 
 Application of the framework to the SDG assemblage provides a direct test of its performance on archaeological materials while yielding new behavioral insights. Previous studies proposed that lithic technology at SDG remained broadly continuous across layers, with two principal operational sequences: a small-flake system based on chert and a large-flake and LCT system based on quartz sandstone. However, whether these two raw material systems involve distinct reduction strategies at a finer behavioral level has not been fully explored. The present results provide quantitative support for technological continuity: no significant differences in either core morphology or scar-pattern organization were detected between Layers 4 and 3, confirming that reduction behavior remained stable across the stratigraphic sequence.
 At the same time, the spherical harmonic framework reveals a more nuanced pattern of raw material structuring than previously recognized. Chert and quartz sandstone cores differ significantly in morphology but not in scar-pattern organization, indicating that knappers applied a consistent reduction strategy regardless of raw material. The morphological differences therefore likely reflect intrinsic material properties rather than deliberate technological choices: under a broadly uniform knapping strategy, different materials yield distinct core forms without a corresponding shift in technological organization. This distinction between material-driven morphological variation and behaviorally driven scar-pattern variation would be difficult to identify without the separate quantification of both dimensions afforded by the SPHARM framework.
@@ -290,6 +292,16 @@ More broadly, the approach has potential for integration with emerging analytica
 Several limitations should be acknowledged. First, sample sizes for certain core types, particularly bidirectional and discoidal cores in the experimental assemblage, are small, and the current results should therefore be interpreted as exploratory rather than definitive. Second, the experimental cores were produced by a single knapper, which may not fully capture the range of inter-individual variability expected in archaeological assemblages. Third, SPHARM requires closed genus-zero surfaces, meaning that cores with through-holes or severe fragmentation cannot be analyzed without prior reconstruction. Finally, the present study operates at the core level, characterizing overall morphology and scar organization as aggregate properties. Finer-grained technological attributes, such as platform preparation details, are not captured by the current framework and should be integrated in future work to complement the macroscopic patterns identified here.
 
 # Conclusion
+
+This study introduces a spherical harmonic framework for the integrated three-dimensional analysis of lithic cores, extending SPHARM beyond near-spherical artifacts to a broader range of morphologically diverse core types. The framework characterizes core morphology (M-SPHARM) and scar pattern (SP-SPHARM) within the same mathematical representation, using von Mises–Fisher kernel density estimation to convert discrete scar vectors into continuous spherical distributions amenable to harmonic expansion.
+
+Validation against ideal digital cores and experimental knapping cores demonstrates that SP-SPHARM achieves higher discriminatory power than existing approaches, particularly in distinguishing radial core subtypes such as Levallois and discoidal that neither SPI nor fabric metrics can resolve. The three methods nonetheless capture different aspects of scar organization and are best used in combination: SP-SPHARM for overall structural comparison, SPI and fabric metrics for interpretively grounded refinement.
+
+Building on these descriptors, we further propose a Co-inertia Analysis framework as a tentative companion approach for jointly examining technological and morphological variation. Applied to experimental and archaeological assemblages, this exploratory framework reveals a general decoupling between core morphology and scar organization, while also identifying localized regularities such as the structured techno-morphological trajectory of unifacial unidirectional cores at SDG. These findings should be regarded as preliminary, but they illustrate the analytical possibilities opened up by treating morphology and scar pattern as separate yet jointly analyzable dimensions.
+
+To support broader adoption of the framework, we provide an open-source R package (spharmlithic) implementing the essential analytical methods developed in this study, including model alignment, SPI and fabric computation, SPHARM analysis of both morphology and scar patterns, and three-dimensional visual reconstruction. The package, together with the version-controlled repository containing the complete analysis scripts and data for this paper, enables both independent reproduction of the reported results and application of the methods to new datasets.
+
+Future work should focus on expanding sample sizes and assemblage diversity, and integrating SPHARM with phylogenetic and other emerging quantitative paradigms to investigate border questions of technological behavior of the past humans.
 
 # CRediT authorship contribution statement
 
