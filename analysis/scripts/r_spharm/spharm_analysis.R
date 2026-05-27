@@ -445,9 +445,9 @@ p_adj_vec <- c(
   0.055, 0.357, 0.010,
   0.804, 0.010, 0.012,
   # Direction SPHARM（Holm）
-  0.436, 0.010, 0.030, 0.010,
-  0.010, 0.164, 0.012,
-  0.012, 0.024, 0.010
+  0.458, 0.010, 0.045, 0.010,
+  0.012, 0.458, 0.010,
+  0.012, 0.028, 0.010
 )
 
 plot_data <- tibble(
@@ -543,10 +543,10 @@ p_dir_plot <- ggplot(res_dir$scores,
   geom_point(size = 2.0, alpha = 0.88, stroke = 0.3, shape = 16) +
   scale_color_manual(values = TYPOLOGY_COLORS) +
   scale_fill_manual(values  = TYPOLOGY_COLORS) +
-  scale_x_continuous(limits = c(-3, 4), expand = expansion(mult = 0.08),
-                     breaks = seq(-3, 4, by = 1)) +
-  scale_y_continuous(limits = c(-5.5, 3.5), expand = expansion(mult = 0.08),
-                     breaks = seq(-5.5, 3.5, by = 1)) +
+  scale_x_continuous(limits = c(-2.5, 4.5), expand = expansion(mult = 0.08),
+                     breaks = seq(-2.5, 4.5, by = 1)) +
+  scale_y_continuous(limits = c(-5, 3), expand = expansion(mult = 0.08),
+                     breaks = seq(-5, 3, by = 1)) +
   labs(x = sprintf("LD1 (%.1f%%)", res_dir$prop_var[1] * 100),
        y = sprintf("LD2 (%.1f%%)", res_dir$prop_var[2] * 100)) +
   theme_bw() +
