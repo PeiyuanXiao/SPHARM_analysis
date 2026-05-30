@@ -1,46 +1,19 @@
-# ==============================================================================
 # exp_cores_statistics.R
+# Techno-morphological joint analysis of experimental cores. Sourced by `exp_cia_analysis`.
 #
-# 分析框架：
-#   L1   ：Global Mantel + CoIA
-#   L1-3 ：CoIA 桑基图
-#   L2-A ：分组 Mantel
-#   L2-B ：CoIA 箭头长度分组差异
-#   L2-C ：CoIA 箭头方位圆形统计
-#   L2-D ：spectral_entropy × Typology
+# Analysis framework:
+#   L1     : global Mantel + CoIA (baseline), with Sankey of the contribution flow.
+#   L2-A   : per-type Mantel.
+#   L2-B   : CoIA arrow-length group differences.
+#   L2-C   : CoIA arrow-direction circular statistics.
 #
-# 输入：
-#   analysis/data/derived_data/SPHARM_direction.csv
-#   analysis/data/derived_data/SPHARM_morphology.csv
-#   analysis/data/raw_data/SDG_core_metric.xlsx
+# Input:
+#   - analysis/data/derived_data/SPHARM_direction.csv
+#   - analysis/data/derived_data/SPHARM_morphology.csv
+#   - analysis/data/raw_data/SDG_core_metric.xlsx
+#   - asset/Axis_trajectory.png (panel D of the composite figure)
 #
-# 输出（figures/）：
-#   EXP_L1_Mantel_Network.png
-#   EXP_L1_CIA_Biplot.png
-#   EXP_L1_CIA_Diagnostics.png
-#   EXP_L1_CIA_Sankey.png
-#   EXP_L2_Arrow_Length_typology.png
-#   EXP_L2_Arrow_Direction_rose_typology.png
-#   EXP_L2D_SE_Direction_Typology_boxplot.png
-#   EXP_L2D_SE_Morphology_Typology_boxplot.png
-#   EXP_CoIA_composite.png
-#   SENS_global_trajectory.png
-#
-# 输出（derived_data/）：
-#   EXP_L1_results.csv
-#   EXP_L2_grouped_mantel.csv
-#   EXP_L2_arrow_stats.csv
-#   EXP_L2_circular_stats.csv
-#   EXP_CIA_scores_full.csv
-#   EXP_CIA_coords_full.csv
-#   EXP_PCA_CoIA_contribution.csv
-#   EXP_L2D_SE_desc_stats.csv
-#   EXP_L2D_SE_dunn_results.csv
-#   SENS_global.csv
-#   SENS_grouped.csv
-#   EXP_morph_ILR_scores.csv
-#   EXP_scar_ILR_scores.csv
-# ==============================================================================
+# Returns (objects): p_final, plus statistics consumed by the paper.
 
 library(here)
 library(tidyverse)
@@ -58,7 +31,7 @@ library(png)
 library(grid)
 
 # ==============================================================================
-# ---- 全局常量：色盘与类型顺序 ----
+# ---- Global constants: palettes and type order ----
 # ==============================================================================
 
 TYPOLOGY_COLORS <- c(
@@ -77,9 +50,8 @@ TYPOLOGY_ORDER <- c(
   "Multiplatform"
 )
 
-
 # ==============================================================================
-# ---- 全局辅助函数 ----
+# ---- Global helpers ----
 # ==============================================================================
 
 cosine_dist <- function(X) {
@@ -115,7 +87,7 @@ safe_filter_groups <- function(meta_df, group_col, min_n = 3) {
   valid  <- names(counts[counts >= min_n])
   if (length(valid) < 2) {
     cat(sprintf(
-      "  [跳过] %s：有效组数不足（需 >= 2 组每组 >= %d 件）。当前：%s\n",
+      "  [skip] %s: too few valid groups (need >= 2 groups, each >= %d). Current: %s\n",
       group_col, min_n,
       paste(names(counts), counts, sep = "=", collapse = ", ")
     ))
@@ -157,13 +129,12 @@ watson_perm_test <- function(x1, x2, B = 9999) {
   )
 }
 
-
 # ==============================================================================
-# ---- 数据准备 ----
+# ---- Data preparation ----
 # ==============================================================================
 
-POWER_COLS_DIR   <- paste0("power_l", 1:6)   # 方向谱 l=1-6
-POWER_COLS_MORPH <- paste0("power_l", 1:8)  # 形态谱 l=1-8
+POWER_COLS_DIR   <- paste0("power_l", 1:6)   # direction spectrum l=1-6
+POWER_COLS_MORPH <- paste0("power_l", 1:8)  # morphology spectrum l=1-8
 
 SPHARM_direction  <- read_csv(here("analysis/data/derived_data/SPHARM_direction.csv"),
                               show_col_types = FALSE)
@@ -178,7 +149,7 @@ SPHARM_morphology <- SPHARM_morphology %>%
 
 filter_spharm <- function(df, power_cols, meta = NULL) {
   result <- df %>%
-    select(ID, Typology, SHE, spectral_entropy, all_of(power_cols))
+    select(ID, Typology, all_of(power_cols))
   if (!is.null(meta)) result <- left_join(result, meta, by = "ID")
   result
 }
@@ -203,9 +174,9 @@ df_morph_all <- df_morph_all %>% filter(ID %in% common_ids) %>% arrange(ID)
 df_scar_all  <- df_scar_all  %>% filter(ID %in% common_ids) %>% arrange(ID)
 stopifnot(all(df_morph_all$ID == df_scar_all$ID))
 
-cat("==== 数据对齐（EXP + IM）====\n")
-cat("共有标本：", length(common_ids),
-    "；ID 完全匹配：", all(df_morph_all$ID == df_scar_all$ID), "\n\n")
+cat("==== Data alignment (EXP + IM) ====\n")
+cat("Shared specimens:", length(common_ids),
+    "; IDs fully matched:", all(df_morph_all$ID == df_scar_all$ID), "\n\n")
 
 morph_power_all <- df_morph_all %>%
   select(all_of(POWER_COLS_MORPH)) %>%
@@ -221,7 +192,7 @@ rownames(scar_power_all)  <- df_scar_all$ID
 morph_power_clean <- morph_power_all[, sapply(morph_power_all, sd, na.rm = TRUE) > 0]
 scar_power_clean  <- scar_power_all[,  sapply(scar_power_all,  sd, na.rm = TRUE) > 0]
 
-# ILR 变换（消除成分数据加和约束）-> 欧氏距离矩阵
+# ILR transform (removes the compositional sum constraint) -> Euclidean distance
 morph_ilr_all <- as.data.frame(ilr(replace_zeros(as.matrix(morph_power_clean))))
 scar_ilr_all  <- as.data.frame(ilr(replace_zeros(as.matrix(scar_power_clean))))
 rownames(morph_ilr_all) <- rownames(morph_power_clean)
@@ -233,7 +204,7 @@ D_scar_all  <- dist(scar_ilr_all)
 exp_ids <- rownames(morph_power_clean)[
   !str_starts(rownames(morph_power_clean), "IM_") &
     rownames(morph_power_clean) != "EXP43_Biface"]
-cat("纯实验标本数量（不含 IM_）：", length(exp_ids), "\n")
+cat("Experimental specimens (excluding IM_):", length(exp_ids), "\n")
 
 morph_exp     <- morph_power_clean[exp_ids, ]
 scar_exp      <- scar_power_clean[exp_ids, ]
@@ -248,7 +219,7 @@ meta_exp <- df_morph_all %>%
   select(ID, Typology) %>%
   left_join(metric_data, by = "ID")
 
-# 统一 Levallois 拼写
+# Unify Levallois spelling
 meta_exp <- meta_exp %>%
   mutate(Typology = if_else(
     str_detect(Typology, regex("levallois", ignore_case = TRUE)),
@@ -261,7 +232,7 @@ df_morph_all <- df_morph_all %>%
     "Levallois", Typology
   ))
 
-cat("\n==== 实验标本元数据（Levallois 已合并）====\n")
+cat("\n==== Experimental metadata (Levallois merged) ====\n")
 cat("Typology：\n"); print(table(meta_exp$Typology, useNA = "ifany"))
 
 meta_typology <- safe_filter_groups(meta_exp, "Typology")
@@ -274,18 +245,17 @@ typology_levels <- TYPOLOGY_ORDER[TYPOLOGY_ORDER %in%
                                         !is.na(meta_exp$Typology)])]
 typology_pal    <- TYPOLOGY_COLORS[typology_levels]
 
-
 # ==============================================================================
-# ========== 第一层：整体 Mantel + CoIA ==========
+# ========== Level 1: global Mantel + CoIA ==========
 # ==============================================================================
 
-cat("\n\n## 第一层：整体 Mantel + CoIA — 建立基线（EXP）##\n")
+cat("\n\n## Level 1: global Mantel + CoIA — baseline (EXP) ##\n")
 
 # ------------------------------------------------------------------------------
-# L1-1：全局 Mantel + linkET 网络图
+# L1-1: global Mantel + linkET network
 # ------------------------------------------------------------------------------
 
-cat("\n==== L1-1：全局 Mantel ====\n")
+cat("\n==== L1-1: global Mantel ====\n")
 mantel_global <- mantel(D_morph_exp, D_scar_exp,
                         method = "spearman", permutations = 9999)
 print(mantel_global)
@@ -349,13 +319,10 @@ p_mantel_net <- qcorrplot(
     plot.margin   = margin(20, 20, 20, 20)
   )
 
-ggsave(here("analysis/output/figures/EXP_L1_Mantel_Network.png"),
-       plot = p_mantel_net, width = 10, height = 8, dpi = 300, bg = "white")
-cat("图已保存：EXP_L1_Mantel_Network.png\n")
-
+cat("Figure built: EXP_L1_Mantel_Network.png\n")
 
 # ------------------------------------------------------------------------------
-# L1-2：CoIA + RV 置换检验
+# L1-2: CoIA + RV permutation test
 # ------------------------------------------------------------------------------
 
 cat("\n==== L1-2：CoIA ====\n")
@@ -370,16 +337,16 @@ dudi_morph <- dudi.pca(morph_exp_ilr, center = TRUE, scale = TRUE,
 dudi_scar  <- dudi.pca(scar_exp_ilr,  center = TRUE, scale = TRUE,
                        scannf = FALSE, nf = ncol(scar_exp_ilr))
 
-# PCA 详细报告
+# Detailed PCA report
 report_pca <- function(dudi_obj, label) {
   n_ax <- length(dudi_obj$eig)
   eig  <- dudi_obj$eig
   pct  <- eig / sum(eig) * 100
   cum  <- cumsum(pct)
   
-  cat(sprintf("\n====== %s PCA 报告 ======\n", label))
+  cat(sprintf("\n====== %s PCA report ======\n", label))
   
-  cat("\n-- 特征值与方差解释 --\n")
+  cat("\n-- Eigenvalues and explained variance --\n")
   eig_df <- tibble(
     Axis       = paste0("PC", seq_len(n_ax)),
     Eigenvalue = round(eig, 4),
@@ -388,7 +355,7 @@ report_pca <- function(dudi_obj, label) {
   )
   print(as.data.frame(eig_df))
   
-  cat("\n-- 变量载荷（c1：ILR 变量在各 PCA 轴上的载荷）--\n")
+  cat("\n-- Variable loadings (c1: ILR variables on PCA axes) --\n")
   load_df <- as.data.frame(dudi_obj$c1)
   colnames(load_df) <- paste0("PC", seq_len(ncol(load_df)))
   n_ilr <- nrow(load_df)
@@ -399,7 +366,7 @@ report_pca <- function(dudi_obj, label) {
   })
   print(load_df)
   
-  cat("\n-- 样本得分描述统计（前2轴）--\n")
+  cat("\n-- Score summary (first 2 axes) --\n")
   score_df <- as.data.frame(dudi_obj$li)[, 1:min(2, n_ax), drop = FALSE]
   colnames(score_df) <- paste0("PC", seq_len(ncol(score_df)))
   score_stats <- score_df %>%
@@ -412,28 +379,28 @@ report_pca <- function(dudi_obj, label) {
     )
   print(as.data.frame(score_stats))
   
-  cat("\n-- 各主轴主导变量（|载荷| 最大）--\n")
+  cat("\n-- Dominant variable per axis (max |loading|) --\n")
   load_num <- as.data.frame(dudi_obj$c1)
   for (ax in seq_len(min(2, n_ax))) {
     col <- load_num[[ax]]
     idx <- which.max(abs(col))
-    cat(sprintf("  PC%d (%.1f%% var)：主导 ILR%d（载荷 %+.4f）-> %s\n",
+    cat(sprintf("  PC%d (%.1f%% var): dominant ILR%d (loading %+.4f) -> %s\n",
                 ax, pct[ax], idx, col[idx], load_df$ILR_meaning[idx]))
   }
   invisible(list(eig_df = eig_df, load_df = load_df))
 }
 
-pca_report_morph <- report_pca(dudi_morph, "形态谱")
-pca_report_scar  <- report_pca(dudi_scar,  "方向谱")
+pca_report_morph <- report_pca(dudi_morph, "morphology spectrum")
+pca_report_scar  <- report_pca(dudi_scar,  "direction spectrum")
 
 coin_exp    <- coinertia(dudi_morph, dudi_scar, scannf = FALSE, nf = 2)
 cia_inertia <- coin_exp$eig / sum(coin_exp$eig) * 100
 
-cat("RV 系数：", round(coin_exp$RV, 4), "\n")
+cat("RV coefficient:", round(coin_exp$RV, 4), "\n")
 
 set.seed(42)
 rv_test <- randtest(coin_exp, nrepet = 9999)
-cat("\nRV 置换检验：\n"); print(rv_test)
+cat("\nRV permutation test:\n"); print(rv_test)
 
 scores_morph <- as.data.frame(coin_exp$lX) %>% rownames_to_column("ID")
 scores_scar  <- as.data.frame(coin_exp$lY) %>% rownames_to_column("ID")
@@ -449,8 +416,8 @@ scores_combined <- left_join(
   ) %>%
   left_join(meta_exp %>% select(ID, Typology), by = "ID")
 
-# CoIA 坐标输出
-cat("\n==== CoIA 样本坐标 ====\n")
+# CoIA coordinate output
+cat("\n==== CoIA specimen coordinates ====\n")
 cia_coords <- scores_combined %>%
   select(ID, Typology,
          Morph_Axis1 = Axis1_M, Morph_Axis2 = Axis2_M,
@@ -461,10 +428,10 @@ print(cia_coords %>%
         as.data.frame())
 write_csv(cia_coords,
           here("analysis/data/derived_data/EXP_CIA_coords_full.csv"))
-cat("已保存：EXP_CIA_coords_full.csv\n")
+cat("Saved: EXP_CIA_coords_full.csv\n")
 
-# PCA 轴对 CoIA 轴贡献
-cat("\n==== 各端 PCA 轴对 CoIA 轴的贡献（weight^2）====\n")
+# PCA-axis contribution to CoIA axes
+cat("\n==== Per-side PCA-axis contribution to CoIA axes (weight^2) ====\n")
 
 compute_pca_cia_contribution <- function(a_mat, pct_vec, endpoint_label) {
   df <- as.data.frame(a_mat)
@@ -496,15 +463,14 @@ scar_contrib <- compute_pca_cia_contribution(
 )
 
 pca_cia_contrib <- bind_rows(morph_contrib, scar_contrib)
-cat("\n形态端：\n"); print(morph_contrib %>% select(-endpoint) %>% as.data.frame())
-cat("\n方向端：\n"); print(scar_contrib  %>% select(-endpoint) %>% as.data.frame())
+cat("\nMorphology side:\n"); print(morph_contrib %>% select(-endpoint) %>% as.data.frame())
+cat("\nDirection side:\n"); print(scar_contrib  %>% select(-endpoint) %>% as.data.frame())
 write_csv(pca_cia_contrib,
           here("analysis/data/derived_data/EXP_PCA_CoIA_contribution.csv"))
-cat("已保存：EXP_PCA_CoIA_contribution.csv\n")
-
+cat("Saved: EXP_PCA_CoIA_contribution.csv\n")
 
 # ------------------------------------------------------------------------------
-# CoIA 辅助可视化：诊断图
+# CoIA diagnostic plots
 # ------------------------------------------------------------------------------
 
 eig_df <- tibble(
@@ -610,12 +576,9 @@ p_cia_diagnostics <- (p_scree | p_load_morph | p_load_scar) +
     )
   )
 
-ggsave(here("analysis/output/figures/EXP_L1_CIA_Diagnostics.png"),
-       plot = p_cia_diagnostics, width = 15, height = 5.5, dpi = 300, bg = "white")
-cat("图已保存：EXP_L1_CIA_Diagnostics.png\n")
+cat("Figure built: EXP_L1_CIA_Diagnostics.png\n")
 
-
-# CIA 主双标图
+# CoIA main biplot
 scores_long_plot <- bind_rows(
   scores_combined %>%
     filter(!is.na(Typology), ID %in% plot_ids_no_biface) %>%
@@ -686,9 +649,7 @@ p_cia_biplot <-
     legend.margin     = margin(4, 6, 4, 6)
   )
 
-ggsave(here("analysis/output/figures/EXP_L1_CIA_Biplot.png"),
-       plot = p_cia_biplot, width = 10, height = 8, dpi = 300, bg = "white")
-cat("图已保存：EXP_L1_CIA_Biplot.png\n")
+cat("Figure built: EXP_L1_CIA_Biplot.png\n")
 
 l1_results <- tibble(
   method  = c("Mantel (ILR, Euclidean, Spearman)", "RV (ILR, Euclidean)"),
@@ -697,14 +658,13 @@ l1_results <- tibble(
   n       = length(exp_ids)
 )
 write_csv(l1_results, here("analysis/data/derived_data/EXP_L1_results.csv"))
-cat("\n第一层结论：\n"); print(l1_results)
-
+cat("\nLevel 1 summary:\n"); print(l1_results)
 
 # ==============================================================================
-# ---- L1-3：CoIA 桑基图（ILR -> PCA -> CoIA 贡献流）----
+# ---- L1-3: CoIA Sankey (ILR -> PCA -> CoIA contribution flow) ----
 # ==============================================================================
 
-cat("\n==== L1-3：CoIA 桑基图 ====\n")
+cat("\n==== L1-3: CoIA Sankey ====\n")
 
 c1_morph <- as.matrix(dudi_morph$c1)
 c1_scar  <- as.matrix(dudi_scar$c1)
@@ -726,7 +686,7 @@ w2_dpc_cia <- a_scar^2
 morph_var_pct_full <- round(dudi_morph$eig / sum(dudi_morph$eig) * 100, 1)
 scar_var_pct_full  <- round(dudi_scar$eig  / sum(dudi_scar$eig)  * 100, 1)
 
-# 保留累计方差 <= 95% 的轴（至少保留第 1 轴）
+# Keep axes with cumulative variance <= 95% (at least axis 1)
 keep_mpc <- which(cumsum(morph_var_pct_full) <= 95 | seq_along(morph_var_pct_full) == 1)
 keep_dpc <- which(cumsum(scar_var_pct_full)  <= 95 | seq_along(scar_var_pct_full)  == 1)
 keep_mpc <- keep_mpc[keep_mpc <= ncol(c1_morph)]
@@ -744,11 +704,11 @@ n_mpc   <- ncol(w2_ilr_mpc)
 n_dpc   <- ncol(w2_ilr_dpc)
 
 cat(sprintf(
-  "  形态端：%d ILR -> %d MorphPC；方向端：%d ILR -> %d DirPC；共享 %d CoIA 轴\n",
+  "  morphology: %d ILR -> %d MorphPC; direction: %d ILR -> %d DirPC; shared %d CoIA axes\n",
   n_ilr_m, n_mpc, n_ilr_d, n_dpc, n_cia_ax
 ))
 
-# 节点高度（比例于总 weight^2）
+# Node height (proportional to total weight^2)
 h_ilr_m_raw <- rowSums(w2_ilr_mpc)
 h_ilr_d_raw <- rowSums(w2_ilr_dpc)
 h_mpc_raw   <- rowSums(w2_mpc_cia)
@@ -935,39 +895,38 @@ writeLines(lines, svg_path, useBytes = FALSE)
 
 if (requireNamespace("rsvg", quietly = TRUE)) {
   rsvg::rsvg_png(svg_path, png_path, width = SVG_W * 2)
-  cat("PNG 已保存（via rsvg）：EXP_L1_CIA_Sankey.png\n")
+  cat("PNG saved (via rsvg): EXP_L1_CIA_Sankey.png\n")
 } else if (nzchar(Sys.which("rsvg-convert"))) {
   system2("rsvg-convert", args = c("-d", "300", "-p", "300", "-o", png_path, svg_path))
-  cat("PNG 已保存（via rsvg-convert）：EXP_L1_CIA_Sankey.png\n")
+  cat("PNG saved (via rsvg-convert): EXP_L1_CIA_Sankey.png\n")
 } else if (nzchar(Sys.which("inkscape"))) {
   system2("inkscape", args = c("--export-filename", png_path, "--export-dpi", "300", svg_path))
-  cat("PNG 已保存（via Inkscape）：EXP_L1_CIA_Sankey.png\n")
+  cat("PNG saved (via Inkscape): EXP_L1_CIA_Sankey.png\n")
 } else {
-  cat("[警告] 未检测到 rsvg / rsvg-convert / Inkscape，无法生成 PNG。\n")
-  cat("       请运行 install.packages('rsvg') 后重新执行此段。\n")
-  cat("       SVG 中间文件位于：", svg_path, "\n")
+  cat("[warning] rsvg / rsvg-convert / Inkscape not found; cannot render PNG.\n")
+  cat("          Install with install.packages('rsvg') and re-run this section.\n")
+  cat("          Intermediate SVG at:", svg_path, "\n")
 }
 unlink(svg_path)
-cat("\n==== L1-3 桑基图完成 ====\n")
-
+cat("\n==== L1-3 Sankey done ====\n")
 
 # ==============================================================================
-# ========== 第二层：联合证据 ==========
+# ========== Level 2: joint evidence ==========
 # ==============================================================================
 
-cat("\n\n## 第二层：联合证据（EXP）##\n")
+cat("\n\n## Level 2: joint evidence (EXP) ##\n")
 
 # ------------------------------------------------------------------------------
-# L2-A：分组 Mantel
+# L2-A: grouped Mantel
 # ------------------------------------------------------------------------------
 
-cat("\n---------- L2-A：各类型独立 Mantel ----------\n")
+cat("\n---------- L2-A: per-type Mantel ----------\n")
 
 mantel_one_type <- function(type_val, meta_df, D_morph_full, D_scar_full,
                             n_perm = 9999) {
   ids <- meta_df %>% filter(Typology == type_val) %>% pull(ID)
   cat(sprintf("  -> %s (n = %d) ...", type_val, length(ids)))
-  if (length(ids) < 5) { cat(" 跳过（n < 5）\n"); return(NULL) }
+  if (length(ids) < 5) { cat(" skipped (n < 5)\n"); return(NULL) }
   res <- mantel(extract_subdist(D_morph_full, ids),
                 extract_subdist(D_scar_full,  ids),
                 method = "spearman", permutations = n_perm)
@@ -998,7 +957,7 @@ mantel_by_typology <- mantel_by_typology %>%
   mutate(group_var = "Typology", group = Typology,
          p_raw = p_value, p_fdr = p_value)
 
-cat("\n==== 各类型 Mantel 结果汇总 ====\n")
+cat("\n==== Per-type Mantel summary ====\n")
 print(mantel_by_typology %>%
         select(Typology, n, mantel_r, p_value, significance) %>%
         mutate(across(c(mantel_r, p_value), ~ round(.x, 4))))
@@ -1008,14 +967,13 @@ l2_mantel <- mantel_by_typology %>%
          group = factor(group, levels = typology_levels))
 
 write_csv(l2_mantel, here("analysis/data/derived_data/EXP_L2_grouped_mantel.csv"))
-cat("已保存：EXP_L2_grouped_mantel.csv\n")
-
+cat("Saved: EXP_L2_grouped_mantel.csv\n")
 
 # ------------------------------------------------------------------------------
-# L2-B：CoIA 箭头长度
+# L2-B: CoIA arrow length
 # ------------------------------------------------------------------------------
 
-cat("\n---------- L2-B：箭头长度（Typology）----------\n")
+cat("\n---------- L2-B: arrow length (Typology) ----------\n")
 
 run_arrow_length_analysis <- function(group_col, group_label, palette) {
   valid_groups_stat <- scores_combined %>%
@@ -1025,12 +983,12 @@ run_arrow_length_analysis <- function(group_col, group_label, palette) {
     pull(.data[[group_col]]) %>%
     unique()
   if (length(valid_groups_stat) < 2) {
-    cat(sprintf("  [跳过] %s 箭头长度检验：有效分组不足\n", group_label))
+    cat(sprintf("  [skip] %s arrow-length test: too few valid groups\n", group_label))
     return(invisible(NULL))
   }
   sub_df_stat <- scores_combined %>% filter(.data[[group_col]] %in% valid_groups_stat)
   
-  cat(sprintf("\n----- %s x 箭头长度 -----\n", group_label))
+  cat(sprintf("\n----- %s x arrow length -----\n", group_label))
   kw <- kruskal.test(reformulate(group_col, "arrow_length"), data = sub_df_stat)
   print(kw)
   pw <- pairwise.wilcox.test(sub_df_stat$arrow_length, sub_df_stat[[group_col]],
@@ -1082,14 +1040,13 @@ run_arrow_length_analysis <- function(group_col, group_label, palette) {
   
   fname <- sprintf("analysis/output/figures/EXP_L2_Arrow_Length_%s.png",
                    tolower(str_replace_all(group_label, " ", "_")))
-  ggsave(here(fname), plot = p, width = 7, height = 6, dpi = 300, bg = "white")
-  cat(sprintf("图已保存：%s\n", basename(fname)))
+  cat(sprintf("Figure built: %s\n", basename(fname)))
   list(sub_df = sub_df, kw = kw, pw = pw, p = p)
 }
 
 res_len_typology <- run_arrow_length_analysis("Typology", "Typology", typology_pal)
 
-cat("\n==== 箭头长度描述统计（Typology）====\n")
+cat("\n==== Arrow-length summary (Typology) ====\n")
 scores_combined %>%
   filter(!is.na(Typology)) %>%
   group_by(Typology) %>%
@@ -1104,22 +1061,21 @@ scores_combined %>%
   ) %>%
   print()
 
-
 # ------------------------------------------------------------------------------
-# L2-C：CoIA 箭头方位圆形统计
-# NOTE: plot_rose() 必须在 run_circular_analysis() 之前定义，
-#       否则列表中存入的是函数引用而非 ggplot 对象。
+# L2-C: CoIA arrow-direction circular statistics
+# NOTE: plot_rose() must be defined before run_circular_analysis(),
+#       otherwise the list stores a function reference instead of a ggplot object.
 # ------------------------------------------------------------------------------
 
-cat("\n---------- L2-C：箭头方位（Typology）----------\n")
+cat("\n---------- L2-C: arrow direction (Typology) ----------\n")
 
-# ---- 绘图函数 ----
+# ---- plotting helper ----
 plot_rose <- function(res, palette, bw = 40) {
   group_col <- res$group_col
   kde_df    <- res$kde_df
   mean_dirs <- res$mean_dirs
   
-  # 把角度从 [0, 360) 映射到 (-180, 180]，便于线性展示
+  # Map angle from [0, 360) to (-180, 180] for linear display
   kde_linear <- kde_df %>%
     mutate(angle_centered = if_else(angle_deg > 180,
                                     angle_deg - 360,
@@ -1134,7 +1090,7 @@ plot_rose <- function(res, palette, bw = 40) {
            !!group_col := factor(.data[[group_col]],
                                  levels = levels(kde_df[[group_col]])))
   
-  # Rayleigh 标签
+  # Rayleigh label
   rayleigh_labels <- res$rayleigh %>%
     mutate(
       label = case_when(
@@ -1157,7 +1113,7 @@ plot_rose <- function(res, palette, bw = 40) {
           color      = .data[[group_col]]),
       linewidth = 0.5, linetype = "dashed", alpha = 0.75
     ) +
-    # Rayleigh 显著性标签
+    # Rayleigh significance label
     geom_text(
       data = rayleigh_labels,
       aes(label = label),
@@ -1194,7 +1150,7 @@ plot_rose <- function(res, palette, bw = 40) {
     )
 }
 
-# ---- 分析函数（后定义，内部调用 plot_rose）----
+# ---- analysis helper (defined after plot_rose, which it calls) ----
 run_circular_analysis <- function(group_col, group_label, palette) {
   valid_groups <- scores_combined %>%
     filter(!is.na(.data[[group_col]])) %>%
@@ -1203,14 +1159,14 @@ run_circular_analysis <- function(group_col, group_label, palette) {
     pull(.data[[group_col]]) %>%
     unique()
   if (length(valid_groups) < 2) {
-    cat(sprintf("  [跳过] %s 圆形统计：有效组数不足\n", group_label))
+    cat(sprintf("  [skip] %s circular statistics: too few valid groups\n", group_label))
     return(invisible(NULL))
   }
   valid_groups_ordered <- intersect(TYPOLOGY_ORDER,
                                     valid_groups[valid_groups != "Biface"])
   sub_df <- scores_combined %>% filter(.data[[group_col]] %in% valid_groups)
   
-  cat(sprintf("\n----- %s 圆形描述统计 -----\n", group_label))
+  cat(sprintf("\n----- %s circular summary -----\n", group_label))
   circ_desc <- map_dfr(valid_groups_ordered, function(g) {
     angles <- sub_df %>% filter(.data[[group_col]] == g) %>% pull(arrow_angle)
     cs     <- circ_stats_one(angles)
@@ -1220,14 +1176,14 @@ run_circular_analysis <- function(group_col, group_label, palette) {
   })
   print(circ_desc)
   
-  cat(sprintf("\n----- %s Rayleigh 检验 -----\n", group_label))
+  cat(sprintf("\n----- %s Rayleigh test -----\n", group_label))
   rayleigh_res <- map_dfr(valid_groups_ordered, function(g) {
     angles   <- sub_df %>% filter(.data[[group_col]] == g) %>% pull(arrow_angle)
     circ_obj <- circular(angles, type = "angles", units = "radians", modulo = "2pi")
     rt       <- rayleigh.test(circ_obj)
     cat(sprintf("  %s: U = %.4f, p = %.4f -> %s\n",
                 g, rt$statistic, rt$p.value,
-                ifelse(rt$p.value < 0.05, "方位集中", "方位分散")))
+                ifelse(rt$p.value < 0.05, "concentrated", "dispersed")))
     tibble(group_var = group_col, group = g,
            rayleigh_U = round(rt$statistic, 4),
            rayleigh_p = round(rt$p.value,   4),
@@ -1236,7 +1192,7 @@ run_circular_analysis <- function(group_col, group_label, palette) {
   
   watson_res <- NULL
   if (length(valid_groups) >= 2) {
-    cat(sprintf("\n----- %s Watson 两样本检验 -----\n", group_label))
+    cat(sprintf("\n----- %s Watson two-sample test -----\n", group_label))
     pairs <- combn(valid_groups, 2, simplify = FALSE)
     watson_res <- map_dfr(pairs, function(pair) {
       x1 <- sub_df %>% filter(.data[[group_col]] == pair[1]) %>% pull(arrow_angle)
@@ -1244,7 +1200,7 @@ run_circular_analysis <- function(group_col, group_label, palette) {
       wt <- watson_perm_test(x1, x2, B = 9999)
       cat(sprintf("  %s vs %s: U2 = %.4f, p = %.4f -> %s\n",
                   pair[1], pair[2], wt$statistic, wt$p.value,
-                  ifelse(wt$p.value < 0.05, "分布不同", "差异不显著")))
+                  ifelse(wt$p.value < 0.05, "different", "n.s.")))
       tibble(group_var    = group_col,
              group1       = pair[1], group2 = pair[2],
              U2_statistic = round(wt$statistic, 4),
@@ -1253,7 +1209,7 @@ run_circular_analysis <- function(group_col, group_label, palette) {
     })
   }
   
-  # 准备绘图数据
+  # Prepare plotting data
   sub_df_plot <- scores_combined %>%
     filter(.data[[group_col]] %in% valid_groups_ordered,
            ID %in% plot_ids_no_biface)
@@ -1288,7 +1244,7 @@ run_circular_analysis <- function(group_col, group_label, palette) {
     ungroup() %>%
     mutate(!!group_col := factor(.data[[group_col]], levels = valid_groups_ordered))
   
-  # 调用 plot_rose 生成 ggplot 对象
+  # Call plot_rose to build the ggplot object
   p_rose <- plot_rose(
     list(group_col = group_col, kde_df = kde_df, mean_dirs = mean_dirs,
          rayleigh  = rayleigh_res),
@@ -1297,10 +1253,7 @@ run_circular_analysis <- function(group_col, group_label, palette) {
   
   fname <- sprintf("analysis/output/figures/EXP_L2_Arrow_Direction_rose_%s.png",
                    tolower(str_replace_all(group_label, " ", "_")))
-  ggsave(here(fname), plot = p_rose,
-         width = min(length(valid_groups_ordered) * 2.8 + 1, 18),
-         height = 4.5, dpi = 300, bg = "white")
-  cat(sprintf("图已保存：%s\n", basename(fname)))
+  cat(sprintf("Figure built: %s\n", basename(fname)))
   
   list(
     desc      = circ_desc,
@@ -1318,235 +1271,56 @@ res_circ_typology <- run_circular_analysis("Typology", "Typology", typology_pal)
 p_rose <- plot_rose(res_circ_typology, typology_pal)
 p_rose
 
-# ------------------------------------------------------------------------------
-# L2-D：spectral_entropy × Typology
-# ------------------------------------------------------------------------------
-
-cat("\n---------- L2-D：spectral_entropy × Typology ----------\n")
-
-se_df <- df_scar_all %>%
-  filter(ID %in% exp_ids) %>%
-  select(ID, SE_direction = spectral_entropy) %>%
-  left_join(
-    df_morph_all %>% filter(ID %in% exp_ids) %>%
-      select(ID, SE_morphology = spectral_entropy),
-    by = "ID"
-  ) %>%
-  left_join(meta_exp %>% select(ID, Typology), by = "ID") %>%
-  filter(!is.na(Typology)) %>%
-  group_by(Typology) %>% filter(n() >= 3) %>% ungroup() %>%
-  mutate(Typology = factor(Typology,
-                           levels = c(intersect(TYPOLOGY_ORDER, unique(Typology)),
-                                      setdiff(unique(Typology), TYPOLOGY_ORDER))))
-
-se_df_plot <- se_df %>%
-  filter(ID %in% plot_ids_no_biface) %>%
-  mutate(Typology = factor(as.character(Typology),
-                           levels = intersect(TYPOLOGY_ORDER,
-                                              unique(as.character(Typology)))))
-
-se_desc <- se_df %>%
-  group_by(Typology) %>%
-  summarise(
-    n            = n(),
-    mean_dir     = round(mean(SE_direction,    na.rm = TRUE), 4),
-    median_dir   = round(median(SE_direction,  na.rm = TRUE), 4),
-    sd_dir       = round(sd(SE_direction,      na.rm = TRUE), 4),
-    mean_morph   = round(mean(SE_morphology,   na.rm = TRUE), 4),
-    median_morph = round(median(SE_morphology, na.rm = TRUE), 4),
-    sd_morph     = round(sd(SE_morphology,     na.rm = TRUE), 4),
-    .groups = "drop"
-  )
-cat("\n==== SE 描述统计 ====\n"); print(se_desc)
-write_csv(se_desc, here("analysis/data/derived_data/EXP_L2D_SE_desc_stats.csv"))
-
-run_kw_dunn_se <- function(df, y_col, label) {
-  cat(sprintf("\n----- %s -----\n", label))
-  kw <- kruskal.test(reformulate("Typology", y_col), data = df)
-  cat(sprintf("  Kruskal-Wallis: P = %.4f -> %s\n",
-              kw$statistic, kw$parameter, kw$p.value,
-              ifelse(kw$p.value < 0.05, "组间有显著差异", "差异不显著")))
-  dunn_raw <- dunnTest(x = df[[y_col]], g = df[["Typology"]],
-                       method = "bh")$res
-  dunn <- dunn_raw %>%
-    separate(Comparison, into = c("group1", "group2"),
-             sep = " - ", remove = FALSE) %>%
-    rename(statistic = Z, p = P.unadj, p.adj = P.adj) %>%
-    mutate(
-      p.signif     = case_when(
-        p     < 0.001 ~ "***", p     < 0.01 ~ "**",
-        p     < 0.05  ~ "*",   p     < 0.10 ~ ".", TRUE ~ "ns"),
-      p.adj.signif = case_when(
-        p.adj < 0.001 ~ "***", p.adj < 0.01 ~ "**",
-        p.adj < 0.05  ~ "*",   p.adj < 0.10 ~ ".", TRUE ~ "ns")
-    ) %>%
-    select(Comparison, group1, group2, statistic, p, p.signif, p.adj, p.adj.signif)
-  print(dunn)
-  list(kw = kw, dunn = dunn)
-}
-
-res_se_dir   <- run_kw_dunn_se(se_df %>% filter(!is.na(SE_direction)),
-                               "SE_direction",  "SE（方向）× Typology")
-res_se_morph <- run_kw_dunn_se(se_df %>% filter(!is.na(SE_morphology)),
-                               "SE_morphology", "SE（形态）× Typology")
-
-bind_rows(
-  res_se_dir$dunn   %>% mutate(source = "direction"),
-  res_se_morph$dunn %>% mutate(source = "morphology")
-) %>%
-  write_csv(here("analysis/data/derived_data/EXP_L2D_SE_dunn_results.csv"))
-cat("已保存：EXP_L2D_SE_dunn_results.csv\n")
-
-make_se_boxplot <- function(df, y_col, y_label, kw_res, dunn_res,
-                            title_suffix, fname) {
-  sig_pairs   <- dunn_res %>% filter(p.adj < 0.05)
-  trend_pairs <- dunn_res %>% filter(p < 0.05, p.adj >= 0.05)
-  y_vals      <- df[[y_col]]
-  y_max       <- max(y_vals, na.rm = TRUE)
-  y_range     <- diff(range(y_vals, na.rm = TRUE))
-  step        <- y_range * 0.10
-  type_lvls   <- levels(df[["Typology"]])
-  cat("type_lvls:", type_lvls, "\n")
-  cat("group1 values:", sig_pairs$group1, "\n")
-  cat("group2 values:", sig_pairs$group2, "\n")
-  all_annot_base <- sig_pairs %>% mutate(annot_type = "sig")
-  
-  sig_annot <- if (nrow(all_annot_base) > 0) {
-    all_annot_base %>%
-      mutate(
-        group1 = as.character(group1),
-        group2 = as.character(group2),
-        x1    = match(group1, type_lvls),
-        x2    = match(group2, type_lvls),
-        y_bar = y_max + step * row_number(),
-        x_mid = (x1 + x2) / 2,
-        label = p.adj.signif
-      ) %>%
-      filter(!is.na(x1), !is.na(x2))  
-  } else NULL
-  
-  p <- ggplot(df, aes(x = Typology, y = .data[[y_col]],
-                      fill = Typology, color = Typology)) +
-    geom_boxplot(outlier.shape = NA,
-                 alpha = 0.25, linewidth = 0.5) +
-    geom_jitter(width = 0.15, size = 2.5, alpha = 0.7, shape = 16) +
-    stat_summary(fun = mean, geom = "point",
-                 shape = 16, size = 4, color = "white") +
-    {
-      if (!is.null(sig_annot) && nrow(sig_annot) > 0) {
-        tip <- y_range * 0.012
-        list(
-          geom_segment(data = sig_annot,
-                       aes(x = x1, xend = x2, y = y_bar, yend = y_bar,
-                           linetype = annot_type),
-                       inherit.aes = FALSE, color = "grey30", linewidth = 0.4),
-          geom_segment(data = sig_annot,
-                       aes(x = x1, xend = x1, y = y_bar - tip, yend = y_bar),
-                       inherit.aes = FALSE, color = "grey30", linewidth = 0.4,
-                       linetype = "solid"),
-          geom_segment(data = sig_annot,
-                       aes(x = x2, xend = x2, y = y_bar - tip, yend = y_bar),
-                       inherit.aes = FALSE, color = "grey30", linewidth = 0.4,
-                       linetype = "solid"),
-          geom_text(data = sig_annot,
-                    aes(x = x_mid, y = y_bar + y_range * 0.015, label = label),
-                    inherit.aes = FALSE, size = 3.2, color = "grey25"),
-          scale_linetype_manual(values = c("sig" = "solid"), guide = "none")
-        )
-      } else NULL
-    } +
-    annotate("text", x = Inf, y = Inf,
-             label = sprintf("Kruskal-Wallis\nchi\u00b2 = %.2f, p = %.3f",
-                             kw_res$statistic, kw_res$p.value),
-             hjust = 1.05, vjust = 1.2, size = 4,
-             color = "grey50") +
-    scale_fill_manual(values  = typology_pal) +
-    scale_color_manual(values = typology_pal) +
-    scale_x_discrete(expand = expansion(add = 0.6)) +
-    scale_y_continuous(expand = expansion(mult = c(0.07, 0.15))) +
-    theme_bw() +
-    theme(
-      panel.grid.major.x = element_blank(),
-      panel.grid.major.y = element_blank(),
-      panel.grid.minor   = element_blank(),
-      axis.text.x        = element_text(angle = 30, hjust = 1, size = 9.5),
-      axis.text.y        = element_text(size = 9.5),
-      legend.position    = "none"
-    ) +
-    labs(
-      x = NULL, y = y_label
-    )
-  
-  ggsave(here(fname), plot = p,
-         width  = max(6, length(typology_levels) * 1.3 + 2),
-         height = 6, dpi = 300, bg = "white")
-  cat(sprintf("图已保存：%s\n", basename(fname)))
-  p
-}
-
-p_se_dir <- make_se_boxplot(
-  se_df_plot %>% filter(!is.na(SE_direction)),
-  "SE_direction", "Spectral Entropy (Scar Pattern)",
-  res_se_dir$kw,   res_se_dir$dunn,   "Scar Direction",
-  "analysis/output/figures/EXP_L2D_SE_Direction_Typology_boxplot.png"
-)
-p_se_morph <- make_se_boxplot(
-  se_df_plot %>% filter(!is.na(SE_morphology)),
-  "SE_morphology", "Spectral Entropy (Morphology)",
-  res_se_morph$kw, res_se_morph$dunn, "Morphology",
-  "analysis/output/figures/EXP_L2D_SE_Morphology_Typology_boxplot.png"
-)
-
 # ==============================================================================
-# ---- 保存衍生数据 ----
+# ---- Save derived data ----
 # ==============================================================================
 
 if (!is.null(res_circ_typology)) {
   circ_out <- left_join(res_circ_typology$desc, res_circ_typology$rayleigh,
                         by = c("group_var", "group"))
   write_csv(circ_out, here("analysis/data/derived_data/EXP_L2_circular_stats.csv"))
-  cat("已保存：EXP_L2_circular_stats.csv\n")
+  cat("Saved: EXP_L2_circular_stats.csv\n")
 }
 
 scores_combined %>%
   select(ID, Typology, arrow_length, arrow_angle,
          Axis1_M, Axis2_M, Axis1_S, Axis2_S) %>%
   write_csv(here("analysis/data/derived_data/EXP_L2_arrow_stats.csv"))
-cat("已保存：EXP_L2_arrow_stats.csv\n")
+cat("Saved: EXP_L2_arrow_stats.csv\n")
 
 scores_combined %>%
   write_csv(here("analysis/data/derived_data/EXP_CIA_scores_full.csv"))
-cat("已保存：EXP_CIA_scores_full.csv\n")
+cat("Saved: EXP_CIA_scores_full.csv\n")
 
-# 输出 ILR 得分
+# Write ILR scores
 morph_ilr_exp %>%
   rownames_to_column("ID") %>%
   write_csv(here("analysis/data/derived_data/EXP_morph_ILR_scores.csv"))
-cat("已保存：EXP_morph_ILR_scores.csv\n")
+cat("Saved: EXP_morph_ILR_scores.csv\n")
 
 scar_ilr_exp %>%
   rownames_to_column("ID") %>%
   write_csv(here("analysis/data/derived_data/EXP_scar_ILR_scores.csv"))
-cat("已保存：EXP_scar_ILR_scores.csv\n")
+cat("Saved: EXP_scar_ILR_scores.csv\n")
 
 # ==============================================================================
-# ---- 汇总打印 ----
+# ---- Summary print ----
 # ==============================================================================
 
-cat("\n\n## 分析结果汇总（EXP）##\n")
+cat("\n\n## Analysis summary (EXP) ##\n")
 
-cat("\n【第一层：基线】\n")
+cat("\n[Level 1: baseline]\n")
 cat(sprintf("  Mantel r = %.4f, p = %.3f  ->  %s\n",
             mantel_global$statistic, mantel_global$signif,
-            ifelse(mantel_global$signif < 0.05, "显著相关", "独立（ns）")))
+            ifelse(mantel_global$signif < 0.05, "correlated", "independent (n.s.)")))
 cat(sprintf("  RV       = %.4f, p = %.3f  ->  %s\n",
             coin_exp$RV, rv_test$pvalue,
-            ifelse(rv_test$pvalue < 0.05, "显著协变", "独立（ns）")))
+            ifelse(rv_test$pvalue < 0.05, "covarying", "independent (n.s.)")))
 
-cat("\n【第二层 A：各类型独立 Mantel（Typology）】\n")
+cat("\n[Level 2A: per-type Mantel (Typology)]\n")
 if (!is.null(l2_mantel) && nrow(l2_mantel) > 0) {
   n_sig <- sum(l2_mantel$p_value < 0.05, na.rm = TRUE)
-  cat(sprintf("  共检验 %d 个类型，p < 0.05：%d 个\n", nrow(l2_mantel), n_sig))
+  cat(sprintf("  %d types tested, p < 0.05: %d\n", nrow(l2_mantel), n_sig))
   if (n_sig > 0) {
     l2_mantel %>% filter(p_value < 0.05) %>%
       select(Typology, n, mantel_r, p_value, significance) %>%
@@ -1555,25 +1329,16 @@ if (!is.null(l2_mantel) && nrow(l2_mantel) > 0) {
   }
 }
 
-cat("\n【第二层 B】参见 EXP_L2_Arrow_Length_typology.png\n")
-cat("【第二层 C】参见 EXP_L2_Arrow_Direction_rose_typology.png 及 EXP_L2_circular_stats.csv\n")
+cat("\n[Level 2B] see EXP_L2_Arrow_Length_typology.png\n")
+cat("[Level 2C] see EXP_L2_Arrow_Direction_rose_typology.png and EXP_L2_circular_stats.csv\n")
 
-cat("\n【第二层 D：spectral_entropy × Typology】\n")
-cat(sprintf("  SE（方向）KW: chi^2 = %.4f, p = %.4f -> %s\n",
-            res_se_dir$kw$statistic, res_se_dir$kw$p.value,
-            ifelse(res_se_dir$kw$p.value < 0.05, "显著", "ns")))
-cat(sprintf("  SE（形态）KW: chi^2 = %.4f, p = %.4f -> %s\n",
-            res_se_morph$kw$statistic, res_se_morph$kw$p.value,
-            ifelse(res_se_morph$kw$p.value < 0.05, "显著", "ns")))
-
-cat("\n【桑基图】EXP_L1_CIA_Sankey.png\n")
-
+cat("\n[Sankey] EXP_L1_CIA_Sankey.png\n")
 
 # ==============================================================================
-# ---- 组合图 ----
+# ---- Composite figure ----
 # ==============================================================================
 
-# 第一步：在各子图上直接加标签
+# Step 1: tag each subplot
 p_cia_biplot_tagged <- p_cia_biplot +
   labs(tag = "A") +
   theme(plot.tag = element_text(size = 13, face = "bold"))
@@ -1586,14 +1351,14 @@ p_rose_tagged <- res_circ_typology$p_rose +
   labs(tag = "C") +
   theme(plot.tag = element_text(size = 13, face = "bold"))
 
-# 第二步：重新组合 p_composite（不加 plot_annotation）
+# Step 2: recompose p_composite (no plot_annotation)
 p_composite <- (
   ((p_cia_biplot_tagged | p_len_tagged) + plot_layout(widths = c(3, 1))) /
     p_rose_tagged
 ) +
   plot_layout(heights = c(2.8, 1))
 
-# 第三步：外部图片加 D 标签
+# Step 3: tag the external image as D
 external_img <- png::readPNG(here("asset/Axis_trajectory.png"))
 grob_img     <- grid::rasterGrob(external_img, interpolate = TRUE)
 p_external   <- wrap_elements(full = grob_img) +
@@ -1603,30 +1368,6 @@ p_external   <- wrap_elements(full = grob_img) +
     plot.margin = margin(0, 0, 0, 0)
   )
 
-# 第四步：拼图
+# Step 4: assemble
 p_final <- wrap_elements(full = p_composite) / p_external +
   plot_layout(heights = c(3, 1))
-
-ggsave(
-  here("analysis/output/figures/EXP_CoIA_composite_full.png"),
-  plot   = p_final,
-  width  = 10,
-  height = 14,
-  dpi    = 300,
-  bg     = "white"
-)
-
-p_se_combined <- (p_se_dir | p_se_morph) +
-  plot_annotation(
-    tag_levels = list(c("A", "B")),
-    theme = theme(plot.tag = element_text(size = 11, face = "bold"))
-  )
-
-ggsave(
-  here("analysis/output/figures/EXP_L2D_SE_combined_boxplot.png"),
-  plot   = p_se_combined,
-  width  = 10,
-  height = 6,
-  dpi    = 300,
-  bg     = "white"
-)

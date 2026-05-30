@@ -1,19 +1,17 @@
-# ==============================================================================
 # align_lin2024.R
-# 方向数据对齐 — Lin 2024 法
+# Scar-direction alignment (Lin et al. 2024 method). Sourced by the `align_lin2024_csv` target.
+# Used only by the rotational-invariance validation pipeline.
 #
-# 算法逻辑（两步，参考 Lin et al. 2024）：
-#   Step 1: 旋转 — 以形态学法线（Norm_X/Y/Z）为基准，将其对齐到 Z 轴
-#   Step 2: 平移 — 将最长刮痕的起点移至坐标原点 (0, 0)
+# Algorithm (two steps):
+#   Step 1  Rotate    — align the measured morphological normal (Norm_X/Y/Z) to Z.
+#   Step 2  Translate — move the longest scar's start point to (0, 0).
 #
-# 与 SVD 法的区别：
-#   - 旋转基准：Lin 法用预先测量的形态法线，SVD 法从刮痕向量中计算
-#   - 平移基准：Lin 法锚定最长刮痕起点，SVD 法移至点云质心
-#   - 步骤数量：Lin 法两步，SVD 法三步（多一个 XY 内旋转）
+# Differs from align_svd.R: rotation uses the measured normal (not an SVD-fitted one),
+# translation anchors the longest scar (not the centroid), and there is no XY rotation step.
 #
-# 输入：analysis/data/raw_data/Scar_orientation_data.xlsx
-# 输出：analysis/output/html/scar_alignment_lin2024.html（交互式三面板图）
-# ==============================================================================
+# Input : analysis/data/raw_data/Scar_orientation_data.xlsx
+# Output: analysis/data/derived_data/directions_aligned_lin2024.csv
+#         analysis/output/html/scar_alignment_lin2024.html (interactive 3-panel diagnostic)
 
 library(here)
 library(readxl)
@@ -21,6 +19,7 @@ library(dplyr)
 library(plotly)
 library(htmltools)
 library(jsonlite)
+library(readr)
 
 conflicted::conflicts_prefer(plotly::layout)
 
@@ -28,11 +27,7 @@ source(here("analysis/scripts/r_utils/geometry_utils.R"))
 source(here("analysis/scripts/r_utils/viz3d_utils.R"))
 
 
-# ==============================================================================
-# 辅助函数：获取刮痕长度
-# 若数据中已有 Length 列则直接使用；否则从起点终点坐标计算
-# ==============================================================================
-
+# Scar length: use the Length column if present, else compute from endpoints.
 get_scar_length <- function(df) {
   if ("Length" %in% names(df)) return(df$Length)
   dx <- df$End_X - df$Start_X
@@ -42,22 +37,19 @@ get_scar_length <- function(df) {
 }
 
 
-# ==============================================================================
-# 1. 读取数据
-# ==============================================================================
+# 1. Load data -----------------------------------------------------------------
 
-data_1   <- read_excel(here("analysis/data/raw_data/Scar_orientation_data.xlsx"), sheet = 1)
-data_2   <- read_excel(here("analysis/data/raw_data/Scar_orientation_data.xlsx"), sheet = 2)
+xlsx_path <- here("analysis/data/raw_data/Scar_orientation_data.xlsx")
+data_1   <- read_excel(xlsx_path, sheet = 1)
+data_2   <- read_excel(xlsx_path, sheet = 2)
 raw_data <- bind_rows(data_1, data_2)
 
 
-# ==============================================================================
-# 2. 对齐函数（Lin 2024 法）
-# ==============================================================================
+# 2. Alignment (Lin 2024) ------------------------------------------------------
 
 align_lin2024 <- function(df_group) {
   
-  # --- 计算单位方向向量（与 align_svd 一致）---
+  # Unit direction vectors (same as align_svd).
   dx  <- df_group$End_X - df_group$Start_X
   dy  <- df_group$End_Y - df_group$Start_Y
   dz  <- df_group$End_Z - df_group$Start_Z
@@ -68,11 +60,11 @@ align_lin2024 <- function(df_group) {
   df_group$Direct_Y <- ifelse(valid, dy / len, 0)
   df_group$Direct_Z <- ifelse(valid, dz / len, 0)
   
-  # --- Step 1: 旋转 — 将形态法线对齐到 Z 轴 ---
+  # Step 1: rotate morphological normal onto Z.
   normal <- as.numeric(df_group[1, c("Norm_X", "Norm_Y", "Norm_Z")])
   normal <- normal / sqrt(sum(normal^2))
   
-  R1 <- get_rot_matrix(normal, c(0, 0, 1))   # 来自 geometry_utils.R
+  R1 <- get_rot_matrix(normal, c(0, 0, 1))
   
   S <- as.matrix(df_group[, c("Start_X", "Start_Y", "Start_Z")]) %*% t(R1)
   E <- as.matrix(df_group[, c("End_X",   "End_Y",   "End_Z"  )]) %*% t(R1)
@@ -82,7 +74,7 @@ align_lin2024 <- function(df_group) {
   df_group$e_x <- E[, 1]; df_group$e_y <- E[, 2]; df_group$e_z <- E[, 3]
   df_group$d_x <- D[, 1]; df_group$d_y <- D[, 2]; df_group$d_z <- D[, 3]
   
-  # --- Step 2: 平移 — 最长刮痕起点移至 (0, 0) ---
+  # Step 2: translate longest scar's start to (0, 0).
   longest_idx <- which.max(get_scar_length(df_group))
   shift_x     <- df_group$s_x[longest_idx]
   shift_y     <- df_group$s_y[longest_idx]
@@ -95,13 +87,11 @@ align_lin2024 <- function(df_group) {
       e_y = e_y - shift_y
     )
   
-  return(df_group)
+  df_group
 }
 
 
-# ==============================================================================
-# 3. 批量执行对齐
-# ==============================================================================
+# 3. Run alignment -------------------------------------------------------------
 
 aligned_data_lin2024 <- raw_data %>%
   group_by(ID) %>%
@@ -109,9 +99,7 @@ aligned_data_lin2024 <- raw_data %>%
   ungroup()
 
 
-# ==============================================================================
-# 4. 验证：检查最长刮痕起点是否在 (0, 0)
-# ==============================================================================
+# 4. Check: longest scar's start should sit at (0, 0) --------------------------
 
 aligned_data_lin2024 %>%
   group_by(ID) %>%
@@ -120,9 +108,7 @@ aligned_data_lin2024 %>%
   print()
 
 
-# ==============================================================================
-# 5. 交互式可视化 — 三面板图（每个标本可切换）
-# ==============================================================================
+# 5. Interactive 3-panel diagnostic --------------------------------------------
 
 build_panels <- function(demo_id) {
   df <- raw_data %>% filter(ID == demo_id)
@@ -137,7 +123,7 @@ build_panels <- function(demo_id) {
   arr_scale   <- max(dist(s0)) * 0.25
   half_sz     <- max(dist(s0)) * 0.55
   
-  # 重现对齐流程（用于可视化各步骤中间状态）
+  # Replay the alignment to visualise each intermediate state.
   R1        <- get_rot_matrix(normal_raw, c(0, 0, 1))
   s1        <- s0 %*% t(R1)
   e1        <- e0 %*% t(R1)
@@ -150,7 +136,7 @@ build_panels <- function(demo_id) {
   e2[, 1]   <- e1[, 1] - shift_x; e2[, 2] <- e1[, 2] - shift_y
   z_longest <- s2[longest_idx, 3]
   
-  # 以下绘图函数均来自 viz3d_utils.R；highlight_idx 让最长刮痕高亮为粉色
+  # highlight_idx marks the longest scar in pink.
   p0 <- plot_ly() %>%
     add_scars_3d(s0[,1], s0[,2], s0[,3],
                  e0[,1], e0[,2], e0[,3],
@@ -179,12 +165,10 @@ build_panels <- function(demo_id) {
 }
 
 
-# ==============================================================================
-# 6. 批量构建面板并导出 HTML
-# ==============================================================================
+# 6. Build panels and export HTML ----------------------------------------------
 
-all_ids     <- unique(raw_data$ID)
-panels_list <- lapply(as.character(all_ids), build_panels)
+all_ids            <- unique(raw_data$ID)
+panels_list        <- lapply(as.character(all_ids), build_panels)
 names(panels_list) <- as.character(all_ids)
 
 js_data_lines <- sapply(as.character(all_ids), function(id) {
@@ -259,19 +243,14 @@ grid <- browsable(
 
 out_path <- here("analysis/output/html/scar_alignment_lin2024.html")
 htmltools::save_html(grid, out_path)
-browseURL(out_path)
+# browseURL(out_path)  # disabled: avoids opening a browser during tar_make()
 
-# ==============================================================================
-# 7. 导出对齐数据供 Python SPHARM 使用
-# ==============================================================================
 
-library(readr)
+# 7. Export aligned directions for the Python SPHARM step ----------------------
 
-# --- Lin2024 对齐数据：d_x/d_y/d_z 重命名为 ux/uy/uz ---
 aligned_lin2024_export <- aligned_data_lin2024 %>%
-  select(ID, any_of("Typology"),
-         ux = d_x, uy = d_y, uz = d_z)
+  select(ID, any_of("Typology"), ux = d_x, uy = d_y, uz = d_z)
 
 write_csv(aligned_lin2024_export,
           here("analysis/data/derived_data/directions_aligned_lin2024.csv"))
-cat("已保存：directions_aligned_lin2024.csv\n")
+cat("Saved: directions_aligned_lin2024.csv\n")

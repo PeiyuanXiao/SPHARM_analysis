@@ -1,21 +1,15 @@
-# ==============================================================================
 # align_svd.R
-# 片疤方向数据对齐 — SVD 法
+# Scar-direction alignment (SVD method). Sourced by the `align_svd_csvs` target.
 #
-# 算法逻辑（三步）：
-#   Step 1: 旋转 — 用 SVD 从刮痕向量中提取最优拟合平面法线，将其对齐到 Z 轴
-#   Step 2: 平移 — 将旋转后的点云质心移至原点
-#   Step 3: XY 内旋转 — 用 SVD 提取刮痕主方向，将其对齐到 X 轴
+# Algorithm:
+#   Step 1  Rotate  — extract best-fit plane normal of scars via SVD, align it to Z.
+#   Step 2  Translate — move endpoint centroid to origin.
+#   Step 3  Rotate XY — align scar main axis (SVD) to X.
 #
-# 输入：analysis/data/raw_data/Scar_orientation_data.xlsx
-#   sheet 1：IM 理想模型
-#   sheet 2：考古标本
-#   sheet 3：实验石核
-# 输出：
-#   analysis/output/html/scar_alignment_svd.html（交互式四面板图）
-#   analysis/data/derived_data/directions_raw.csv
-#   analysis/data/derived_data/directions_aligned_svd.csv
-# ==============================================================================
+# Input : analysis/data/raw_data/Scar_orientation_data.xlsx (sheet 1 IM, 2 archaeological, 3 experimental)
+# Output: analysis/data/derived_data/directions_raw.csv
+#         analysis/data/derived_data/directions_aligned_svd.csv
+#         analysis/output/html/scar_alignment_svd.html (interactive 4-panel diagnostic)
 
 library(here)
 library(readxl)
@@ -32,36 +26,27 @@ source(here("analysis/scripts/r_utils/geometry_utils.R"))
 source(here("analysis/scripts/r_utils/viz3d_utils.R"))
 
 
-# ==============================================================================
-# 1. 读取数据（三个 sheet 合并）
-# ==============================================================================
+# 1. Load data (three sheets merged) -------------------------------------------
 
-data_1   <- read_excel(
-  here("analysis/data/raw_data/Scar_orientation_data.xlsx"), sheet = 1) %>%
-  mutate(across(any_of("Scar_ID"), as.character))
-data_2   <- read_excel(
-  here("analysis/data/raw_data/Scar_orientation_data.xlsx"), sheet = 2) %>%
-  mutate(across(any_of("Scar_ID"), as.character))
-data_3   <- read_excel(
-  here("analysis/data/raw_data/Scar_orientation_data.xlsx"), sheet = 3) %>%
-  mutate(across(any_of("Scar_ID"), as.character))
+xlsx_path <- here("analysis/data/raw_data/Scar_orientation_data.xlsx")
+data_1 <- read_excel(xlsx_path, sheet = 1) %>% mutate(across(any_of("Scar_ID"), as.character))
+data_2 <- read_excel(xlsx_path, sheet = 2) %>% mutate(across(any_of("Scar_ID"), as.character))
+data_3 <- read_excel(xlsx_path, sheet = 3) %>% mutate(across(any_of("Scar_ID"), as.character))
 
 raw_data <- bind_rows(data_1, data_2, data_3)
 
-cat(sprintf("读取完成：%d 件标本，%d 条刮痕\n",
+cat(sprintf("Loaded: %d specimens, %d scars\n",
             n_distinct(raw_data$ID), nrow(raw_data)))
-cat(sprintf("  Sheet 1（IM）    ：%d 件\n", n_distinct(data_1$ID)))
-cat(sprintf("  Sheet 2（考古）  ：%d 件\n", n_distinct(data_2$ID)))
-cat(sprintf("  Sheet 3（实验）  ：%d 件\n\n", n_distinct(data_3$ID)))
+cat(sprintf("  Sheet 1 (IM)            : %d\n", n_distinct(data_1$ID)))
+cat(sprintf("  Sheet 2 (archaeological): %d\n", n_distinct(data_2$ID)))
+cat(sprintf("  Sheet 3 (experimental)  : %d\n\n", n_distinct(data_3$ID)))
 
 
-# ==============================================================================
-# 2. 对齐函数（SVD 法）
-# ==============================================================================
+# 2. Alignment (SVD) -----------------------------------------------------------
 
 align_svd <- function(df_group) {
   
-  # --- Step 1: 旋转 — 将 SVD 法线对齐到 Z 轴 ---
+  # Step 1: rotate SVD normal onto Z.
   dx  <- df_group$End_X - df_group$Start_X
   dy  <- df_group$End_Y - df_group$Start_Y
   dz  <- df_group$End_Z - df_group$Start_Z
@@ -77,6 +62,9 @@ align_svd <- function(df_group) {
                     dy[valid] / len[valid],
                     dz[valid] / len[valid])
     normal <- svd(U)$v[, 3]
+  } else {
+    # Too few scars for SVD: fall back to the measured morphological normal.
+    normal <- as.numeric(df_group[1, c("Norm_X", "Norm_Y", "Norm_Z")])
   }
   
   normal <- normal / sqrt(sum(normal^2))
@@ -92,7 +80,7 @@ align_svd <- function(df_group) {
   df_group$e_x <- E[, 1]; df_group$e_y <- E[, 2]; df_group$e_z <- E[, 3]
   df_group$d_x <- D[, 1]; df_group$d_y <- D[, 2]; df_group$d_z <- D[, 3]
   
-  # --- Step 2: 平移 — 将点云质心移至原点 ---
+  # Step 2: translate centroid to origin.
   global_center_x <- mean(c(df_group$s_x, df_group$e_x))
   global_center_y <- mean(c(df_group$s_y, df_group$e_y))
   global_center_z <- mean(c(df_group$s_z, df_group$e_z))
@@ -107,7 +95,7 @@ align_svd <- function(df_group) {
       e_z = e_z - global_center_z
     )
   
-  # --- Step 3: XY 内旋转 — 将刮痕主方向对齐到 X 轴 ---
+  # Step 3: rotate scar main axis onto X (within XY).
   xy_dirs  <- cbind(df_group$d_x, df_group$d_y)
   main_dir <- svd(xy_dirs)$v[, 1]
   mean_dir <- colMeans(xy_dirs)
@@ -126,25 +114,21 @@ align_svd <- function(df_group) {
   df_group$e_x <- E2[, 1]; df_group$e_y <- E2[, 2]; df_group$e_z <- E2[, 3]
   df_group$d_x <- D2[, 1]; df_group$d_y <- D2[, 2]; df_group$d_z <- D2[, 3]
   
-  return(df_group)
+  df_group
 }
 
 
-# ==============================================================================
-# 3. 批量执行对齐
-# ==============================================================================
+# 3. Run alignment -------------------------------------------------------------
 
 aligned_data <- raw_data %>%
   group_by(ID) %>%
   group_modify(~ align_svd(.x)) %>%
   ungroup()
 
-cat(sprintf("对齐完成：%d 件标本\n\n", n_distinct(aligned_data$ID)))
+cat(sprintf("Aligned: %d specimens\n\n", n_distinct(aligned_data$ID)))
 
 
-# ==============================================================================
-# 4. 验证：检查对齐后法线的 Z 分量是否接近 0
-# ==============================================================================
+# 4. Check: aligned normal Z-component should be near 0 ------------------------
 
 aligned_data %>%
   mutate(
@@ -154,20 +138,14 @@ aligned_data %>%
   ) %>%
   dplyr::filter(len > 1e-10) %>%
   group_by(ID) %>%
-  summarise(
-    N       = n(),
-    uz_mean = round(mean(uz), 3),
-    uz_sd   = round(sd(uz),   3),
-    .groups = "drop"
-  ) %>%
+  summarise(N = n(), uz_mean = round(mean(uz), 3), uz_sd = round(sd(uz), 3),
+            .groups = "drop") %>%
   print()
 
 
-# ==============================================================================
-# 5. 交互式可视化 — 四面板图（全部标本）
-# ==============================================================================
+# 5. Interactive 4-panel diagnostic (all specimens) ----------------------------
 
-raw_data_viz <- raw_data                     # 包含全部三个 sheet
+raw_data_viz <- raw_data
 all_ids      <- unique(raw_data_viz$ID)
 
 build_panel <- function(demo_id) {
@@ -251,7 +229,7 @@ build_panel <- function(demo_id) {
   list(p0 = p0, p1 = p1, p2 = p2, p3 = p3)
 }
 
-panels_list   <- lapply(as.character(all_ids), build_panel)
+panels_list        <- lapply(as.character(all_ids), build_panel)
 names(panels_list) <- as.character(all_ids)
 
 js_data_lines <- sapply(as.character(all_ids), function(id) {
@@ -318,14 +296,11 @@ grid <- browsable(tagList(
 
 out_path <- here("analysis/output/html/scar_alignment_svd.html")
 htmltools::save_html(grid, out_path)
-browseURL(out_path)
+# browseURL(out_path)  # disabled: avoids opening a browser during tar_make()
 
 
-# ==============================================================================
-# 6. 导出对齐数据供 Python SPHARM 使用（包含全部三个 sheet）
-# ==============================================================================
+# 6. Export aligned directions for the Python SPHARM step ----------------------
 
-# --- 原始方向向量（未对齐，全部标本）---
 raw_export <- raw_data %>%
   mutate(
     dx  = End_X - Start_X,
@@ -337,16 +312,13 @@ raw_export <- raw_data %>%
   mutate(ux = dx / len, uy = dy / len, uz = dz / len) %>%
   select(ID, any_of("Typology"), ux, uy, uz)
 
-write_csv(raw_export,
-          here("analysis/data/derived_data/directions_raw.csv"))
-cat("已保存：directions_raw.csv\n")
+write_csv(raw_export, here("analysis/data/derived_data/directions_raw.csv"))
+cat("Saved: directions_raw.csv\n")
 
-# --- SVD 对齐数据（全部标本，包含实验石核）---
 aligned_svd_export <- aligned_data %>%
-  select(ID, any_of("Typology"),
-         ux = d_x, uy = d_y, uz = d_z)
+  select(ID, any_of("Typology"), ux = d_x, uy = d_y, uz = d_z)
 
-write_csv(aligned_svd_export,
-          here("analysis/data/derived_data/directions_aligned_svd.csv"))
-cat("已保存：directions_aligned_svd.csv\n")
-cat(sprintf("  总计：%d 件标本（含实验石核）\n", n_distinct(aligned_svd_export$ID)))
+write_csv(aligned_svd_export, here("analysis/data/derived_data/directions_aligned_svd.csv"))
+cat("Saved: directions_aligned_svd.csv\n")
+cat(sprintf("  Total: %d specimens (incl. experimental cores)\n",
+            n_distinct(aligned_svd_export$ID)))

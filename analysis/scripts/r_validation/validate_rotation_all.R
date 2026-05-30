@@ -1,31 +1,27 @@
-# ==============================================================================
 # validate_rotation_all.R
-# 旋转不变性验证：R / E / I + SPHARM 功率谱 + 谱熵
-# 方法：Bland-Altman 分析（逐对比较三种对齐方式）
+# Rotational-invariance validation: R / E / I + SPHARM power spectrum.
+# Method: Bland-Altman analysis (pairwise comparison of alignment conditions).
+# Sourced by the `p_rotational_invariance_validity` target.
 #
-# 前置条件：
-#   1. 已运行 align_svd.R     → directions_raw.csv + directions_aligned_svd.csv
-#   2. 已运行 align_lin2024.R → directions_aligned_lin2024.csv
-#   3. 已运行 python kde_to_spharm_main.py --source all
-#      → validation/raw|svd|lin2024/SPHARM_direction.csv
+# Prerequisites:
+#   1. align_svd.R     -> directions_raw.csv + directions_aligned_svd.csv
+#   2. align_lin2024.R -> directions_aligned_lin2024.csv
+#   3. python kde_to_spharm_main.py --source all
 #
-# 输出：
-#   控制台：所有指标的 bias / LoA 汇总表
-#   analysis/output/figures/validation_ba_REI.png
-#   analysis/output/figures/validation_ba_svd_rotated_spharm.png
-# ==============================================================================
+# Output:
+#   console: bias / LoA summary table for all metrics
+#   returns (object): p_rotational_invariance_validity
 
 library(here)
 library(tidyverse)
 library(patchwork)
 library(glue)
 
-
 # ==============================================================================
-# 公共函数
+# Helpers
 # ==============================================================================
 
-# --- 方向统计量计算 ---
+# --- direction metrics ---
 compute_R <- function(ux, uy, uz) {
   resultant <- sqrt(sum(ux)^2 + sum(uy)^2 + sum(uz)^2)
   total_len <- sum(sqrt(ux^2 + uy^2 + uz^2))
@@ -43,7 +39,7 @@ compute_EI <- function(ux, uy, uz) {
   )
 }
 
-# --- Bland-Altman 核心计算 ---
+# --- Bland-Altman core ---
 bland_altman_calc <- function(x, y) {
   mean_xy   <- (x + y) / 2
   diff_xy   <- x - y
@@ -60,7 +56,7 @@ bland_altman_calc <- function(x, y) {
   )
 }
 
-# --- 单张 Bland-Altman 图 ---
+# --- single Bland-Altman plot ---
 plot_ba <- function(ba, title_str, x_label = "Mean", y_label = "Difference") {
   ggplot(ba$df, aes(x = mean, y = diff)) +
     geom_hline(yintercept = ba$bias,      color = "#802520",
@@ -89,7 +85,7 @@ plot_ba <- function(ba, title_str, x_label = "Mean", y_label = "Difference") {
           plot.title = element_text(face = "bold", size = 9, hjust = 0.5))
 }
 
-# --- 汇总表辅助 ---
+# --- summary-table helper ---
 summary_row <- function(metric, pair, ba) {
   tibble(
     metric    = metric,
@@ -101,18 +97,17 @@ summary_row <- function(metric, pair, ba) {
   )
 }
 
-
 # ==============================================================================
-# Part A：R / E / I 验证
+# Part A: R / E / I validation
 # ==============================================================================
 
 cat("====== Part A: R / E / I ======\n\n")
 
-# --- 读取方向向量 CSV ---
+# --- load direction-vector CSVs ---
 read_directions <- function(source) {
   path <- here(glue("analysis/data/derived_data/directions_{source}.csv"))
   if (!file.exists(path))
-    stop(glue("找不到：{path}"))
+    stop(glue("Not found: {path}"))
   read_csv(path, show_col_types = FALSE) %>% mutate(source = source)
 }
 
@@ -123,7 +118,7 @@ dirs <- bind_rows(
 ) %>%
   filter(!str_starts(ID, "IM_"))
 
-# 统一 source 标签
+# Unified source labels
 dirs <- dirs %>%
   mutate(source = case_when(
     source == "raw"              ~ "raw",
@@ -131,7 +126,7 @@ dirs <- dirs %>%
     source == "aligned_lin2024" ~ "lin2024"
   ))
 
-# --- 计算 R / E / I（修复：避免重复特征值分解）---
+# --- compute R / E / I (single eigen-decomposition) ---
 rei <- dirs %>%
   group_by(ID, source) %>%
   summarise(
@@ -145,7 +140,7 @@ rei <- dirs %>%
   ) %>%
   select(-ei)
 
-# 宽格式（每行一个标本，三列分别对应三个 source）
+# Wide format (one row per specimen; columns per source)
 rei_wide <- rei %>%
   pivot_wider(names_from = source,
               values_from = c(R, E, I),
@@ -156,10 +151,10 @@ common_ids_rei <- rei_wide %>%
   pull(ID)
 
 rei_wide <- rei_wide %>% filter(ID %in% common_ids_rei)
-cat(sprintf("R/E/I 验证：%d 个标本\n\n", nrow(rei_wide)))
+cat(sprintf("R/E/I validation: %d specimens\n\n", nrow(rei_wide)))
 
-# --- 对比组定义（语义命名）---
-# pair 列表：每项为 c(source_a, source_b, 显示标签)
+# --- comparison pairs ---
+# each pair: c(source_a, source_b, display_label)
 pairs_label <- list(
   c("raw",    "svd",     "none-aligned vs techno-aligned"),
   c("raw",    "lin2024", "none-aligned vs morph-aligned"),
@@ -179,7 +174,7 @@ for (metric in c("R", "E", "I")) {
   for (pair in pairs_label) {
     src_a      <- pair[1]
     src_b      <- pair[2]
-    pair_label <- pair[3]   # 使用语义名称
+    pair_label <- pair[3]
     col_a      <- glue("{metric}_{src_a}")
     col_b      <- glue("{metric}_{src_b}")
     
@@ -197,21 +192,21 @@ for (metric in c("R", "E", "I")) {
   }
 }
 
-# 拼图：3 行（指标）× 3 列（对比组）
+# Compose: 3 rows (metrics) x 3 cols (comparison pairs)
 p_rei <- wrap_plots(ba_plots_rei, ncol = 3)
 p_rei
 
 # ==============================================================================
-# Part B：SPHARM 功率谱验证（各阶 Bland-Altman，分面展示）
+# Part B: SPHARM power-spectrum validation (per-degree Bland-Altman, faceted)
 # ==============================================================================
 
-cat("====== Part B: SPHARM 功率谱 ======\n\n")
+cat("====== Part B: SPHARM power spectrum ======\n\n")
 
-# --- 读取三份功率谱 CSV ---
+# --- load the three power-spectrum CSVs ---
 read_spharm <- function(source) {
   path <- here(glue("analysis/data/derived_data/validation/{source}/SPHARM_direction.csv"))
   if (!file.exists(path))
-    stop(glue("找不到：{path}\n请先运行：python kde_to_spharm_main.py --source all"))
+    stop(glue("Not found: {path}\nRun first: python kde_to_spharm_main.py --source all"))
   read_csv(path, show_col_types = FALSE) %>% mutate(source = source)
 }
 
@@ -222,34 +217,34 @@ spharm_all <- bind_rows(
 ) %>%
   filter(!str_starts(ID, "IM_"))
 
-# 单独保留 svd 数据框供 Part D 使用
+# Keep the svd frame for Part C
 df_svd <- spharm_all %>% filter(source == "svd")
 
 power_cols <- spharm_all %>%
   select(starts_with("power_l")) %>%
   colnames()
 
-# 宽格式
+# Wide format
 spharm_wide <- spharm_all %>%
-  select(ID, source, all_of(power_cols), spectral_entropy) %>%
+  select(ID, source, all_of(power_cols)) %>%
   pivot_wider(names_from  = source,
-              values_from = c(all_of(power_cols), spectral_entropy),
+              values_from = all_of(power_cols),
               names_glue  = "{.value}__{source}")
 
 common_ids_spharm <- spharm_wide %>%
   filter(if_all(everything(), ~ !is.na(.))) %>%
   pull(ID)
 spharm_wide <- spharm_wide %>% filter(ID %in% common_ids_spharm)
-cat(sprintf("SPHARM 验证：%d 个标本，%d 阶\n\n",
+cat(sprintf("SPHARM validation: %d specimens, %d degrees\n\n",
             nrow(spharm_wide), length(power_cols)))
 
-# --- 各阶 Bland-Altman，结果收进长表 ---
+# --- per-degree Bland-Altman, collected into a long table ---
 ba_power_summary <- tibble()
 
 for (pair in pairs_label) {
   src_a      <- pair[1]
   src_b      <- pair[2]
-  pair_label <- pair[3]   # 语义名称
+  pair_label <- pair[3]
   
   for (pcol in power_cols) {
     col_a <- glue("{pcol}__{src_a}")
@@ -271,12 +266,11 @@ for (pair in pairs_label) {
   }
 }
 
-
 # ==============================================================================
-# 汇总表
+# Summary table
 # ==============================================================================
 
-cat("====== 所有指标 Bland-Altman 汇总 ======\n\n")
+cat("====== Bland-Altman summary, all metrics ======\n\n")
 
 summary_table %>%
   mutate(across(c(bias, sd_diff, loa_lower, loa_upper),
@@ -288,14 +282,13 @@ write_csv(
   summary_table %>% arrange(metric, pair),
   here("analysis/data/derived_data/validation_ba_summary.csv")
 )
-cat("\n汇总表已保存：validation_ba_summary.csv\n")
-
+cat("\nSaved: validation_ba_summary.csv\n")
 
 # ==============================================================================
-# 具体数值汇总：三种方法并排输出
+# Per-source numeric tables
 # ==============================================================================
 
-cat("\n====== 具体数值汇总：R / E / I ======\n\n")
+cat("\n====== Numeric summary: R / E / I ======\n\n")
 
 rei_compare <- rei_wide %>%
   select(ID,
@@ -310,10 +303,9 @@ rei_compare %>%
 
 write_csv(rei_compare,
           here("analysis/data/derived_data/validation_values_REI.csv"))
-cat("已保存：validation_values_REI.csv\n")
+cat("Saved: validation_values_REI.csv\n")
 
-
-cat("\n====== 具体数值汇总：谱熵 ======\n\n")
+cat("\n====== Numeric summary: power spectrum (l1-5) ======\n\n")
 
 power_compare <- spharm_wide %>%
   select(ID, matches("^power_l[1-5]__")) %>%
@@ -331,10 +323,9 @@ power_compare %>%
 
 write_csv(power_compare,
           here("analysis/data/derived_data/validation_values_power_l1_5.csv"))
-cat("已保存：validation_values_power_l1_5.csv\n")
+cat("Saved: validation_values_power_l1_5.csv\n")
 
-
-cat("\n====== 全阶功率谱数值已保存（不在控制台打印）======\n")
+cat("\n====== Full power-spectrum values saved (not printed) ======\n")
 
 power_all_compare <- spharm_wide %>%
   select(ID, matches("^power_l[0-9]+__")) %>%
@@ -344,22 +335,21 @@ power_all_compare <- spharm_wide %>%
 
 write_csv(power_all_compare,
           here("analysis/data/derived_data/validation_values_power_all.csv"))
-cat("已保存：validation_values_power_all.csv\n")
-
+cat("Saved: validation_values_power_all.csv\n")
 
 # ==============================================================================
-# Part C：实证验证 — SVD 对齐 vs SVD 对齐 + 随机 Z 轴旋转
+# Part C: empirical check — SVD alignment vs SVD alignment + random Z rotation
 # ==============================================================================
 
-cat("\n====== Part D: SVD vs SVD + 随机 Z 轴旋转 ======\n\n")
+cat("\n====== Part C: SVD vs SVD + random Z rotation ======\n\n")
 
-# --- 读取 svd_rotated 功率谱 ---
+# --- load svd_rotated power spectrum ---
 path_rotated <- here("analysis/data/derived_data/validation/svd_rotated/SPHARM_direction.csv")
 
 if (!file.exists(path_rotated)) {
   stop(glue(
-    "找不到：{path_rotated}\n",
-    "请先运行：\n",
+    "Not found: {path_rotated}\n",
+    "Run first:\n",
     "  1. python rotate_svd_directions.py\n",
     "  2. python kde_to_spharm_main.py --source svd_rotated"
   ))
@@ -369,28 +359,27 @@ df_svd_rotated <- read_csv(path_rotated, show_col_types = FALSE) %>%
   mutate(source = "svd_rotated") %>%
   filter(!str_starts(ID, "IM_"))
 
-# 取与 svd 共有的标本
+# Specimens shared with svd
 common_ids_rot <- intersect(
   df_svd %>% pull(ID),
   df_svd_rotated %>% pull(ID)
 )
-cat(sprintf("svd vs svd_rotated 验证：%d 个标本\n\n", length(common_ids_rot)))
+cat(sprintf("svd vs svd_rotated validation: %d specimens\n\n", length(common_ids_rot)))
 
-# 宽格式合并
+# Wide-format merge
 spharm_rot_wide <- bind_rows(
   df_svd         %>% filter(ID %in% common_ids_rot),
   df_svd_rotated %>% filter(ID %in% common_ids_rot)
 ) %>%
-  select(ID, source, all_of(power_cols), spectral_entropy) %>%
+  select(ID, source, all_of(power_cols)) %>%
   pivot_wider(
     names_from  = source,
-    values_from = c(all_of(power_cols), spectral_entropy),
+    values_from = all_of(power_cols),
     names_glue  = "{.value}__{source}"
   )
 
-
 # ------------------------------------------------------------------------------
-# C-1：各阶功率谱 Bland-Altman
+# C-1: per-degree power-spectrum Bland-Altman
 # ------------------------------------------------------------------------------
 
 ba_rot_summary <- tibble()
@@ -467,10 +456,10 @@ p_rot_spharm <- ggplot(ba_combined, aes(x = degree)) +
 p_rot_spharm
 
 # ------------------------------------------------------------------------------
-# C-3：数值汇总与结论
+# C-3: numeric summary and conclusion
 # ------------------------------------------------------------------------------
 
-cat("==== Part D 数值汇总 ====\n")
+cat("==== Part C numeric summary ====\n")
 
 loa_width_intermethod <- ba_power_summary %>%
   group_by(pair) %>%
@@ -480,7 +469,7 @@ loa_width_intramethod <- ba_rot_summary %>%
   summarise(max_loa_width = max(loa_upper - loa_lower)) %>%
   mutate(pair = "perturbed vs unperturbed")
 
-cat("\n各对比组最大 LoA 宽度（越小说明一致性越高）：\n")
+cat("\nMax LoA width per comparison (smaller = better agreement):\n")
 bind_rows(loa_width_intermethod, loa_width_intramethod) %>%
   mutate(max_loa_width = formatC(max_loa_width, format = "e", digits = 3)) %>%
   print()
@@ -489,28 +478,28 @@ max_intra <- max(ba_rot_summary$loa_upper - ba_rot_summary$loa_lower)
 max_inter <- max(ba_power_summary$loa_upper - ba_power_summary$loa_lower)
 
 cat(sprintf(
-  "\n坐标系内扰动 LoA 宽度（%.2e）%s 方法间差异 LoA 宽度（%.2e）\n",
+  "\nWithin-frame perturbation LoA width (%.2e) %s between-method LoA width (%.2e)\n",
   max_intra,
   ifelse(max_intra < max_inter, "<", "≥"),
   max_inter
 ))
 
 if (max_intra < max_inter * 0.1) {
-  cat("结论：坐标系内随机扰动远小于方法间系统差异（< 10%），\n")
-  cat("      固定 SVD 对齐坐标系后，分析结果不受坐标系内随机误差影响。✓\n")
+  cat("Conclusion: within-frame random perturbation is far smaller than between-method systematic difference (< 10%),\n")
+  cat("            given a fixed SVD frame, results are unaffected by within-frame random error.\n")
 } else if (max_intra < max_inter) {
-  cat("结论：坐标系内随机扰动小于方法间系统差异，\n")
-  cat("      固定 SVD 对齐坐标系后，分析结果基本不受影响。\n")
+  cat("Conclusion: within-frame random perturbation is smaller than between-method systematic difference,\n")
+  cat("            given a fixed SVD frame, results are largely unaffected.\n")
 } else {
-  cat("结论：坐标系内随机扰动不可忽略，建议检查对齐质量或 KDE 参数。\n")
+  cat("Conclusion: within-frame random perturbation is non-negligible; check alignment quality or KDE parameters.\n")
 }
 
-# 更新汇总表
+# Update summary table
 write_csv(
   summary_table %>% arrange(metric, pair),
   here("analysis/data/derived_data/validation_ba_summary.csv")
 )
-cat("\n完整汇总表已更新：validation_ba_summary.csv\n")
+cat("\nUpdated: validation_ba_summary.csv\n")
 
 # ==============================================================================
 # Final combined plot
@@ -525,12 +514,3 @@ p_rotational_invariance_validity <- p_rei / p_rot_spharm +
     )
   )
 p_rotational_invariance_validity
-
-ggsave(
-  here("analysis/output/figures/validation_combined.png"),
-  plot = p_rotational_invariance_validity,
-  width = 12,
-  height = 14,
-  dpi = 600,
-  bg = "white"
-)

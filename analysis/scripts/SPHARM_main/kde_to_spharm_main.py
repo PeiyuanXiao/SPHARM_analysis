@@ -1,41 +1,41 @@
 """
 kde_to_spharm_main.py
 =====================
-完整流水线：R 导出的方向向量 CSV → KDE → SPHARM → 功率谱 CSV
+Full pipeline: R-exported direction-vector CSV -> KDE -> SPHARM -> power-spectrum CSV
 
-对齐步骤已移至 R 端（align_svd.R / align_lin2024.R），
-本脚本读取 R 导出的方向向量，完成 KDE + SPHARM 两步。
+Alignment is done in R (align_svd.R / align_lin2024.R);
+this script reads the exported direction vectors and runs the KDE + SPHARM steps.
 
-两种使用模式：
+Two usage modes:
 
-  【日常生产】python kde_to_spharm_main.py
-      默认 --source svd，输出到 derived_data/SPHARM_direction.csv
-      与 R 脚本（spharm_analysis.R）的读取路径完全兼容
+  [production] python kde_to_spharm_main.py
+      defaults to --source svd, writing derived_data/SPHARM_direction.csv
+      matches the path read by spharm_analysis.R
 
-  【旋转不变性验证】python kde_to_spharm_main.py --source all
-      依次处理 raw / svd / lin2024 三份数据
-      各自输出到 derived_data/validation/{source}/SPHARM_direction.csv
+  [rotational-invariance validation] python kde_to_spharm_main.py --source all
+      processes raw / svd / lin2024 in turn
+      writing derived_data/validation/{source}/SPHARM_direction.csv each
 
-Input CSVs (由 R 导出，位于 derived_data/):
-    directions_raw.csv              — 原始数据（未对齐）
-    directions_aligned_svd.csv      — SVD 法对齐
-    directions_aligned_lin2024.csv  — Lin 2024 法对齐
+Input CSVs (exported by R, in derived_data/):
+    directions_raw.csv              - raw (unaligned)
+    directions_aligned_svd.csv      - SVD alignment
+    directions_aligned_lin2024.csv  - Lin 2024 alignment
 """
 
-# ── 标准库 ──────────────────────────────────────
+# Standard library
 import os
 import sys
 import argparse
 from pathlib import Path
 
-# ── 路径设置 ─────────────────────────────────────
+# Path setup
 sys.path.insert(0, str(Path(__file__).parent.parent))  # → SPHARM_modules/
 
-# ── 第三方库 ─────────────────────────────────────
+# Third-party
 import numpy as np
 import pandas as pd
 
-# ── 本地模块 ─────────────────────────────────────
+# Local modules
 from SPHARM_modules.spherical_kde import batch_spherical_kde
 from SPHARM_modules.kde_to_spharm import (
     kde_vector_to_dh_grid,
@@ -55,7 +55,7 @@ N_PLUNGE    = 36
 LMAX        = 20
 DH_SIZE     = 64
 
-# R 导出的方向向量 CSV 路径
+# R-exported direction-vector CSV paths
 SOURCE_CSV = {
     "raw"         : f"{DERIVED_DIR}/directions_raw.csv",
     "svd"         : f"{DERIVED_DIR}/directions_aligned_svd.csv",
@@ -63,7 +63,7 @@ SOURCE_CSV = {
     "svd_rotated" : f"{DERIVED_DIR}/directions_aligned_svd_rotated.csv",
 }
 
-# 日常生产模式的输出路径（svd 与 R 脚本兼容）
+# Production output paths (svd matches the R scripts)
 PRODUCTION_OUT = {
     "raw"         : f"{DERIVED_DIR}/SPHARM_direction_raw.csv",
     "svd"         : f"{DERIVED_DIR}/SPHARM_direction.csv",
@@ -71,7 +71,7 @@ PRODUCTION_OUT = {
     "svd_rotated" : f"{DERIVED_DIR}/SPHARM_direction_svd_rotated.csv",
 }
 
-# 验证模式（--source all）的输出路径
+# Validation-mode output paths (--source all)
 VALIDATION_OUT = {
     "raw"         : f"{DERIVED_DIR}/validation/raw/SPHARM_direction.csv",
     "svd"         : f"{DERIVED_DIR}/validation/svd/SPHARM_direction.csv",
@@ -79,7 +79,7 @@ VALIDATION_OUT = {
     "svd_rotated" : f"{DERIVED_DIR}/validation/svd_rotated/SPHARM_direction.csv",
 }
 
-# KDE 中间文件输出路径（供调试或下游脚本使用）
+# KDE intermediate-file paths (for debugging or downstream use)
 KDE_NPY_OUT = {
     "raw"         : f"{DERIVED_DIR}/kde_matrix_raw.npy",
     "svd"         : f"{DERIVED_DIR}/kde_matrix.npy",
@@ -89,25 +89,25 @@ KDE_NPY_OUT = {
 
 
 # =============================================================================
-# Step 1: 读取 R 导出的方向向量 CSV
+# Step 1: load the R-exported direction-vector CSV
 # =============================================================================
 
 def load_directions(source: str) -> pd.DataFrame:
     csv_path = SOURCE_CSV[source]
     if not os.path.exists(csv_path):
         hint = {
-            "raw"         : "请先在 R 中运行 align_svd.R",
-            "svd"         : "请先在 R 中运行 align_svd.R",
-            "lin2024"     : "请先在 R 中运行 align_lin2024.R",
-            "svd_rotated" : "请先运行：python rotate_svd_directions.py",
-        }.get(source, "请先生成该文件")
-        raise FileNotFoundError(f"找不到：{csv_path}\n{hint}")
+            "raw"         : "Run align_svd.R in R first",
+            "svd"         : "Run align_svd.R in R first",
+            "lin2024"     : "Run align_lin2024.R in R first",
+            "svd_rotated" : "Run python rotate_svd_directions.py first",
+        }.get(source, "Generate this file first")
+        raise FileNotFoundError(f"Not found: {csv_path}\n{hint}")
 
     df = pd.read_csv(csv_path)
 
     missing = {"ID", "ux", "uy", "uz"} - set(df.columns)
     if missing:
-        raise ValueError(f"CSV 缺少必要列：{missing}")
+        raise ValueError(f"CSV missing required columns: {missing}")
 
     if "Typology" not in df.columns:
         df["Typology"] = "unknown"
@@ -118,21 +118,21 @@ def load_directions(source: str) -> pd.DataFrame:
 
 
 # =============================================================================
-# Step 2: KDE，并保存中间文件
+# Step 2: KDE, saving intermediate files
 # =============================================================================
 
 def run_kde(df: pd.DataFrame, source: str) -> dict:
     """
-    对方向向量做球面 KDE，保存中间 .npy 文件供调试使用。
+    Spherical KDE of the direction vectors; saves intermediate .npy files.
 
     Parameters
     ----------
-    df     : 方向向量 DataFrame
-    source : 数据源标识，用于确定 .npy 保存路径
+    df     : direction-vector DataFrame
+    source : data-source key, determines the .npy save path
 
     Returns
     -------
-    kde_result : batch_spherical_kde 的完整返回字典
+    kde_result : full dict returned by batch_spherical_kde
     """
     print(f"\n[KDE] bandwidth={BANDWIDTH}, grid={N_BEARING}×{N_PLUNGE}")
     kde_result = batch_spherical_kde(
@@ -147,7 +147,7 @@ def run_kde(df: pd.DataFrame, source: str) -> dict:
         typology_col = "Typology",
     )
 
-    # 保存中间文件
+    # Save intermediate files
     npy_path  = KDE_NPY_OUT[source]
     grid_path = npy_path.replace("kde_matrix", "kde_grid")
     meta_path = npy_path.replace("kde_matrix", "kde_metadata").replace(".npy", ".csv")
@@ -159,7 +159,7 @@ def run_kde(df: pd.DataFrame, source: str) -> dict:
         "Typology": kde_result["typologies"],
     }).to_csv(meta_path, index=False)
 
-    print(f"  KDE 中间文件已保存：\n"
+    print(f"  KDE intermediate files saved:\n"
           f"    {npy_path}\n"
           f"    {grid_path}\n"
           f"    {meta_path}")
@@ -168,7 +168,7 @@ def run_kde(df: pd.DataFrame, source: str) -> dict:
 
 
 # =============================================================================
-# Step 3: KDE → DH 网格 → SPHARM，批量处理
+# Step 3: KDE -> DH grid -> SPHARM, batch processing
 # =============================================================================
 
 def run_spharm(kde_result: dict,
@@ -176,18 +176,18 @@ def run_spharm(kde_result: dict,
                lmax: int = LMAX,
                dh_size: int = DH_SIZE) -> pd.DataFrame:
     """
-    对 KDE 结果逐标本做球谐展开，保存功率谱 CSV 并输出方差分析。
+    Per-specimen SH expansion of the KDE results; saves the power-spectrum CSV and variance analysis.
 
     Parameters
     ----------
-    kde_result : run_kde() 的返回值
-    out_path   : 功率谱 CSV 保存路径
-    lmax       : 最大球谐阶数
-    dh_size    : DH 网格纬度方向点数
+    kde_result : return value of run_kde()
+    out_path   : path to save the power-spectrum CSV
+    lmax       : maximum spherical-harmonic degree
+    dh_size    : number of DH-grid latitude points
 
     Returns
     -------
-    df_out : 功率谱 DataFrame
+    df_out : power-spectrum DataFrame
     """
     kde_matrix  = kde_result["kde_matrix"]
     sphere_grid = pd.DataFrame(kde_result["G"], columns=["x", "y", "z"])
@@ -209,10 +209,8 @@ def run_spharm(kde_result: dict,
             feats   = compute_spharm_features(grid_2d, lmax=lmax)
 
             row = {
-                "ID"               : specimen_id,
-                "Typology"         : typology,
-                "spectral_entropy" : round(feats["spectral_entropy"], 6),
-                "SHE"              : round(feats["she"], 6),
+                "ID"       : specimen_id,
+                "Typology" : typology,
             }
             for l, p in enumerate(feats["norm_power"]):
                 row[f"power_l{l}"] = round(float(p), 8)
@@ -220,7 +218,7 @@ def run_spharm(kde_result: dict,
                 row[f"coeff_{j}"] = round(float(np.real(c)), 8)
 
             rows.append(row)
-            print(f"H={feats['spectral_entropy']:.4f}  ✓")
+            print("OK")
 
         except Exception as e:
             print(f"✗  {e}")
@@ -228,13 +226,13 @@ def run_spharm(kde_result: dict,
 
     df_out = pd.DataFrame(rows)
 
-    # 保存功率谱 CSV
+    # Save the power-spectrum CSV
     os.makedirs(os.path.dirname(out_path), exist_ok=True)
     df_out.to_csv(out_path, index=False)
     print(f"\n✓ Saved → {out_path}")
     print(f"  {len(df_out)} specimens, power_l0–power_l{lmax}")
 
-    # 方差分析
+    # Variance analysis
     variance_csv = out_path.replace(".csv", "_variance_per_degree.csv")
     try:
         compute_variance_analysis(df_out, lmax, variance_csv)
@@ -245,7 +243,7 @@ def run_spharm(kde_result: dict,
 
 
 # =============================================================================
-# 完整流水线
+# Full pipeline
 # =============================================================================
 
 def run_pipeline(source: str,
@@ -253,14 +251,14 @@ def run_pipeline(source: str,
                  lmax: int = LMAX,
                  dh_size: int = DH_SIZE) -> pd.DataFrame:
     """
-    对单个 source 运行完整流水线：
-        方向向量 CSV → KDE → DH 网格 → SPHARM → 功率谱 CSV
+    Run the full pipeline for one source:
+        direction-vector CSV -> KDE -> DH grid -> SPHARM -> power-spectrum CSV
 
     Parameters
     ----------
     source     : 'raw' | 'svd' | 'lin2024' | 'svd_rotated'
-    validation : True  → 输出到 validation/ 子目录
-                 False → 输出到生产路径（默认）
+    validation : True  -> write to the validation/ subdirectory
+                 False -> write to the production path (default)
     """
     out_path = VALIDATION_OUT[source] if validation else PRODUCTION_OUT[source]
 
@@ -283,18 +281,18 @@ def run_pipeline(source: str,
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
-        description="KDE → SPHARM pipeline，读取 R 导出的方向向量 CSV"
+        description="KDE -> SPHARM pipeline; reads the R-exported direction-vector CSV"
     )
     parser.add_argument(
         "--source",
         choices=["raw", "svd", "lin2024", "svd_rotated", "all"],
         default="svd",
         help=(
-            "raw         — 原始数据（未对齐）\n"
-            "svd         — R SVD 法对齐（默认，日常生产使用）\n"
-            "lin2024     — R Lin 2024 法对齐\n"
-            "svd_rotated — SVD 对齐 + 随机 Z 轴旋转（实证验证用）\n"
-            "all         — 依次运行四种，用于完整旋转不变性验证"
+            "raw         - raw (unaligned)\n"
+            "svd         - R SVD alignment (default, production)\n"
+            "lin2024     - R Lin 2024 alignment\n"
+            "svd_rotated - SVD alignment + random Z rotation (empirical validation)\n"
+            "all         - run all four in turn, for full rotational-invariance validation"
         )
     )
     args = parser.parse_args()
@@ -308,10 +306,10 @@ if __name__ == "__main__":
 
     print(f"\n{'='*60}")
     if validation_mode:
-        print("验证模式完成。四组结果：")
+        print("Validation mode complete. Four result sets:")
         for src in sources:
             print(f"  {VALIDATION_OUT[src]}")
-        print("\nNext: 运行 validate_rotation_all.R 比较各组功率谱")
+        print("\nNext: run validate_rotation_all.R to compare the power spectra")
     else:
-        print(f"完成。输出：{PRODUCTION_OUT[args.source]}")
+        print(f"Done. Output: {PRODUCTION_OUT[args.source]}")
     print(f"{'='*60}")

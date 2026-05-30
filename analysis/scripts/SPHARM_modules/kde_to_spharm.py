@@ -1,54 +1,54 @@
 """
-spharm_features.py
-==================
-球谐展开工具函数库，供 SPHARM_main/kde_to_spharm_main.py 调用。
+kde_to_spharm.py
+================
+Spherical-harmonic helpers used by kde_to_spharm_main.py.
 
-包含：
-    kde_vector_to_dh_grid()     — KDE 向量插值到 DH 标准网格
-    compute_spharm_features()   — DH 网格 → 球谐展开 → 功率谱 + 谱熵
-    compute_variance_analysis() — 跨标本每阶功率方差分析
+Contents:
+    kde_vector_to_dh_grid()     - interpolate a KDE vector onto a DH grid
+    compute_spharm_features()   - DH grid -> SH expansion -> power spectrum
+    compute_variance_analysis() - per-degree power variance across specimens
 """
 
-# ── 标准库 ──────────────────────────────────────
+# Standard library
 import sys
 from pathlib import Path
 
-# ── 路径设置 ─────────────────────────────────────
+# Path setup
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-# ── 第三方库 ─────────────────────────────────────
+# Third-party
 import numpy as np
 import pandas as pd
 import pyshtools as pysh
 
-# ── 本地模块 ─────────────────────────────────────
-from SPHARM_modules.spectral_entropy import compute_spectral_entropy
+# Local modules
+from SPHARM_modules.power_spectrum import compute_power_spectrum
 
 # ============================================================
-# 默认参数
+# Default parameters
 # ============================================================
 LMAX    = 20
 DH_SIZE = 64
 
 
 # ============================================================
-# Step 1: KDE 向量 → DH 标准二维网格
+# Step 1: KDE vector -> standard 2D DH grid
 # ============================================================
 def kde_vector_to_dh_grid(kde_vec: np.ndarray,
                            sphere_grid: pd.DataFrame,
                            dh_size: int = DH_SIZE) -> np.ndarray:
     """
-    将 KDE 概率向量插值到 Driscoll-Healy 标准网格。
+    Interpolate a KDE probability vector onto a Driscoll-Healy grid.
 
     Parameters
     ----------
-    kde_vec     : ndarray, shape (n_grid,)，单个标本的 KDE 值
-    sphere_grid : DataFrame，列包含 bearing、plunge（弧度）
-    dh_size     : DH 网格纬度方向点数，经度方向为 2×dh_size
+    kde_vec     : ndarray, shape (n_grid,), KDE values for one specimen
+    sphere_grid : DataFrame with columns bearing, plunge (radians)
+    dh_size     : number of latitude points; longitude has 2*dh_size
 
     Returns
     -------
-    grid_2d : ndarray, shape (dh_size, 2*dh_size)，归一化后的 DH 网格
+    grid_2d : ndarray, shape (dh_size, 2*dh_size), normalised DH grid
     """
     plunge  = sphere_grid["plunge"].values
     bearing = sphere_grid["bearing"].values
@@ -88,59 +88,55 @@ def kde_vector_to_dh_grid(kde_vec: np.ndarray,
 
 
 # ============================================================
-# Step 2: DH 网格 → 球谐展开 → 功率谱 + 谱熵
+# Step 2: DH grid -> SH expansion -> power spectrum
 # ============================================================
 def compute_spharm_features(grid_2d: np.ndarray,
                              lmax: int = LMAX) -> dict:
     """
-    对 DH 网格做球谐展开，返回功率谱和谱熵。
+    Expand a DH grid in spherical harmonics and return its power spectrum.
 
     Parameters
     ----------
     grid_2d : ndarray, shape (dh_size, 2*dh_size)
-    lmax    : 最大球谐阶数
+    lmax    : maximum spherical-harmonic degree
 
     Returns
     -------
-    dict，包含：
-        power_spectrum   — 原始功率谱
-        norm_power       — 归一化功率谱
-        spectral_entropy — 谱熵 H
-        she              — SHE 值
-        coeffs_flat      — 展平的球谐系数
+    dict with keys:
+        power_spectrum - raw power spectrum
+        norm_power     - normalised power spectrum
+        coeffs_flat    - flattened spherical-harmonic coefficients
     """
     sh_grid = pysh.SHGrid.from_array(grid_2d, grid='DH')
     clm     = sh_grid.expand(lmax_calc=lmax)
 
-    feats = compute_spectral_entropy(clm, lmax=lmax)
+    feats = compute_power_spectrum(clm, lmax=lmax)
 
     return {
-        "power_spectrum"   : feats["raw_power"],
-        "norm_power"       : feats["norm_power"],
-        "spectral_entropy" : feats["spectral_entropy"],
-        "she"              : feats["SHE"],
-        "coeffs_flat"      : clm.coeffs.flatten(),
+        "power_spectrum" : feats["raw_power"],
+        "norm_power"     : feats["norm_power"],
+        "coeffs_flat"    : clm.coeffs.flatten(),
     }
 
 
 # ============================================================
-# Step 3: 跨标本每阶功率方差分析
+# Step 3: per-degree power variance across specimens
 # ============================================================
 def compute_variance_analysis(df_out: pd.DataFrame,
                                lmax: int,
                                output_csv: str) -> pd.DataFrame:
     """
-    计算所有标本各球谐阶归一化功率的跨标本方差。
+    Per-degree variance of normalised power across all specimens.
 
     Parameters
     ----------
-    df_out     : batch 处理结果 DataFrame，含 power_l0–power_lN 列
-    lmax       : 最大球谐阶数
-    output_csv : 方差分析结果的保存路径
+    df_out     : batch-result DataFrame with columns power_l0..power_lN
+    lmax       : maximum spherical-harmonic degree
+    output_csv : path to save the variance results
 
     Returns
     -------
-    df_var : DataFrame，列为 [degree, variance]
+    df_var : DataFrame with columns [degree, variance]
     """
     power_cols = [f"power_l{l}" for l in range(lmax + 1)]
     available  = [c for c in power_cols if c in df_out.columns]

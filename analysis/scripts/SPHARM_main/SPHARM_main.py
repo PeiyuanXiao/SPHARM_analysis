@@ -1,4 +1,4 @@
-# ── 标准库 ──────────────────────────────────────
+# Standard library
 import os
 import sys
 import time
@@ -7,20 +7,19 @@ import tempfile
 import gc
 from pathlib import Path
 
-# ── 路径设置 ────────────
+# Path setup
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-# ── 第三方库 ─────────────────────────────────────
+# Third-party
 import numpy as np
 import pandas as pd
 import pyshtools as pysh
 import trimesh
 from trimesh.smoothing import filter_laplacian
 
-# ── 本地模块 ─────────────────────────────────────
+# Local modules
 from SPHARM_modules import mesh_processing, pca_align, spherical_harmonics, statistics_analysis
-from SPHARM_modules import curvature as curvature_module
-from SPHARM_modules.spectral_entropy import compute_spectral_entropy
+from SPHARM_modules.power_spectrum import compute_power_spectrum
 
 # ============================================================
 # Parameter configuration
@@ -30,10 +29,10 @@ GRID_SIZE    = 256
 LMAX         = 20
 
 # ============================================================
-# 预降采样参数
-#   PRE_DECIMATE_THRESHOLD : 面片数超过此值时触发预降采样
-#   PRE_DECIMATE_TARGET    : 预降采样目标面片数
-#   （预降采样后仍会经过 open3d 降至 TARGET_FACES）
+# Pre-decimation parameters
+#   PRE_DECIMATE_THRESHOLD : trigger pre-decimation when face count exceeds this
+#   PRE_DECIMATE_TARGET    : target face count for pre-decimation
+#   (after pre-decimation, open3d still reduces to TARGET_FACES)
 # ============================================================
 PRE_DECIMATE_THRESHOLD = 3_000_000
 PRE_DECIMATE_TARGET    = 500_000
@@ -47,13 +46,13 @@ def process_single_mesh(stl_path):
     specimen_id = os.path.splitext(os.path.basename(stl_path))[0]
 
     # ============================================================
-    # 统一用 open3d 处理所有文件（ASCII 和二进制），消除
-    # igl / open3d 混用的方法论不一致问题。
-    # 流程：
-    #   1. 读取文件头判断格式，获取面片数
-    #   2. 超过阈值 → 预降采样到 PRE_DECIMATE_TARGET
-    #      未超过阈值 → 直接加载
-    #   3. open3d.simplify_quadric_decimation 统一降至 TARGET_FACES
+    # Use open3d for all files (ASCII and binary) to avoid the
+    # methodological inconsistency of mixing igl and open3d.
+    # Steps:
+    #   1. read the header to detect format and face count
+    #   2. above threshold -> pre-decimate to PRE_DECIMATE_TARGET
+    #      below threshold -> load directly
+    #   3. open3d.simplify_quadric_decimation reduces to TARGET_FACES
     # ============================================================
     tmp_path = None
 
@@ -111,7 +110,7 @@ def process_single_mesh(stl_path):
             need_final = True
 
     try:
-        # 统一降采样：所有路径经此步用 open3d 降至 TARGET_FACES
+        # All paths reduce to TARGET_FACES here via open3d
         if is_ascii and n_raw <= PRE_DECIMATE_THRESHOLD:
             o3d_mesh_final = o3d_mesh_hold
         else:
@@ -159,25 +158,20 @@ def process_single_mesh(stl_path):
                      clm, normalization='4pi', csphase=1, lmax=LMAX
                  ).pad(lmax=LMAX)
 
-        # 7. Power spectrum + spherical harmonic energy (SHE) + spectral entropy
-        feats            = compute_spectral_entropy(clm_sh, lmax=LMAX)
-        SHE              = feats["SHE"]
-        spectral_entropy = feats["spectral_entropy"]
-        norm_power       = feats["norm_power"]
+        # 7. Power spectrum
+        norm_power = compute_power_spectrum(clm_sh, lmax=LMAX)["norm_power"]
 
         # 8. Construct result row
         row = {
-            "ID":                specimen_id,
-            "SHE":               SHE,
-            "spectral_entropy":  round(spectral_entropy, 6),
-            "n_faces_original":  int(n_raw),
+            "ID":               specimen_id,
+            "n_faces_original": int(n_raw),
         }
         for l, p in enumerate(norm_power):
             row[f"power_l{l}"] = float(p)
         for j, c in enumerate(clm_sh.coeffs.flatten()):
             row[f"coeff_{j}"] = float(np.real(c))
 
-        print(f"  -> {specimen_id} (SHE={SHE:.4f})")
+        print(f"  -> {specimen_id}")
         return row
 
     finally:
@@ -200,7 +194,7 @@ def batch_process(input_dir, output_dir):
     total = len(stl_files)
 
     # Resume processing from last checkpoint
-    # [修改] 读取已处理ID时使用统一列名 "id"
+    # Use the unified column name "id" when reading processed IDs
     processed_ids  = set()
     header_written = False
     if os.path.exists(output_csv):
@@ -250,7 +244,7 @@ def batch_process(input_dir, output_dir):
                 print(f"  ✗ Error: {specimen_id}: {e}")
                 import traceback
                 traceback.print_exc()
-                # [修改] failed_csv 也使用统一列名 "id"
+                # failed_csv also uses the unified column name "id"
                 failed_rows.append({"ID": specimen_id, "error": str(e)})
                 fail_count += 1
 
@@ -278,21 +272,6 @@ def batch_process(input_dir, output_dir):
         statistics_analysis.run_batch_analysis(output_csv, output_dir, LMAX)
     except Exception as e:
         print(f"Post-processing failed (non-critical): {e}")
-
-    # --------------------------------------------------------
-    # Post-processing 2: Curvature
-    # --------------------------------------------------------
-    print(f"\n{'='*55}")
-    print("Running curvature calculation...")
-    print(f"{'='*55}")
-    curvature_csv = os.path.join(output_dir, "curvature.csv")
-    try:
-        df_curv = curvature_module.batch_average_curvature(input_dir)
-        df_curv.to_csv(curvature_csv, index=False)
-        print(f"Curvature saved to: {curvature_csv}")
-    except Exception as e:
-        print(f"Curvature calculation failed (non-critical): {e}")
-
 
 if __name__ == "__main__":
     input_directory  = "/project/analysis/data/3D_models_cores"

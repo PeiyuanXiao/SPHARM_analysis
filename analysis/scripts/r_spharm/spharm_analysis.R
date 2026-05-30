@@ -1,32 +1,23 @@
-# ==============================================================================
 # spharm_analysis.R
-# SPHARM 特征分析：降维可视化 + 统计检验
+# SPHARM feature analysis: LDA visualisation + statistical tests.
+# Sourced by the `spharm_analysis` target.
 #
-# 分析流程：
-#   1. 读取 SPHARM 功率谱数据（方向 + 形态）及样本元数据
-#   2. 筛选功率谱特征，划分 EXP+IM / SDG+IM 子集
-#   3. EXP 标本：z-score 标准化 + LDA 可视化
-#   4. 方向统计量（SPI、Fabric E+I）：KW + Dunn + PERMANOVA + PERMDISP
-#   5. 两两事后检验汇总气泡图
-#   6. 保存筛选后数据供下游脚本使用
-#   7. 拼图：左列三图 + 右列气泡图
+# Pipeline:
+#   1. Load SPHARM power spectra (direction + morphology) and specimen metadata.
+#   2. Filter power-spectrum features; split into EXP+IM / SDG+IM subsets.
+#   3. EXP specimens: z-score standardisation + LDA visualisation.
+#   4. Direction metrics (SPI, fabric E+I): KW + Dunn + PERMANOVA + PERMDISP.
+#   5. Pairwise post-hoc summary bubble plot.
+#   6. Save filtered data for downstream scripts.
+#   7. Combined panel: three left plots + bubble plot on the right.
 #
-# 输入：
+# Input:
 #   - analysis/data/derived_data/SPHARM_direction.csv
 #   - analysis/data/derived_data/SPHARM_morphology.csv
 #   - analysis/data/derived_data/directions_aligned_svd.csv
 #   - analysis/data/raw_data/SDG_core_metric.xlsx
 #
-# 输出：
-#   - analysis/output/figures/LDA_morph_by_Typology.png
-#   - analysis/output/figures/LDA_dir_by_Typology.png
-#   - analysis/output/figures/Boxplot_SPI_by_Typology.png
-#   - analysis/output/figures/Benn_by_Typology.png
-#   - analysis/output/figures/Bubble_posthoc_summary.png
-#   - analysis/output/figures/Combined_panel.png
-#   - analysis/data/derived_data/SPHARM_direction_filter.rds
-#   - analysis/data/derived_data/SPHARM_morphology_filter.rds
-# ==============================================================================
+# Returns (object, no figure written to disk): exp_method_compare_combined
 
 library(here)
 library(tidyverse)
@@ -49,7 +40,7 @@ conflicted::conflicts_prefer(stats::sd)
 set.seed(42)
 
 # ==============================================================================
-# 全局参数
+# Global parameters
 # ==============================================================================
 
 POWER_COLS_DIR   <- paste0("power_l", 1:6)
@@ -71,7 +62,7 @@ TYPOLOGY_ORDER <- c(
 )
 
 # ==============================================================================
-# 1. 读取数据
+# 1. Load data
 # ==============================================================================
 
 SPHARM_direction  <- read_csv(here("analysis/data/derived_data/SPHARM_direction.csv"))
@@ -85,12 +76,12 @@ SPHARM_morphology <- SPHARM_morphology %>%
   left_join(SPHARM_direction %>% select(ID, Typology), by = "ID")
 
 # ==============================================================================
-# 2. 筛选特征 + 划分子集
+# 2. Filter features + split subsets
 # ==============================================================================
 
 filter_spharm <- function(df, power_cols, meta = NULL) {
   result <- df %>%
-    select(ID, Typology, SHE, spectral_entropy, all_of(power_cols))
+    select(ID, Typology, all_of(power_cols))
   if (!is.null(meta)) result <- left_join(result, meta, by = "ID")
   result
 }
@@ -109,7 +100,7 @@ dir_splits   <- split_by_group(SPHARM_direction_filter)
 morph_splits <- split_by_group(SPHARM_morphology_filter)
 
 # ==============================================================================
-# 3. EXP 标本：z-score 标准化 + LDA 可视化
+# 3. EXP specimens: z-score standardisation + LDA visualisation
 # ==============================================================================
 
 df_exp_dir   <- dir_splits$exp_im
@@ -146,10 +137,10 @@ non_im_idx <- !str_starts(df_exp_dir$ID, "IM_") &
 
 y_typology <- df_exp_only$Typology
 
-cat(sprintf("EXP 保留标本数: %d，类别数: %d\n", nrow(df_exp_only), nlevels(y_typology)))
+cat(sprintf("EXP specimens retained: %d, classes: %d\n", nrow(df_exp_only), nlevels(y_typology)))
 print(table(y_typology))
 
-# --- LDA 函数 ---
+# --- LDA helper ---
 run_lda_plot <- function(X, y, ids, filename) {
   fit      <- lda(X, grouping = y)
   prop_var <- fit$svd^2 / sum(fit$svd^2)
@@ -188,8 +179,6 @@ run_lda_plot <- function(X, y, ids, filename) {
       legend.box.background = element_rect(fill = "transparent", colour = NA)
     )
   
-  ggsave(here("analysis/output/figures", filename),
-         plot = p, width = 7, height = 5.5, dpi = 300, bg = "white")
   
   invisible(list(fit = fit, scores = scores, prop_var = prop_var))
 }
@@ -200,7 +189,7 @@ res_dir   <- run_lda_plot(z_dir[non_im_idx, ],   y_typology, df_exp_only$ID,
                           "LDA_dir_by_Typology.png")
 
 # ==============================================================================
-# 4. 方向统计量：SPI + Fabric (Benn) + PERMANOVA + PERMDISP
+# 4. Direction metrics: SPI + fabric (Benn) + PERMANOVA + PERMDISP
 # ==============================================================================
 
 compute_SPI <- function(ux, uy, uz) {
@@ -242,7 +231,7 @@ results <- raw_dirs %>%
   select(-EI) %>%
   arrange(ID)
 
-cat("SPI/E/I 计算完成，标本数：", nrow(results), "\n")
+cat("SPI/E/I computed, specimens:", nrow(results), "\n")
 print(results %>%
         select(ID, n_scars, SPI, E, I) %>%
         mutate(across(c(SPI, E, I), \(x) round(x, 4))),
@@ -262,19 +251,19 @@ results_typed <- results %>%
 
 y_rei <- results_typed$Typology
 
-cat(sprintf("方向统计量可用标本: %d，类别数: %d\n", nrow(results_typed), nlevels(y_rei)))
+cat(sprintf("Direction-metric specimens available: %d, classes: %d\n", nrow(results_typed), nlevels(y_rei)))
 print(table(y_rei))
 
 # --- SPI：Kruskal-Wallis + Dunn（Holm）---
 kw_SPI <- kruskal.test(SPI ~ Typology, data = results_typed)
-cat("\n--- Kruskal-Wallis 检验（SPI）---\n")
+cat("\n--- Kruskal-Wallis test (SPI) ---\n")
 print(kw_SPI)
 
-cat("\n--- Dunn 事后检验（Holm 校正）：SPI ---\n")
+cat("\n--- Dunn post-hoc (Holm) : SPI ---\n")
 dunn_SPI <- FSA::dunnTest(SPI ~ Typology, data = results_typed, method = "holm")
 print(dunn_SPI)
 
-# --- SPI 箱线图 ---
+# --- SPI boxplot ---
 p_SPI_box <- ggplot(results_typed,
                     aes(x = factor(Typology, levels = TYPOLOGY_ORDER),
                         y = SPI, fill = Typology, color = Typology)) +
@@ -309,10 +298,7 @@ p_SPI_box <- ggplot(results_typed,
   ) +
   labs(x = NULL, y = "SPI")
 
-ggsave(here("analysis/output/figures/Boxplot_SPI_by_Typology.png"),
-       plot = p_SPI_box, width = 6, height = 5, dpi = 300, bg = "white")
-
-# --- PERMANOVA + PERMDISP 辅助函数 ---
+# --- PERMANOVA + PERMDISP helper ---
 run_permanova <- function(X, group_vec, label) {
   df_grp <- data.frame(Typology = group_vec)
   d      <- dist(X, method = "euclidean")
@@ -320,19 +306,19 @@ run_permanova <- function(X, group_vec, label) {
   set.seed(42)
   perm_global <- adonis2(X ~ Typology, data = df_grp,
                          method = "euclidean", permutations = 999)
-  cat(sprintf("\n--- PERMANOVA：%s ---\n", label)); print(perm_global)
+  cat(sprintf("\n--- PERMANOVA : %s ---\n", label)); print(perm_global)
   
   set.seed(42)
   disp      <- betadisper(d, group_vec)
   disp_test <- permutest(disp, permutations = 999)
-  cat(sprintf("\n--- PERMDISP：%s ---\n", label)); print(disp_test)
+  cat(sprintf("\n--- PERMDISP : %s ---\n", label)); print(disp_test)
   
   disp_tukey <- TukeyHSD(disp)
-  cat(sprintf("\n--- PERMDISP TukeyHSD：%s ---\n", label)); print(disp_tukey)
+  cat(sprintf("\n--- PERMDISP TukeyHSD : %s ---\n", label)); print(disp_tukey)
   
   set.seed(42)
   pairwise_res <- pairwise.perm.manova(d, group_vec, nperm = 999, p.method = "holm")
-  cat(sprintf("\n--- 两两 PERMANOVA（Holm）：%s ---\n", label))
+  cat(sprintf("\n--- Pairwise PERMANOVA (Holm) : %s ---\n", label))
   print(pairwise_res$p.value)
   
   invisible(list(global    = perm_global,
@@ -342,11 +328,11 @@ run_permanova <- function(X, group_vec, label) {
                  pairwise  = pairwise_res))
 }
 
-# --- Fabric：Benn 三元图 + PERMANOVA ---
+# --- Fabric: Benn ternary + PERMANOVA ---
 X_EI    <- results_typed %>% select(E, I) %>% as.matrix()
 perm_EI <- run_permanova(X_EI, y_rei, "Fabric (E+I)")
 
-# Benn 三端元坐标（顶=IS，左=PL，右=EL）
+# Benn ternary coordinates (top = IS, left = PL, right = EL)
 df_ternary <- results_typed %>%
   mutate(
     EL = 1 - (lambda2 / lambda1), 
@@ -398,19 +384,16 @@ p_benn <- ggtern(
   )
 p_benn
 
-ggsave(here("analysis/output/figures/Benn_by_Typology.png"),
-       plot = p_benn, width = 6, height = 5.5, dpi = 300, bg = "white")
-
 # --- SPHARM PERMANOVA ---
-perm_morph <- run_permanova(z_morph[non_im_idx, ], y_typology, "SPHARM 形态谱")
-perm_dir   <- run_permanova(z_dir[non_im_idx, ],   y_typology, "SPHARM 方向谱")
+perm_morph <- run_permanova(z_morph[non_im_idx, ], y_typology, "SPHARM morphology spectrum")
+perm_dir   <- run_permanova(z_dir[non_im_idx, ],   y_typology, "SPHARM direction spectrum")
 
-cat("\n========== PERMANOVA + PERMDISP 汇总 ==========\n")
-cat(sprintf("SPHARM 形态 : R² = %.3f, p = %.3f | PERMDISP p = %.3f\n",
+cat("\n========== PERMANOVA + PERMDISP summary ==========\n")
+cat(sprintf("SPHARM morphology : R2 = %.3f, p = %.3f | PERMDISP p = %.3f\n",
             perm_morph$global$R2[1],
             perm_morph$global$`Pr(>F)`[1],
             perm_morph$disp_test$tab$`Pr(>F)`[1]))
-cat(sprintf("SPHARM 方向 : R² = %.3f, p = %.3f | PERMDISP p = %.3f\n",
+cat(sprintf("SPHARM direction  : R2 = %.3f, p = %.3f | PERMDISP p = %.3f\n",
             perm_dir$global$R2[1],
             perm_dir$global$`Pr(>F)`[1],
             perm_dir$disp_test$tab$`Pr(>F)`[1]))
@@ -422,7 +405,7 @@ cat(sprintf("SPI KW      : H  = %.2f, df = %d, p < 0.001\n",
             kw_SPI$statistic, kw_SPI$parameter))
 
 # ==============================================================================
-# 5. 气泡图：两两事后检验汇总
+# 5. Bubble plot: pairwise post-hoc summary
 # ==============================================================================
 
 pairs_full <- c(
@@ -503,11 +486,8 @@ p_bubble <- ggplot(
     plot.margin      = ggplot2::margin(6, 6, 6, 6)
   )
 
-ggsave(here("analysis/output/figures/Bubble_posthoc_summary.png"),
-       plot = p_bubble, width = 7, height = 6, dpi = 300, bg = "white")
-
 # ==============================================================================
-# 6. 保存筛选后数据
+# 6. Save filtered data
 # ==============================================================================
 
 saveRDS(SPHARM_direction_filter,
@@ -515,11 +495,11 @@ saveRDS(SPHARM_direction_filter,
 saveRDS(SPHARM_morphology_filter,
         here("analysis/data/derived_data/SPHARM_morphology_filter.rds"))
 
-cat("已保存：SPHARM_direction_filter.rds\n")
-cat("已保存：SPHARM_morphology_filter.rds\n")
+cat("Saved: SPHARM_direction_filter.rds\n")
+cat("Saved: SPHARM_morphology_filter.rds\n")
 
 # ==============================================================================
-# 7. 拼图：左列三图 + 右列气泡图
+# 7. Combined panel: three left plots + bubble plot
 # ==============================================================================
 benn_grob <- ggplotGrob(p_benn)
 p_benn_wrap <- wrap_elements(full = benn_grob)
@@ -561,8 +541,3 @@ exp_method_compare_combined <- (left_col | p_bubble) +
     tag_levels = "A",
     theme = theme(plot.tag = element_text(face = "bold"))
   )
-
-ggsave(here("analysis/output/figures/Combined_panel.png"),
-       plot = exp_method_compare_combined, width = 10, height = 12,
-       dpi = 300, bg = "white")
-

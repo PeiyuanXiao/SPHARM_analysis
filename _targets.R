@@ -1,11 +1,11 @@
 # ==============================================================================
 # _targets.R
-# 完整可复现分析流水线：R 预处理 -> Python SPHARM -> R 统计
+# Fully reproducible analysis pipeline: R preprocessing -> Python SPHARM -> R statistics
 #
-# 审稿人复现步骤：
-#   1. docker run ...              # 启动容器
-#   2. targets::tar_make()         # 运行全部流水线
-#   3. quarto render paper.qmd     # 渲染论文
+# Reproduction steps:
+#   1. docker run ...              # start the container
+#   2. targets::tar_make()         # run the whole pipeline
+#   3. quarto render paper.qmd     # render the paper
 #
 # Note:
 #   Python targets are executed as separate Python processes instead of via
@@ -17,7 +17,7 @@ library(targets)
 library(tarchetypes)
 
 # ==============================================================================
-# 全局选项
+# Global options
 # ==============================================================================
 
 tar_option_set(
@@ -55,7 +55,7 @@ conflicted::conflicts_prefer(ggplot2::theme_dark)
 conflicted::conflicts_prefer(ggplot2::theme_linedraw)
 
 # ==============================================================================
-# Python 环境配置（Docker 内 Conda 环境）
+# Python environment (Conda env inside Docker)
 # ==============================================================================
 
 PYTHON_BIN <- "/opt/conda/envs/spharm/bin/python"
@@ -63,10 +63,10 @@ PYTHON_BIN <- "/opt/conda/envs/spharm/bin/python"
 check_python <- function() {
   if (!file.exists(PYTHON_BIN)) {
     stop(
-      "Python 环境未找到：", PYTHON_BIN, "\n",
-      "Python targets 需要在 Docker 容器内运行。\n",
-      "如果你只需要跑 R 分析 target，可以用：\n",
-      "  tar_make(spharm_analysis)  # 前提是 CSV 已存在",
+      "Python environment not found: ", PYTHON_BIN, "\n",
+      "Python targets must run inside the Docker container.\n",
+      "To run only the R analysis targets, use:\n",
+      "  tar_make(spharm_analysis)  # provided the CSVs already exist",
       call. = FALSE
     )
   }
@@ -115,13 +115,13 @@ check_output_file <- function(path) {
 }
 
 # ==============================================================================
-# Python 调用辅助函数
+# Python invocation helpers
 # ==============================================================================
 
-#' 运行 SPHARM_main.py 的 batch_process()
-#' @param input_dir  STL 文件目录
-#' @param output_dir 输出目录
-#' @return 输出 CSV 路径（供 format = "file" 追踪）
+#' Run batch_process() from SPHARM_main.py
+#' @param input_dir  directory of STL files
+#' @param output_dir output directory
+#' @return output CSV path (tracked via format = "file")
 run_spharm_morphology <- function(input_dir, output_dir) {
   code <- sprintf("
 from SPHARM_main import batch_process
@@ -133,10 +133,10 @@ batch_process(%s, %s)
   check_output_file(file.path(output_dir, "SPHARM_morphology.csv"))
 }
 
-#' 运行 kde_to_spharm_main.py 的 run_pipeline()
-#' @param source     对齐方式："svd"
-#' @param validation 是否为验证模式
-#' @return 输出 CSV 路径
+#' Run run_pipeline() from kde_to_spharm_main.py
+#' @param source     alignment method: "svd"
+#' @param validation whether this is validation mode
+#' @return output CSV path
 run_spharm_direction <- function(source = "svd", validation = FALSE) {
   val_str <- ifelse(validation, "True", "False")
   
@@ -158,8 +158,8 @@ run_pipeline(%s, validation=%s)
   }
 }
 
-#' 运行 rotate_svd_directions.py
-#' @return 输出 CSV 路径
+#' Run rotate_svd_directions.py
+#' @return output CSV path
 run_rotate_svd <- function() {
   check_python()
   
@@ -179,17 +179,17 @@ run_rotate_svd <- function() {
 }
 
 # ==============================================================================
-# targets 列表
+# Target list
 # ==============================================================================
 
 list(
   
   # ============================================================================
-  # 第一层：R 端预处理 — 方向向量对齐
+  # Stage 1: R preprocessing — direction-vector alignment
   # ============================================================================
   
-  # align_svd.R：原始刮痕数据 -> 对齐后方向向量
-  # 产出：directions_raw.csv + directions_aligned_svd.csv
+  # align_svd.R: raw scar data -> aligned direction vectors
+  # produces: directions_raw.csv + directions_aligned_svd.csv
   tar_target(
     align_svd_csvs,
     local({
@@ -201,8 +201,8 @@ list(
     format = "file"
   ),
   
-  # align_lin2024.R：Lin 2024 法对齐（仅验证流水线需要）
-  # 产出：directions_aligned_lin2024.csv
+  # align_lin2024.R: Lin 2024 alignment (validation pipeline only)
+  # produces: directions_aligned_lin2024.csv
   tar_target(
     align_lin2024_csv,
     local({
@@ -214,10 +214,10 @@ list(
   ),
   
   # ============================================================================
-  # 第二层：Python SPHARM 分析
+  # Stage 2: Python SPHARM analysis
   # ============================================================================
   
-  # --- 形态 SPHARM：STL -> 功率谱 ---
+  # --- morphology SPHARM: STL -> power spectrum ---
   tar_target(
     spharm_morphology_csv,
     run_spharm_morphology(
@@ -227,7 +227,7 @@ list(
     format = "file"
   ),
   
-  # --- 方向 SPHARM（生产模式）：SVD 对齐方向向量 -> KDE -> 功率谱 ---
+  # --- direction SPHARM (production): SVD-aligned vectors -> KDE -> power spectrum ---
   tar_target(
     spharm_direction_csv,
     {
@@ -237,7 +237,7 @@ list(
     format = "file"
   ),
   
-  # --- 旋转扰动数据生成（验证用）---
+  # --- generate rotation-perturbed data (validation) ---
   tar_target(
     rotate_svd_csv,
     {
@@ -247,7 +247,7 @@ list(
     format = "file"
   ),
   
-  # --- 方向 SPHARM（验证模式）：四种对齐 x KDE -> 功率谱 ---
+  # --- direction SPHARM (validation): four alignments x KDE -> power spectrum ---
   tar_target(
     spharm_direction_validation_csvs,
     {
@@ -266,7 +266,7 @@ list(
   ),
   
   # ============================================================================
-  # 第三层：R 统计分析
+  # Stage 3: R statistical analysis
   # ============================================================================
   
   tar_target(
@@ -340,7 +340,6 @@ list(
                local = TRUE)
         list(
           p_final          = p_final,
-          p_se_combined    = p_se_combined,
           mantel_global_r  = round(mantel_global$statistic, 3),
           mantel_global_p  = round(mantel_global$signif, 3),
           rv               = round(coin_exp$RV, 3),
@@ -351,11 +350,6 @@ list(
           mantel_uni_r     = round(mantel_by_typology$mantel_r[mantel_by_typology$Typology == "Unidirectional"], 3),
           mantel_multi_r   = round(mantel_by_typology$mantel_r[mantel_by_typology$Typology == "Multiplatform"], 3),
           mantel_bi_r      = round(mantel_by_typology$mantel_r[mantel_by_typology$Typology == "Bidirectional"], 3),
-          kw_se_dir_chi2   = round(res_se_dir$kw$statistic, 2),
-          kw_se_dir_p      = round(res_se_dir$kw$p.value, 3),
-          p_se_lev_multi   = round(res_se_dir$dunn$p.adj[res_se_dir$dunn$Comparison == "Levallois - Multiplatform"], 3),
-          kw_se_morph_chi2 = round(res_se_morph$kw$statistic, 2),
-          kw_se_morph_p    = round(res_se_morph$kw$p.value, 3),
           rayleigh_bi_p    = round(res_circ_typology$rayleigh$rayleigh_p[res_circ_typology$rayleigh$group == "Bidirectional"], 3),
           rayleigh_disc_p  = round(res_circ_typology$rayleigh$rayleigh_p[res_circ_typology$rayleigh$group == "Discoid"], 3),
           rayleigh_lev_p   = round(res_circ_typology$rayleigh$rayleigh_p[res_circ_typology$rayleigh$group == "Levallois"], 3),
@@ -402,18 +396,6 @@ list(
           mean_dir_uni             = round(
             res_circ_coretype$desc$mean_dir_deg[
               res_circ_coretype$desc$group == "Unifacial_unidirection"], 0),
-          kw_se_dir_type_chi2      = round(res_se_dir_coretype$kw$statistic, 3),
-          kw_se_dir_type_p         = round(res_se_dir_coretype$kw$p.value, 3),
-          dunn_se_multi_uni_p      = round(
-            res_se_dir_coretype$dunn$p.adj[
-              res_se_dir_coretype$dunn$Comparison ==
-                "Multifacial - Unifacial_centripetal"], 3),
-          kw_se_morph_layer_chi2   = round(res_se_morph_layer$kw$statistic, 3),
-          kw_se_morph_layer_p      = round(res_se_morph_layer$kw$p.value, 3),
-          kw_se_morph_rawmat_chi2  = round(res_se_morph_rawmat$kw$statistic, 3),
-          kw_se_morph_rawmat_p     = round(res_se_morph_rawmat$kw$p.value, 3),
-          kw_se_morph_type_chi2    = round(res_se_morph_coretype$kw$statistic, 3),
-          kw_se_morph_type_p       = round(res_se_morph_coretype$kw$p.value, 3),
           perm_morph_type_r2       = round(permanova_results$R2[
             permanova_results$domain == "Morphology" &
               permanova_results$grouping == "Core Type"], 3),
@@ -473,8 +455,7 @@ list(
           perm_scar_layer_p        = round(permanova_results$p_value[
             permanova_results$domain == "Scar Direction" &
               permanova_results$grouping == "Layer"], 3),
-          fig_coia_composite = p_final,
-          fig_se_composite   = p_se_composite
+          fig_coia_composite = p_final
         )
       })
     }

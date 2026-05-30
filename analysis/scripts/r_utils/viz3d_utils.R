@@ -1,34 +1,13 @@
-# ==============================================================================
 # viz3d_utils.R
-# Plotly 三维可视化公共函数
-# 被以下脚本引用：
-#   - 01_alignment/align_svd.R
-#   - 01_alignment/align_lin2024.R
-#
-# 依赖包：plotly, jsonlite
-# ==============================================================================
+# Plotly 3D helpers shared by align_svd.R and align_lin2024.R. Requires: plotly, jsonlite.
 
-
-# ------------------------------------------------------------------------------
-# add_scars_3d()
-# 在 Plotly 3D 图中绘制所有刮痕（线段 + 箭头锥体）
-#
-# 参数：
-#   fig          : plotly 图形对象
-#   sx,sy,sz     : 刮痕起点坐标向量
-#   ex,ey,ez     : 刮痕终点坐标向量
-#   highlight_idx: （可选）需要高亮的刮痕索引，默认 NULL 即全部统一样式
-#                  Lin 2024 方法中用于高亮最长刮痕
-#
-# 说明：
-#   - 不传 highlight_idx → 全部刮痕统一显示为 steelblue（SVD 方法）
-#   - 传入 highlight_idx → 该刮痕显示为粉色加粗（Lin 2024 方法）
-# ------------------------------------------------------------------------------
+# Draw all scars as line segments with cone arrowheads.
+# highlight_idx (optional): index of one scar to emphasise (used by Lin 2024 for the longest scar).
 add_scars_3d <- function(fig, sx, sy, sz, ex, ey, ez,
                          highlight_idx = NULL) {
   for (i in seq_along(sx)) {
     is_hl <- !is.null(highlight_idx) && i == highlight_idx
-    clr   <- if (is_hl) "pink"  else "steelblue"
+    clr   <- if (is_hl) "pink" else "steelblue"
     lwd   <- if (is_hl) 6      else 2
     csz   <- if (is_hl) 0.08   else 0.05
     
@@ -57,18 +36,7 @@ add_scars_3d <- function(fig, sx, sy, sz, ex, ey, ez,
   fig
 }
 
-
-# ------------------------------------------------------------------------------
-# add_arrow_3d()
-# 在 Plotly 3D 图中绘制一个带箭头的方向指示器
-#
-# 参数：
-#   fig       : plotly 图形对象
-#   origin    : 箭头起点，长度为3的数值向量
-#   direction : 箭头方向向量（会被归一化后乘以 scale）
-#   scale     : 箭头长度缩放系数
-#   color     : 颜色字符串，默认 "red"
-# ------------------------------------------------------------------------------
+# Draw a single direction arrow: `direction` is normalised then scaled by `scale`.
 add_arrow_3d <- function(fig, origin, direction, scale, color = "red") {
   d   <- direction / sqrt(sum(direction^2)) * scale
   tip <- origin + d
@@ -94,17 +62,7 @@ add_arrow_3d <- function(fig, origin, direction, scale, color = "red") {
   )
 }
 
-
-# ------------------------------------------------------------------------------
-# add_tilted_plane_3d()
-# 在 Plotly 3D 图中绘制一个任意法线方向的平面（四边形网格）
-#
-# 参数：
-#   fig       : plotly 图形对象
-#   center    : 平面中心点，长度为3的数值向量
-#   normal    : 平面法向量（会被归一化）
-#   half_size : 平面半边长（控制显示大小）
-# ------------------------------------------------------------------------------
+# Draw a quad plane with arbitrary normal, centred at `center`.
 add_tilted_plane_3d <- function(fig, center, normal, half_size) {
   n   <- normal / sqrt(sum(normal^2))
   ref <- if (abs(n[1]) < 0.9) c(1, 0, 0) else c(0, 1, 0)
@@ -133,17 +91,7 @@ add_tilted_plane_3d <- function(fig, center, normal, half_size) {
   )
 }
 
-
-# ------------------------------------------------------------------------------
-# add_plane_3d()
-# 在 Plotly 3D 图中绘制一个水平平面（平行于 XY 平面）
-#
-# 参数：
-#   fig       : plotly 图形对象
-#   cx, cy    : 平面中心的 X、Y 坐标
-#   z0        : 平面所在的 Z 高度
-#   half_size : 平面半边长
-# ------------------------------------------------------------------------------
+# Draw a horizontal plane (parallel to XY) at height z0.
 add_plane_3d <- function(fig, cx, cy, z0, half_size) {
   h  <- half_size
   xs <- c(cx - h, cx + h, cx + h, cx - h)
@@ -161,11 +109,7 @@ add_plane_3d <- function(fig, cx, cy, z0, half_size) {
   )
 }
 
-
-# ------------------------------------------------------------------------------
-# make_scene()
-# 返回 Plotly 3D 场景的通用布局参数（相机角度、坐标轴设置等）
-# ------------------------------------------------------------------------------
+# Shared 3D scene layout (camera, axes, aspect).
 make_scene <- function() {
   list(
     camera     = list(eye = list(x = 1.6, y = 1.6, z = 1.1)),
@@ -176,14 +120,7 @@ make_scene <- function() {
   )
 }
 
-
-# ------------------------------------------------------------------------------
-# panel_layout()
-# 返回单个 Plotly 面板的 layout 参数（标题、边距、背景色）
-#
-# 参数：
-#   title_text : 面板标题字符串（支持 HTML 加粗标签）
-# ------------------------------------------------------------------------------
+# Per-panel layout; title_text accepts HTML bold tags.
 panel_layout <- function(title_text) {
   list(
     title         = list(text = title_text, font = list(size = 13),
@@ -194,17 +131,7 @@ panel_layout <- function(title_text) {
   )
 }
 
-
-# ------------------------------------------------------------------------------
-# get_panel_json()
-# 将 Plotly 图形对象序列化为 JSON 字符串，用于嵌入 HTML 导出
-#
-# 参数：
-#   p : plotly 图形对象
-#
-# 返回：
-#   包含 data 和 layout 的 JSON 字符串
-# ------------------------------------------------------------------------------
+# Serialise a plotly object to a JSON string for HTML embedding.
 get_panel_json <- function(p) {
   built       <- plotly_build(p)
   data_json   <- toJSON(built$x$data,   auto_unbox = TRUE, null = "null", force = TRUE)

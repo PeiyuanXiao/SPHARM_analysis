@@ -1,31 +1,13 @@
-# ==============================================================================
 # geometry_utils.R
-# 几何旋转对齐公共函数
-# 被以下脚本引用：
-#   - 01_alignment/align_svd.R
-#   - 01_alignment/align_lin2024.R
-# ==============================================================================
+# Rotation helper shared by align_svd.R and align_lin2024.R.
 
-# ------------------------------------------------------------------------------
-# get_rot_matrix()
-# 计算将向量 a 旋转到向量 b 的旋转矩阵（Rodrigues 公式）
-#
-# 参数：
-#   a : 起始单位向量（长度为3的数值向量）
-#   b : 目标单位向量（长度为3的数值向量）
-#
-# 返回：
-#   3×3 旋转矩阵
-#
-# 边界情况处理：
-#   - a 与 b 方向相反（cos_theta ≈ -1）：绕垂直轴旋转180°
-#   - a 与 b 方向相同（cos_theta ≈  1）：返回单位矩阵
-# ------------------------------------------------------------------------------
+# Rotation matrix that maps unit vector `a` onto unit vector `b` (Rodrigues).
 get_rot_matrix <- function(a, b) {
   a <- a / sqrt(sum(a^2))
   b <- b / sqrt(sum(b^2))
   cos_theta <- sum(a * b)
   
+  # Antiparallel: rotate 180 deg about any axis perpendicular to `a`.
   if (cos_theta < -1 + 1e-10) {
     perp <- if (abs(a[1]) < 0.9) c(1, 0, 0) else c(0, 1, 0)
     v <- perp - sum(perp * a) * a
@@ -33,6 +15,7 @@ get_rot_matrix <- function(a, b) {
     return(2 * outer(v, v) - diag(3))
   }
   
+  # Already aligned.
   if (cos_theta > 1 - 1e-10) return(diag(3))
   
   v <- c(
