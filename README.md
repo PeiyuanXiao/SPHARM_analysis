@@ -10,6 +10,8 @@ Unified Spherical Harmonic Framework</i></b>
 
 <hr />
 
+[![Reproducibility
+Check](https://github.com/PeiyuanXiao/SPHARM_analysis/actions/workflows/reproducibility.yml/badge.svg)](https://github.com/PeiyuanXiao/SPHARM_analysis/actions/workflows/reproducibility.yml)
 [![Project Status: Under
 Review](https://www.repostatus.org/badges/latest/active.svg)](https://www.repostatus.org/#active)
 [![License:
