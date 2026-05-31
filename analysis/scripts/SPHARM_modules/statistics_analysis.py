@@ -3,7 +3,6 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
-import umap
 import re
 from sklearn.decomposition import PCA
 from scipy.spatial.distance import pdist, squareform
@@ -188,88 +187,6 @@ def calculate_power_distance(all_stats, filenames, output_dir, lmax=20):
 
 
 # ============================================================
-# UMAP
-# ============================================================
-
-def analyze_umap(all_stats, filenames, output_dir, lmax=20,
-                 save_plot=True, save_csv=True):
-    """
-    UMAP dimensionality reduction on power spectra.
-
-    Parameters
-    ----------
-    all_stats : np.ndarray, shape (N, n_degrees)
-    filenames : list of str
-    output_dir : str
-    lmax : int
-    save_plot : bool
-    save_csv : bool
-
-    Returns
-    -------
-    umap_df : pd.DataFrame
-        Columns: x, y, filename, category
-    """
-    power_spectra = all_stats[:, 1:lmax+1]
-    n_samples     = power_spectra.shape[0]
-    n_neighbors   = min(6, n_samples - 1)
-
-    reducer = umap.UMAP(
-        n_components=2,
-        n_neighbors=n_neighbors,
-        min_dist=0.06,
-        metric='cosine',
-        random_state=42
-    )
-    umap_result = reducer.fit_transform(power_spectra)
-
-    def get_category(label):
-        for cat in ["Multifacial", "Subspheroid", "Spheroid", "Polyhedron"]:
-            if cat in label:
-                return cat
-        return "idealmodel"
-
-    clean_names = [
-        re.sub(r'-[^-]+$', '', re.sub(r'^\d+_', '', f))
-        for f in filenames
-    ]
-
-    umap_df = pd.DataFrame({
-        'x':        umap_result[:, 0],
-        'y':        umap_result[:, 1],
-        'filename': clean_names,
-        'category': [get_category(f) for f in filenames]
-    })
-
-    if save_csv:
-        csv_path = os.path.join(output_dir, f"umap_lmax{lmax}.csv")
-        umap_df.to_csv(csv_path, index=False)
-        print(f"Saved UMAP CSV: {csv_path}")
-
-    if save_plot:
-        plt.figure(figsize=(15, 12))
-        for i, (x, y) in enumerate(umap_result):
-            plt.scatter(x, y, color='black', s=100, alpha=0.8)
-            plt.text(x + 0.02, y + 0.02, clean_names[i],
-                     fontsize=9, ha='left', va='bottom')
-
-        plt.title(f"UMAP Projection (l=1~{lmax})", fontsize=14)
-        plt.xlabel("UMAP Component 1", fontsize=12)
-        plt.ylabel("UMAP Component 2", fontsize=12)
-        plt.tight_layout()
-
-        plot_path = os.path.join(output_dir, f"umap_lmax{lmax}.png")
-        plt.savefig(plot_path, bbox_inches='tight', dpi=300)
-        plt.close()
-        print(f"Saved UMAP plot: {plot_path}")
-
-    return umap_df
-
-
-analyze_umap2 = analyze_umap
-
-
-# ============================================================
 # Entry point for post-batch analysis
 # ============================================================
 
@@ -278,7 +195,7 @@ def run_batch_analysis(output_csv, output_dir, lmax=20):
     Post-processing analysis after batch SPHARM computation.
     Called after batch_process completes in SPHARM_main.py.
 
-    Runs: variance analysis + UMAP.
+    Runs: variance analysis.
 
     Parameters
     ----------
@@ -296,17 +213,6 @@ def run_batch_analysis(output_csv, output_dir, lmax=20):
     analyze_variance(X,
                      filenames=df["ID"].tolist(),
                      output_path=var_path)
-
-    # UMAP
-    if len(df) > 1:
-        analyze_umap(
-            X,
-            df["ID"].astype(str).tolist(),
-            output_dir,
-            lmax=lmax,
-            save_plot=True,
-            save_csv=True
-        )
 
 
 # ============================================================

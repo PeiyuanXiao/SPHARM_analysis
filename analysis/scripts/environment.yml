@@ -249,7 +249,6 @@ dependencies:
   - typing-extensions=4.15.0
   - typing_extensions=4.15.0
   - tzdata=2025c
-  - umap-learn=0.5.11
   - unicodedata2=17.0.0
   - urllib3=2.6.3
   - utfcpp=4.09

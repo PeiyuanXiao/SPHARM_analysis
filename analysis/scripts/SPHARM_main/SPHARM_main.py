@@ -263,7 +263,7 @@ def batch_process(input_dir, output_dir):
         print(f"{'='*55}")
 
     # --------------------------------------------------------
-    # Post-processing 1: Variance analysis + UMAP
+    # Post-processing 1: Variance analysis
     # --------------------------------------------------------
     print(f"\n{'='*55}")
     print("Running post-processing analysis...")
