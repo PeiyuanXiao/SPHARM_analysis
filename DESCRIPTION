@@ -1,0 +1,25 @@
+Package: SPHARM.analysis
+Title: Characterizing Core Scar Patterning and Morphology within a Unified
+    Spherical Harmonic Framework
+Version: 0.0.0.9000
+Authors@R: c(
+    person("Peiyuan", "Xiao", role = c("aut", "cre"),
+           comment = c(ORCID = "0009-0000-9733-5875")),
+    person("Hao", "Li", role = "aut", email = "lihao@itpcas.ac.cn",
+           comment = c(ORCID = "0009-0008-1504-9401")),
+    person("Ben", "Marwick", role = "aut", email = "bmarwick@uw.edu",
+           comment = c(ORCID = "0000-0001-7879-4531")))
+Description: Research compendium with the data and code to reproduce the
+    analyses and figures in the paper "Characterizing core scar patterning
+    and morphology within a unified spherical harmonic framework". The
+    workflow couples R preprocessing, Python spherical-harmonic (SPHARM)
+    analysis of core meshes and scar-orientation kernel-density estimates,
+    and R statistical analysis, orchestrated as a single reproducible
+    'targets' pipeline.
+License: MIT + file LICENSE
+Encoding: UTF-8
+Roxygen: list(markdown = TRUE)
+SystemRequirements: Docker; Python (conda environment 'spharm',
+    see analysis/scripts/environment.yml); Quarto
+URL: https://github.com/PeiyuanXiao/SPHARM_analysis
+BugReports: https://github.com/PeiyuanXiao/SPHARM_analysis/issues

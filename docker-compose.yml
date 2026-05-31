@@ -10,7 +10,8 @@ services:
       - RENV_PATHS_LIBRARY=/opt/renv/library
       - RENV_PATHS_CACHE=/opt/renv/cache
     volumes:
-      - /mnt/h/SPHARM_analysis:/project
+      # mount the project (the directory containing this compose file) at /project
+      - .:/project
     working_dir: /project
     stop_grace_period: 1s
     restart: "no"
