@@ -1,5 +1,5 @@
 ---
-title: "Characterizing core scar patterning and morphology within a unified spherical harmonic framework"
+title: "Characterizing core morphology and scar patterning within a unified spherical harmonic framework"
 author:
   - Peiyuan Xiao:
       correspondence: "no"
@@ -31,7 +31,7 @@ date: now
 date-format: long
 format: 
   docx:
-    reference-doc: "../templates/template.docx" # Insert path for the DOCX file
+    reference-doc: "../templates/template.docx"
 crossref:
   fig-title: "Fig."
   fig-prefix: "Fig."
@@ -47,8 +47,9 @@ filters:
   - ../templates/author-info-blocks.lua
   - ../templates/pagebreak.lua
 bibliography: references.bib
-csl: "../templates/journal-of-archaeological-science.csl" # Insert path for the bib-style
+csl: "../templates/journal-of-archaeological-science.csl"
 abstract: |
+Lithic cores preserve the most direct evidence of past reduction strategies, recording technological decisions accumulated through knapping. Core analysis typically relies on typological classifications that combine morphological and technological criteria, but such classifications are subjective and difficult to reproduce. Recent 3D computational methods allow more precise quantification of core attributes, yet morphology and scar organization are handled in separate mathematical frameworks, precluding joint examination of how the two dimensions relate. Here we present a unified framework based on spherical harmonics that encodes both core morphology and scar patterning within the same mathematical space, and apply Co-inertia Analysis to examine their covariation. Validation on ideal models and experimental cores shows that the spherical harmonic scar-pattern descriptor resolves finer distinctions among core types than existing metrics, most clearly the radial subtypes that other methods fail to separate, while the three methods prove complementary. Applied to experimental and archaeological assemblages, this exploratory analysis reveals no detectable covariation between core morphology and scar organization, a decoupling consistent across core types, raw materials, and stratigraphic layers. At Sandinggai (Hunan, China), core type nonetheless emerged as the dominant factor structuring each dimension, several times stronger than raw material or stratigraphic layer, with the two dimensions responding to it independently; the negligible effect of layer supports previously proposed diachronic technological continuity. More broadly, the approach offers a generalizable way to examine core variability as a continuous techno-morphological space rather than a set of discrete types. Future work should expand sample sizes and incorporate finer-grained technological attributes to move beyond these exploratory findings.
   
 editor_options: 
   chunk_output_type: console

@@ -4,7 +4,7 @@
 
 <h1>
 
-<b><i>Characterizing Core Scar Patterning and Morphology within a
+<b><i>Characterizing Core Morphology and Scar Patterning within a
 Unified Spherical Harmonic Framework</i></b>
 </h1>
 
