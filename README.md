@@ -23,8 +23,8 @@ CC0](https://img.shields.io/badge/License_(data)-CC0-green.svg)](http://creative
 
 This repository is the research compendium for the following paper:
 
-> Peiyuan Xiao, Hao Li, Ben Marwick (2025). *Characterizing core scar
-> patterning and morphology within a unified spherical harmonic
+> Peiyuan Xiao, Hao Li, Ben Marwick (2025). *Characterizing core
+> morphology and scar patterning within a unified spherical harmonic
 > framework*. Submitted to *Journal of Archaeological Method and
 > Theory*.
 
