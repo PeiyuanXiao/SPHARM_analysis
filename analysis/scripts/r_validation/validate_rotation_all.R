@@ -194,7 +194,6 @@ for (metric in c("R", "E", "I")) {
 
 # Compose: 3 rows (metrics) x 3 cols (comparison pairs)
 p_rei <- wrap_plots(ba_plots_rei, ncol = 3)
-p_rei
 
 # ==============================================================================
 # Part B: SPHARM power-spectrum validation (per-degree Bland-Altman, faceted)
@@ -453,7 +452,6 @@ p_rot_spharm <- ggplot(ba_combined, aes(x = degree)) +
     legend.background    = element_rect(fill = "transparent", colour = NA),
     legend.box.background = element_rect(fill = "transparent", colour = NA)
   )
-p_rot_spharm
 
 # ------------------------------------------------------------------------------
 # C-3: numeric summary and conclusion
@@ -513,4 +511,3 @@ p_rotational_invariance_validity <- p_rei / p_rot_spharm +
       plot.tag = element_text(face = "bold")
     )
   )
-p_rotational_invariance_validity

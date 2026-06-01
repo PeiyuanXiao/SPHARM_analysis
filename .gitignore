@@ -67,3 +67,5 @@ Start_SPHARM.bat
 .env
 .quarto/
 .positai/
+.Rproj.user
+.Rproj.user

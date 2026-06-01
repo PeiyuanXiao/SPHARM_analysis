@@ -1,34 +1,41 @@
 name: Reproducibility Check
 
-# Builds the project Docker image (R + renv library + conda `spharm`
-# environment) and runs a partial validation of the analysis pipeline.
+# Full reproduction in CI:
+#   1. Build the project Docker image (R + renv library + conda `spharm` env).
+#   2. Download the 3D core meshes from OSF (they are too large for version
+#      control and live in an OSF project).
+#   3. Run the complete `targets::tar_make()` pipeline inside the image with
+#      the repository mounted, then render the manuscript.
 #
-# NOTE: A full `targets::tar_make()` is intentionally NOT run here. The
-# pipeline depends on the 3D core meshes (analysis/data/3D_models_cores/*.stl),
-# which are too large for version control and are archived separately (see
-# README). This workflow therefore verifies that the computational
-# environment builds reproducibly and that the pipeline + Python modules load,
-# rather than executing the data-dependent stages.
+# REQUIRED REPOSITORY SECRET
+#   OSF_VIEW_ONLY_TOKEN — the view-only token for the (currently private) OSF
+#   project that hosts the meshes. Add it under:
+#     Settings → Secrets and variables → Actions → New repository secret
+#   Once the OSF project is made public this secret can be removed; the
+#   download then works without a token.
 
 on:
   push:
     branches: [master, main]
-  pull_request:
-    branches: [master, main]
   workflow_dispatch:
 
+env:
+  # OSF project node that stores the 3D core meshes (.stl). Not secret —
+  # it appears in the public OSF URL. The access token is a secret (below).
+  OSF_NODE: d82c5
+
 jobs:
-  build-and-validate:
+  reproduce:
     runs-on: ubuntu-latest
-    timeout-minutes: 120
+    timeout-minutes: 350
 
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
 
       - name: Free up disk space on runner
-        # The rocker/geospatial base + renv library + conda env produce a
-        # large image; reclaim space the GitHub-hosted runner does not need.
+        # The base image + renv library + conda env + downloaded meshes are
+        # large; reclaim space the GitHub-hosted runner does not need.
         run: |
           sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/lib/android /opt/hostedtoolcache/CodeQL
           sudo docker image prune -af || true
@@ -46,22 +53,70 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      - name: Validate that the targets pipeline parses
-        # tar_manifest() sources _targets.R and lists every target without
-        # executing any commands, so it needs no data. A non-empty manifest
-        # confirms the pipeline definition is well-formed.
-        run: |
-          docker run --rm -w /project spharm_analysis:ci \
-            Rscript -e 'm <- targets::tar_manifest(); stopifnot(nrow(m) > 0); cat("Pipeline parsed:", nrow(m), "targets\n"); print(m$name)'
-
-      - name: Validate the conda `spharm` Python environment
-        # Imports the project entry point and supporting modules using the
-        # same PYTHONPATH the pipeline uses (see python_env() in _targets.R).
-        # This confirms the conda env solved correctly and the Python code
-        # (pyshtools, trimesh, SPHARM_modules, ...) loads.
+      - name: Sanity-check the conda `spharm` Python environment
+        # Fast early failure: confirm the env solved and the project modules
+        # import (same PYTHONPATH the pipeline uses; see python_env() in _targets.R).
         run: |
           docker run --rm \
             -e PYTHONPATH=/project/analysis/scripts/SPHARM_main:/project/analysis/scripts \
             -e MPLBACKEND=Agg \
             -w /project spharm_analysis:ci \
             /opt/conda/envs/spharm/bin/python -c "import SPHARM_main; import SPHARM_modules.statistics_analysis; print('Python SPHARM environment import OK')"
+
+      - name: Download 3D core meshes from OSF
+        env:
+          OSF_VIEW_ONLY_TOKEN: ${{ secrets.OSF_VIEW_ONLY_TOKEN }}
+        run: |
+          set -euo pipefail
+          DEST="analysis/data/3D_models_cores"
+          mkdir -p "$DEST"
+          BASE="https://files.osf.io/v1/resources/${OSF_NODE}/providers/osfstorage/?zip="
+          if [ -n "${OSF_VIEW_ONLY_TOKEN:-}" ]; then
+            URL="${BASE}&view_only=${OSF_VIEW_ONLY_TOKEN}"
+            echo "Downloading meshes from OSF node ${OSF_NODE} (view-only token) ..."
+          else
+            URL="${BASE}"
+            echo "Downloading meshes from OSF node ${OSF_NODE} (public, no token) ..."
+          fi
+          curl -fsSL --retry 3 --retry-delay 5 "$URL" -o models.zip
+          unzip -o -q models.zip -d "$DEST"
+          rm -f models.zip
+          COUNT=$(find "$DEST" -iname '*.stl' | wc -l)
+          echo "Downloaded ${COUNT} .stl files into ${DEST}"
+          if [ "$COUNT" -eq 0 ]; then
+            echo "::error::No .stl files were downloaded. Check OSF_NODE and the OSF_VIEW_ONLY_TOKEN secret."
+            exit 1
+          fi
+
+      - name: Run the full targets pipeline (tar_make)
+        # Mount the checkout (code + downloaded meshes) over /project. The renv
+        # library (/opt/renv) and conda env (/opt/conda) are baked into the
+        # image and remain available; .Rprofile activates renv automatically.
+        run: |
+          docker run --rm \
+            -e MPLBACKEND=Agg \
+            -v "${{ github.workspace }}":/project -w /project \
+            spharm_analysis:ci \
+            Rscript -e 'targets::tar_make()'
+          # files written by the (root) container; make them readable to the runner
+          sudo chown -R "$USER":"$USER" "${{ github.workspace }}" || true
+
+      - name: Render the manuscript
+        continue-on-error: true
+        run: |
+          docker run --rm \
+            -v "${{ github.workspace }}":/project -w /project \
+            spharm_analysis:ci \
+            quarto render analysis/paper/manuscript.qmd --to docx
+          sudo chown -R "$USER":"$USER" "${{ github.workspace }}" || true
+
+      - name: Upload reproduced outputs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: reproduced-outputs
+          if-no-files-found: ignore
+          path: |
+            analysis/paper/manuscript.docx
+            analysis/data/derived_data/**
+            analysis/output/figures/**

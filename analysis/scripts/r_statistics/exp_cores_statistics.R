@@ -1269,7 +1269,6 @@ run_circular_analysis <- function(group_col, group_label, palette) {
 res_circ_typology <- run_circular_analysis("Typology", "Typology", typology_pal)
 
 p_rose <- plot_rose(res_circ_typology, typology_pal)
-p_rose
 
 # ==============================================================================
 # ---- Save derived data ----

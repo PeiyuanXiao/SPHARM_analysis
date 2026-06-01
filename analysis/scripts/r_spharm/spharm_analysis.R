@@ -382,7 +382,6 @@ p_benn <- ggtern(
     legend.box.background = element_rect(fill = "transparent", colour = NA),
     plot.margin           = ggplot2::margin(2, 2, 2, 2)
   )
-p_benn
 
 # --- SPHARM PERMANOVA ---
 perm_morph <- run_permanova(z_morph[non_im_idx, ], y_typology, "SPHARM morphology spectrum")
