@@ -179,6 +179,18 @@ run_rotate_svd <- function() {
 }
 
 # ==============================================================================
+# Output directories
+# These live under the git-ignored analysis/output/, so they are absent on a
+# fresh clone or CI checkout. ggsave()/saveWidget() do not create parent dirs,
+# so create them up front (no-op if they already exist).
+# ==============================================================================
+for (.out_dir in c("analysis/data/derived_data",
+                   "analysis/output/figures",
+                   "analysis/output/html")) {
+  dir.create(here::here(.out_dir), recursive = TRUE, showWarnings = FALSE)
+}
+
+# ==============================================================================
 # Target list
 # ==============================================================================
 
