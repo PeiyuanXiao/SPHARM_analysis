@@ -40,7 +40,9 @@ figure origin/
 .RData
 .Rapp.history
 .httr-oauth
-.Rproj.user/
+# NOTE: keep this exactly as ".Rproj.user" (no trailing slash) — RStudio
+# re-appends this exact line on every project open if it is not found verbatim.
+.Rproj.user
 renv/library/
 renv/staging/
 renv/python/
@@ -67,7 +69,3 @@ Start_SPHARM.bat
 .env
 .quarto/
 .positai/
-.Rproj.user
-.Rproj.user
-.Rproj.user
-.Rproj.user

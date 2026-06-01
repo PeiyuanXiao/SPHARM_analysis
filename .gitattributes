@@ -1,0 +1,5 @@
+# Keep .gitignore as LF in the working tree (even on Windows with
+# core.autocrlf=true). RStudio matches the literal line ".Rproj.user"; if the
+# file is checked out as CRLF the line becomes ".Rproj.user\r", the match
+# fails, and RStudio re-appends the entry on every project open.
+.gitignore text eol=lf
