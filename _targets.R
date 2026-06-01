@@ -299,6 +299,7 @@ list(
             p_fab_disc_bi  = perm_EI$pairwise$p.value["Discoid",        "Bidirectional"]
           ),
           perm_morph_r2         = round(perm_morph$global$R2[1], 3),
+          perm_morph_f          = round(perm_morph$global$`F`[1], 3),
           perm_morph_p          = round(perm_morph$global$`Pr(>F)`[1], 3),
           p_exp_method_combined = exp_method_compare_combined
         )
