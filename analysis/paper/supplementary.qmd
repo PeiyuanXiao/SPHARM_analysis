@@ -1,0 +1,384 @@
+---
+title: "Supplementary Information"
+subtitle: "Characterizing core morphology and scar patterning within a unified spherical harmonic framework"
+author:
+  - Peiyuan Xiao:
+      correspondence: "no"
+      orcid: 0009-0000-9733-5875
+      institute:
+        - ALPHA
+        - UCAS
+        - uw
+  - Hao Li:
+      correspondence: "yes"
+      email: lihao@itpcas.ac.cn
+      orcid: 0009-0008-1504-9401
+      institute:
+        - ALPHA
+        - MOE
+  - Ben Marwick:
+      correspondence: "yes"
+      email: bmarwick@uw.edu
+      orcid: 0000-0001-7879-4531
+      institute:
+        - uw
+institute:
+  - UCAS: University of Chinese Academy of Sciences, Beijing, China
+  - ALPHA: Alpine Paleoecology and Human Adaptation Group (ALPHA Group), State Key Laboratory of Tibetan Plateau Earth System, Environment and Resources, Institute of Tibetan Plateau Research, Chinese Academy of Sciences, Beijing, China;
+  - MOE: MOE Key Laboratory of Western China's Environmental System, Center for Excellence in Archaeological Science and Cultural Heritage, Lanzhou University, Lanzhou, China
+  - uw: Department of Anthropology, University of Washington, Seattle, WA, USA
+date: now
+date-format: long
+format:
+  docx:
+    reference-doc: "../templates/template.docx"
+# Separate doc → numbering restarts at 1; the "S" prefix gives Figure S1 / Table S1.
+# Sections are manually labelled S1–S3, so section auto-numbering is off.
+crossref:
+  fig-title: "Figure S"
+  fig-prefix: "Figure S"
+  tbl-title: "Table S"
+  tbl-prefix: "Table S"
+number-sections: false
+execute:
+  echo: false
+  warning: false
+  message: false
+  comment: "#>"
+  fig-dpi: 800
+filters:
+  - ../templates/scholarly-metadata.lua
+  - ../templates/author-info-blocks.lua
+  - ../templates/pagebreak.lua
+bibliography: references.bib
+csl: "../templates/journal-of-archaeological-method-and-theory.csl"
+editor_options:
+  chunk_output_type: console
+---
+
+```{r}
+#| label: setup
+#| include: false
+library(targets)
+library(tidyverse)
+library(patchwork)
+
+# Two independent target stores (see _targets.yaml).
+si_store   <- "/project/analysis/robustness/_targets_store"   # this SI pipeline
+main_store <- "/project/analysis/paper/_targets"              # main-text pipeline
+tar_config_set(store = si_store)
+
+# Robustness targets (built by: TAR_PROJECT=supplementary tar_make()).
+bw   <- tar_read(robustness_bandwidth)
+scar <- tar_read(robustness_scar_threshold)
+mesh <- tar_read(robustness_mesh_decimation)
+
+# Curated metric tables, rendered live from the targets so they always agree with
+# the figures (and, for S1/S2, with the deterministic values quoted in the text).
+pm <- function(r, p) sprintf("%.3f (%.3f)", r, p)   # "estimate (p)"
+```
+
+# Sensitivity and robustness analyses
+
+We assessed whether the headline results depend on the principal free parameters of the two
+descriptors. For the scar descriptor (SP-SPHARM) we varied (S1) the von Mises–Fisher kernel
+bandwidth $h$ and (S2) the scar minimum-size inclusion threshold. For the morphology
+descriptor (M-SPHARM) we varied (S3) the mesh decimation target and the amount of Laplacian
+smoothing, and we verified that the morphology pipeline is deterministic. In every sweep all
+other settings were held at their production values, and at the production setting the
+recomputed descriptors reproduce the cached values, anchoring each sweep to the main
+analysis. As in the main text, results are interpreted on the magnitude of effects rather
+than on significance thresholds; the analyses below repeatedly show that what moves under
+parameter perturbation is the *significance* of small-to-modest effects near the 0.05 line,
+not their *magnitude*.
+
+## S1. Bandwidth of the von Mises–Fisher kernel ($h$) — scar descriptor
+
+**Methods.** The spherical kernel-density bandwidth was fixed at $h = 0.35$ (concentration
+$\kappa = 1/h^2 = 8.16$) in the main analysis. We recomputed the SP-SPHARM power spectra over
+$h \in \{0.20, 0.25, 0.30, 0.35, 0.40, 0.45, 0.50\}$ ($\kappa = 4.0$–$25.0$), holding
+everything else fixed (alignment, the spherical evaluation grid and Driscoll–Healy transform,
+$l_{\max} = 20$, normalisation, and seeds). Morphology (M-SPHARM) is independent of $h$ and
+was reused unchanged. At $h = 0.35$ the recomputed spectra reproduce the cached values.
+
+**Order selection (truncation at $l = 1$–$6$).** Across all $h$, SP-SPHARM power saturates
+early: cumulative power through $l = 6$ is 96.71–99.99% (experimental assemblage, EXP), and
+the cross-specimen coefficient of variation (CV) first exceeds 100% at degree $l = 7$–$14$.
+The $l = 1$–$6$ truncation is robust to $h$; it is most complete at moderate-to-large $h$ (at
+the smallest $h$ a little reliable signal persists beyond $l = 6$).
+
+```{r}
+#| label: fig-si-bandwidth-order
+#| fig-cap: "SP-SPHARM power saturation (cumulative power, top) and cross-specimen CV (bottom) by spherical-harmonic degree $l$, overlaid across bandwidths $h$, for the experimental (EXP) and archaeological (SDG) assemblages. Dashed lines mark the 95%/99% power and 100% CV references."
+#| fig-width: 9
+#| fig-height: 8
+bw$fig_orderselection
+```
+
+**Ideal-core discriminability.** The pairwise standardised-distance structure is highly
+stable: each $h$'s distance matrix correlates with the $h = 0.35$ matrix at Pearson
+$r \ge 0.961$, and key separations persist at every $h$ (e.g. discoidal vs Levallois,
+bifacial vs unifacial discoidal).
+
+```{r}
+#| label: fig-si-bandwidth-im
+#| fig-cap: "Ideal-core standardised distance matrices (power $l = 1$–$4$) at $h = 0.20$, $0.35$ and $0.50$; the key type separations persist across bandwidths."
+#| fig-width: 11
+#| fig-height: 4.5
+bw$fig_im_heatmaps
+```
+
+**Experimental cores (PERMANOVA).** The scar-pattern PERMANOVA by core type stays significant
+across $h$ ($R^2 = 0.259$–$0.374$; $p < 0.05$ throughout). The monotonic rise of $R^2$ with
+$h$ is a dimensionality effect — stronger smoothing concentrates spectral energy into fewer
+effective degrees, inflating the between-group share of total variance — rather than improved
+discrimination, consistent with the caveat in the main text that $R^2$ is comparable only
+within a fixed effective dimensionality. The pairwise resolution profile is consistent across
+the central range: 8 of 10 typology pairs are resolved at $h = 0.30$–$0.45$ (including the
+chosen $h = 0.35$), dropping to 6/10 at the two smallest bandwidths and 7/10 at the largest.
+
+**Decoupling (Mantel + RV).** The association between morphology and scar patterning is
+negligible in magnitude at every bandwidth: Mantel $r \approx 0$ throughout (EXP $-0.062$ to
+$-0.008$; SDG $0.001$ to $0.017$) and RV $\approx 0.10$–$0.12$ (EXP) and $\approx 0.09$ (SDG).
+For SDG both measures are non-significant across the entire range. For the experimental
+assemblage the Mantel test is non-significant at every $h$, and the RV coefficient is
+non-significant from $h = 0.20$ to $0.40$, becomes marginal at $h = 0.45$ ($p = 0.078$), and
+crosses $p < 0.05$ only at the most over-smoothed setting ($h = 0.50$: RV $= 0.117$,
+$p = 0.044$) — where the association is still negligible and is not corroborated by the Mantel
+test ($r = -0.008$, $p = 0.54$). Read on effect size, the decoupling is robust across the full
+range, and the chosen $h = 0.35$ sits well inside the non-significant regime. The SDG
+scar–core-type PERMANOVA remains significant throughout ($R^2 = 0.166$–$0.177$).
+
+```{r}
+#| label: fig-si-bandwidth-summary
+#| fig-cap: "Downstream metrics versus bandwidth $h$ (dashed vertical = production $h = 0.35$): EXP/SDG PERMANOVA $R^2$, Mantel $r$, RV, and the ideal-core distance-matrix correlation against the $h = 0.35$ structure."
+#| fig-width: 9
+#| fig-height: 8
+bw$fig_summary
+```
+
+```{r}
+#| label: tbl-si-bandwidth
+#| tbl-cap: "Per-bandwidth sensitivity metrics (`*` = production setting, $h = 0.35$). Cumulative power, the CV-crossing degree, the ideal-core (IM) correlation, $R^2$, and the Mantel/RV estimates are deterministic; permutation $p$-values use a fixed seed."
+bw$metrics |>
+  arrange(h) |>
+  transmute(
+    `h`                = ifelse(abs(h - 0.35) < 1e-9, paste0(format(h, nsmall = 2), "*"), format(h, nsmall = 2)),
+    `κ`           = sprintf("%.2f", kappa),
+    `EXP cum%@l6`      = sprintf("%.2f", exp_cumpower_l6),
+    `CV>100% at l`     = exp_cv_cross_l,
+    `IM corr vs .35`   = sprintf("%.3f", im_corr_vs_ref),
+    `EXP R2`           = sprintf("%.3f", exp_perm_R2),
+    `EXP p`            = sprintf("%.3f", exp_perm_p),
+    `EXP sig pairs`    = paste0(exp_perm_nsig, "/", exp_perm_npairs),
+    `SDG type R2`      = sprintf("%.3f", sdg_perm_scar_coretype_R2),
+    `SDG p`            = sprintf("%.3f", sdg_perm_scar_coretype_p),
+    `EXP Mantel r (p)` = pm(exp_mantel_r, exp_mantel_p),
+    `EXP RV (p)`       = pm(exp_RV, exp_RV_p),
+    `SDG Mantel r (p)` = pm(sdg_mantel_r, sdg_mantel_p),
+    `SDG RV (p)`       = pm(sdg_RV, sdg_RV_p)
+  ) |>
+  knitr::kable()
+```
+
+{{< pagebreak >}}
+
+## S2. Scar minimum-size inclusion threshold — scar descriptor
+
+**Methods.** The main pipeline applies no scar-size filter in code, so the analysed set
+contains every recorded scar (smallest $\approx 2$ mm). To test whether the scar-patterning
+results depend on this inclusion rule — and in particular whether they are driven by small,
+less reliably measured scars — we recomputed the SP-SPHARM power spectra after dropping scars
+at or below increasing cutoffs $T \in \{0, 5, 10\}$ mm (retaining length $> T$), holding
+everything else fixed (alignment, $h = 0.35$, the evaluation and transform grids,
+$l_{\max} = 20$, normalisation, seeds). Morphology was reused unchanged. $T = 0$ (all recorded
+scars) is the production anchor and reproduces the cached values. Relative to the full set,
+the $>5$ mm rule retains 95.9% (EXP) and 99.2% (SDG) of scars and $>10$ mm retains 80.7% and
+88.5%; no EXP or SDG specimen falls below the three-scar floor. The threshold is not applied
+to the synthetic ideal cores, whose scar lengths are fixed non-physical values, so their
+discriminability is unchanged by construction.
+
+```{r}
+#| label: fig-si-scar-counts
+#| fig-cap: "Per-specimen scar retention by minimum-size threshold $T$; the dashed line is the three-scar advisory floor, below which no EXP/SDG specimen falls."
+#| fig-width: 9
+#| fig-height: 4.5
+scar$fig_scarcounts
+```
+
+**Order selection (truncation at $l = 1$–$6$).** SP-SPHARM power saturates early at every
+threshold: cumulative power through $l = 6$ is 99.91–99.92% (EXP), and the cross-specimen CV
+first exceeds 100% at degree $l = 9$ for all $T$. The $l = 1$–$6$ truncation is robust to the
+inclusion rule.
+
+```{r}
+#| label: fig-si-scar-order
+#| fig-cap: "SP-SPHARM power saturation and cross-specimen CV by degree across scar minimum-size thresholds $T$, for EXP and SDG."
+#| fig-width: 9
+#| fig-height: 8
+scar$fig_orderselection
+```
+
+**Experimental cores (PERMANOVA).** The scar-pattern PERMANOVA by core type is significant at
+every threshold ($R^2 = 0.307$–$0.360$; $p < 0.05$ throughout). The pairwise resolution
+profile is 8/10 typology pairs at the production baseline ($T = 0$), 6/10 at $>5$ mm, and
+10/10 at $>10$ mm. Restricting the analysis to larger, more reliably measured scars therefore
+does not weaken type discrimination and, at $>10$ mm, sharpens it; the experimental core-type
+signal is carried by the larger scars and is not an artefact of small scars.
+
+**Decoupling (Mantel + RV).** Morphology and scar patterning remain negligibly associated and
+non-significant at every threshold: Mantel $r \approx 0$ (EXP $-0.061$ to $0.004$; SDG
+$-0.047$ to $0.012$) and RV $= 0.101$–$0.109$ (EXP) and $0.057$–$0.091$ (SDG), all
+$p > 0.05$. The SDG scar–core-type PERMANOVA is significant throughout ($R^2 = 0.168$–$0.171$).
+
+```{r}
+#| label: fig-si-scar-summary
+#| fig-cap: "Downstream metrics versus scar minimum-size threshold $T$ (dashed = production $T = 0$, all scars)."
+#| fig-width: 9
+#| fig-height: 7
+scar$fig_summary
+```
+
+```{r}
+#| label: tbl-si-scar
+#| tbl-cap: "Per-threshold sensitivity metrics (`*` = production baseline, all recorded scars). EXP/SDG scar columns are retained scar totals. Ideal cores held at production values (threshold not applicable). Permutation $p$-values use a fixed seed."
+scar$metrics |>
+  arrange(threshold_mm) |>
+  transmute(
+    `T (mm)`           = ifelse(abs(threshold_mm) < 1e-9, "0*", as.character(as.integer(threshold_mm))),
+    `EXP scars`        = scars_kept_EXP,
+    `SDG scars`        = scars_kept_SDG,
+    `EXP cum%@l6`      = sprintf("%.2f", exp_cumpower_l6),
+    `CV>100% at l`     = exp_cv_cross_l,
+    `EXP R2`           = sprintf("%.3f", exp_perm_R2),
+    `EXP p`            = sprintf("%.3f", exp_perm_p),
+    `EXP sig pairs`    = paste0(exp_perm_nsig, "/", exp_perm_npairs),
+    `SDG type R2`      = sprintf("%.3f", sdg_perm_scar_coretype_R2),
+    `SDG p`            = sprintf("%.3f", sdg_perm_scar_coretype_p),
+    `EXP Mantel r (p)` = pm(exp_mantel_r, exp_mantel_p),
+    `EXP RV (p)`       = pm(exp_RV, exp_RV_p),
+    `SDG Mantel r (p)` = pm(sdg_mantel_r, sdg_mantel_p),
+    `SDG RV (p)`       = pm(sdg_RV, sdg_RV_p)
+  ) |>
+  knitr::kable()
+```
+
+{{< pagebreak >}}
+
+## S3. Mesh decimation and Laplacian smoothing — morphology descriptor
+
+**Methods.** Core morphology is decimated by quadric edge collapse to a fixed target face
+count (production = 20000) and Laplacian-smoothed (production = 3 iterations) before the
+spherical-harmonic expansion. We recomputed the M-SPHARM power spectra over two
+one-dimensional sweeps through the production setting: decimation target
+$\in \{10000, 20000, 50000\}$ faces (at production smoothing) and smoothing
+$\in \{0, 3, 6\}$ iterations (at the production target), holding everything else fixed (the
+quadric-decimation algorithm, mesh normalisation, deterministic area-weighted PCA alignment,
+the spherical sampling grid, $l_{\max} = 20$, normalisation, seeds). The scar descriptor is
+not derived from these meshes and was reused unchanged. At the production setting the
+recomputed spectra reproduce the cached values.
+
+```{r}
+#| label: fig-si-mesh-inventory
+#| fig-cap: "Raw mesh face counts (log scale) for the IM, SDG and EXP groups against the decimation targets (solid = production 20k; dashed = 10k/50k). EXP and SDG meshes are always decimated; the low-resolution ideal (IM) meshes lie at or below the targets."
+knitr::include_graphics(here::here(
+  "analysis/robustness/mesh_decimation_sensitivity/figures/fig_S_mesh_inventory.png"))
+```
+
+**Determinism.** With the decimation algorithm and parameters fixed, re-running the same
+meshes through the pipeline reproduces them exactly (126/126 meshes identical on re-run,
+maximum spectral difference $0.0$). The previously reported non-reproducibility of the
+morphology results arose from inconsistent, manual decimation; the fixed quadric-decimation
+pipeline is deterministic.
+
+**Order selection (truncation at $l = 1$–$8$).** M-SPHARM power concentrates by $l = 8$
+(cumulative power 97.98–98.58% EXP, 97.75–98.59% SDG) and the cross-specimen CV stays below
+the 90% reliability line through $l = 8$ (maximum CV 82.5–88.6% EXP, 54.6–69.6% SDG). The
+$l = 1$–$8$ truncation is robust to decimation and smoothing.
+
+```{r}
+#| label: fig-si-mesh-order
+#| fig-cap: "M-SPHARM power concentration and cross-specimen CV by degree across mesh-preprocessing settings, for EXP and SDG; dashed line = 90% reliability."
+#| fig-width: 9
+#| fig-height: 8
+mesh$fig_orderselection
+```
+
+**Ideal-core discriminability.** The ideal-model meshes are low-resolution
+($\le \sim$20k faces), at or below the production decimation target, so the face-count sweep
+leaves them essentially unchanged (distance-matrix Pearson $r \approx 1.000$ vs production).
+Smoothing has a larger effect on these synthetic meshes: without smoothing the distance
+structure is more weakly correlated with the production (smoothed) structure ($r = 0.794$),
+reflecting residual faceting artefacts that smoothing removes. The production setting applies
+smoothing and the real assemblages are robust (below).
+
+**Archaeological cores (SDG).** Core type is the dominant, significant morphology term across
+all settings ($R^2 = 0.178$–$0.216$; $p < 0.05$ throughout), while raw material is small
+($R^2 = 0.013$–$0.051$; significant only at the heaviest smoothing) and layer is negligible
+($R^2 = 0.007$–$0.030$; non-significant throughout). The "core type dominant, technological
+continuity across layers and raw materials" picture holds across all settings.
+
+**Experimental cores.** The experimental morphology PERMANOVA by core type is weak and its
+significance is not robust ($R^2 = 0.107$–$0.154$; non-significant at the production setting,
+$p = 0.082$; 0 of 10 typology pairs resolved). In the experimental assemblage, type
+information therefore resides in the scar-pattern descriptor (which resolves 8/10 pairs; S2)
+rather than in morphology — evidence that the two descriptors are complementary rather than
+redundant.
+
+**Decoupling (Mantel + RV).** With the perturbed morphology and the fixed scar descriptor,
+the association between morphology and scar patterning is negligible in magnitude at every
+setting: Mantel $r \approx 0$ (EXP $-0.106$ to $-0.048$; SDG $-0.058$ to $0.102$) and RV
+$\approx 0.10$ (EXP $0.095$–$0.116$; SDG $0.072$–$0.093$). The Mantel test is non-significant
+throughout (EXP and SDG), and the RV is non-significant at every setting except the unsmoothed
+mesh (0 smoothing iterations: EXP RV $= 0.116$, $p = 0.043$) — where, as for the most
+over-smoothed bandwidth in S1, the association is still negligible and is not corroborated by
+the Mantel test ($r = -0.069$, $p = 0.83$). Read on effect size, the decoupling holds under
+perturbation of the morphology descriptor as well as the scar descriptor (S1–S2).
+
+```{r}
+#| label: fig-si-mesh-summary
+#| fig-cap: "Morphology metrics versus decimation target (left, at production smoothing) and smoothing iterations (right, at production faces): EXP/SDG core-type $R^2$, the ideal-core distance correlation, and EXP/SDG Mantel $r$ and RV."
+#| fig-width: 9
+#| fig-height: 10
+mesh$fig_summary
+```
+
+```{r}
+#| label: tbl-si-mesh
+#| tbl-cap: "Per-setting sensitivity metrics (`*` = production setting, 20000 faces / 3 smoothing iterations). Ideal-model meshes are low-resolution, so the face-count sweep barely changes them. Permutation $p$-values use a fixed seed."
+mesh$metrics |>
+  arrange(desc(smooth_iters == 3), face_target, smooth_iters) |>
+  transmute(
+    `faces`               = ifelse(is_production, paste0(face_target, "*"), as.character(face_target)),
+    `smooth`              = smooth_iters,
+    `EXP cum%@l8`         = sprintf("%.2f", exp_morph_cumpower_l8),
+    `EXP maxCV(l1-8)`     = sprintf("%.1f", exp_morph_maxcv_l8),
+    `SDG cum%@l8`         = sprintf("%.2f", sdg_morph_cumpower_l8),
+    `IM corr vs prod`     = sprintf("%.3f", im_morph_corr_vs_prod),
+    `EXP morph R2 (p)`    = pm(exp_morph_perm_R2, exp_morph_perm_p),
+    `SDG type R2 (p)`     = pm(sdg_morph_coretype_R2, sdg_morph_coretype_p),
+    `SDG rawmat R2 (p)`   = pm(sdg_morph_rawmat_R2, sdg_morph_rawmat_p),
+    `SDG layer R2 (p)`    = pm(sdg_morph_layer_R2, sdg_morph_layer_p),
+    `EXP Mantel r (p)`    = pm(exp_mantel_r, exp_mantel_p),
+    `EXP RV (p)`          = pm(exp_RV, exp_RV_p),
+    `SDG Mantel r (p)`    = pm(sdg_mantel_r, sdg_mantel_p),
+    `SDG RV (p)`          = pm(sdg_RV, sdg_RV_p)
+  ) |>
+  knitr::kable()
+```
+
+{{< pagebreak >}}
+
+## Summary
+
+Across both descriptors, every conclusion the analysis relies on is robust to its principal
+free parameters: early truncation ($l = 1$–$6$ for the scar descriptor, $l = 1$–$8$ for
+morphology); ideal-core discrimination; the dominance of core type over raw material and layer
+in the archaeological (SDG) morphology and scar-pattern signals; and the decoupling of
+morphology and scar patterning, which holds under perturbation of either descriptor. The
+morphology pipeline is deterministic. The quantities that shift under perturbation are the
+*significance* — not the magnitude — of effects that are negligible-to-modest and sit near the
+0.05 line: the experimental RV at the most extreme bandwidth (S1) and at the unsmoothed mesh
+(S3), the experimental morphology core-type term (S3), and the SDG raw-material term (S3).
+This is the empirical reason the main text reads effects on magnitude rather than on threshold
+crossings.

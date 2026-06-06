@@ -6,7 +6,7 @@
 # _targets store, the derived_data cache, or the manuscript. It only READS the
 # committed h=0.35 outputs (for a sanity check) and the per-h SP-SPHARM power
 # spectra produced by 01_sweep_spharm_bandwidth.py, and WRITES new outputs
-# under analysis/bandwidth_sensitivity/.
+# under analysis/robustness/bandwidth_sensitivity/.
 #
 # It re-uses the project's existing statistical machinery (the same package
 # functions the main pipeline calls — vegan::adonis2 / mantel, ade4::coinertia /
@@ -34,11 +34,10 @@
 #   figures/fig_S_bandwidth_orderselection.png
 #   figures/fig_S_bandwidth_summary.png
 #   figures/fig_S_bandwidth_IM_heatmaps.png
-#   SI_bandwidth_sensitivity_summary.md   auto-filled SI-ready results summary
 #
 # HOW TO RUN (canonical environment, R 4.4 + renv):
-#   Rscript analysis/bandwidth_sensitivity/02_bandwidth_sensitivity_stats.R
-#   # or in RStudio: source(here::here("analysis/bandwidth_sensitivity/02_bandwidth_sensitivity_stats.R"))
+#   Rscript analysis/robustness/bandwidth_sensitivity/02_bandwidth_sensitivity_stats.R
+#   # or in RStudio: source(here::here("analysis/robustness/bandwidth_sensitivity/02_bandwidth_sensitivity_stats.R"))
 # =============================================================================
 
 suppressPackageStartupMessages({
@@ -69,7 +68,7 @@ set.seed(42)
 H_GRID <- c(0.20, 0.25, 0.30, 0.35, 0.40, 0.45, 0.50)
 H_REF  <- 0.35
 
-OUT_DIR     <- here("analysis/bandwidth_sensitivity")
+OUT_DIR     <- here("analysis/robustness/bandwidth_sensitivity")
 SPECTRA_DIR <- file.path(OUT_DIR, "spectra")
 FIG_DIR     <- file.path(OUT_DIR, "figures")
 dir.create(FIG_DIR, recursive = TRUE, showWarnings = FALSE)
@@ -508,8 +507,7 @@ tryCatch({
     facet_wrap(~ dataset) +
     scale_color_manual(values = pal, name = "h") +
     scale_x_continuous(breaks = 1:12) +
-    labs(x = "Spherical-harmonic degree (l)", y = "Cumulative power (%)",
-         title = "SP-SPHARM power saturation across bandwidths") +
+    labs(x = "Spherical-harmonic degree (l)", y = "Cumulative power (%)") +
     theme_bw() + theme(panel.grid.minor = element_blank())
 
   p_cv <- ggplot(order_long_df %>% filter(order <= 12),
@@ -520,8 +518,7 @@ tryCatch({
     facet_wrap(~ dataset) +
     scale_color_manual(values = pal, name = "h") +
     scale_x_continuous(breaks = 1:12) +
-    labs(x = "Spherical-harmonic degree (l)", y = "Cross-specimen CV (%)",
-         title = "SP-SPHARM cross-specimen CV across bandwidths") +
+    labs(x = "Spherical-harmonic degree (l)", y = "Cross-specimen CV (%)") +
     theme_bw() + theme(panel.grid.minor = element_blank())
 
   ggsave(file.path(FIG_DIR, "fig_S_bandwidth_orderselection.png"),
@@ -546,8 +543,7 @@ tryCatch({
     geom_point(color = "#4A6E8A", size = 1.8) +
     facet_wrap(~ metric, scales = "free_y", ncol = 2) +
     scale_x_continuous(breaks = H_GRID) +
-    labs(x = "vMF bandwidth h", y = NULL,
-         title = "Downstream metrics vs bandwidth (dashed = h = 0.35)") +
+    labs(x = "vMF bandwidth h", y = NULL) +
     theme_bw() + theme(panel.grid.minor = element_blank(),
                        strip.text = element_text(size = 8))
   ggsave(file.path(FIG_DIR, "fig_S_bandwidth_summary.png"),
@@ -569,7 +565,7 @@ tryCatch({
                          midpoint = 2, name = "Std.\ndist.") +
     scale_x_discrete(guide = guide_axis(angle = 90)) +
     scale_y_discrete(limits = rev) +
-    labs(x = NULL, y = NULL, title = "Ideal-core standardised distance (power_l1:l4)") +
+    labs(x = NULL, y = NULL) +
     theme_bw(base_size = 7) + theme(axis.text = element_text(size = 5.5))
   ggsave(file.path(FIG_DIR, "fig_S_bandwidth_IM_heatmaps.png"),
          p_heat, width = 11, height = 4.5, dpi = 300)
@@ -581,11 +577,8 @@ tryCatch({
 })
 
 # =============================================================================
-# Auto-generated SI-ready markdown summary
+# Stability flags (printed by the SENSITIVITY FLAGS section below)
 # =============================================================================
-fmt <- function(x, d = 3) ifelse(is.na(x), "NA", formatC(x, format = "f", digits = d))
-rng <- function(x, d = 3) sprintf("%s-%s", fmt(min(x, na.rm = TRUE), d), fmt(max(x, na.rm = TRUE), d))
-
 exp_perm_all_sig <- all(metrics_df$exp_perm_p < 0.05, na.rm = TRUE)
 sdg_perm_all_sig <- all(metrics_df$sdg_perm_scar_coretype_p < 0.05, na.rm = TRUE)
 mantel_all_ns    <- all(metrics_df$exp_mantel_p >= 0.05, na.rm = TRUE) &&
@@ -593,73 +586,7 @@ mantel_all_ns    <- all(metrics_df$exp_mantel_p >= 0.05, na.rm = TRUE) &&
 rv_all_ns        <- all(metrics_df$exp_RV_p >= 0.05, na.rm = TRUE) &&
                     all(metrics_df$sdg_RV_p >= 0.05, na.rm = TRUE)
 cv_cross_stable  <- length(unique(na.omit(metrics_df$exp_cv_cross_l))) == 1
-cumpow_stable    <- all(metrics_df$exp_cumpower_l6 > 99, na.rm = TRUE)
 im_corr_min      <- if ("im_corr_vs_ref" %in% names(metrics_df)) min(metrics_df$im_corr_vs_ref, na.rm = TRUE) else NA
-cv_cross_one     <- as.integer(unique(na.omit(metrics_df$exp_cv_cross_l))[1])
-
-# Reference row (h=0.35 if present, else nearest) — used for the resolution profile.
-rr <- if (nrow(ref_row) >= 1) ref_row[1, ] else
-  metrics_df[which.min(abs(metrics_df$h - H_REF)), ]
-
-md <- c(
-"## Supplementary: sensitivity of SP-SPHARM results to the vMF-sKDE bandwidth (h)",
-"",
-sprintf("The spherical kernel-density bandwidth was fixed at h = %.2f (concentration kappa = 1/h^2 = %.2f) in the main analysis. To confirm that the SP-SPHARM results do not hinge on this choice, we recomputed the SP-SPHARM power spectra over h in {%s} (kappa %.1f-%.1f), holding everything else fixed (SVD alignment, 72x36 KDE grid, 64x128 Driscoll-Healy grid, l_max = 20, AC-normalisation). Morphology (M-SPHARM) is independent of h and was reused unchanged. At h = %.2f the recomputed spectra reproduce the cached production values, so the sweep is anchored to the main pipeline.",
-        H_REF, 1/H_REF^2, paste(sprintf("%.2f", H_GRID), collapse = ", "),
-        min(metrics_df$kappa), max(metrics_df$kappa), H_REF),
-"",
-"**Order selection (truncation at l = 1-6).** ",
-sprintf("Across all h, SP-SPHARM power saturates early: cumulative power through l = 6 is %s%% (EXP) and the cross-specimen CV first exceeds 100%% at degree %s. The l = 1-6 truncation is therefore %s to h.",
-        rng(metrics_df$exp_cumpower_l6, 2),
-        if (cv_cross_stable) sprintf("l = %d for every h", cv_cross_one) else sprintf("l = %s (range across h)", paste(range(na.omit(metrics_df$exp_cv_cross_l)), collapse = "-")),
-        if (cv_cross_stable && cumpow_stable) "robust" else "broadly robust"),
-"",
-"**Ideal-core discriminability.** ",
-sprintf("The pairwise standardised-distance structure is highly stable: each h's distance matrix correlates with the h = 0.35 matrix at Pearson r >= %s. Key separations persist at every h (e.g. discoid vs Levallois, biface vs unifacial discoid).",
-        if (is.na(im_corr_min)) "NA" else fmt(im_corr_min, 3)),
-"",
-"**Experimental cores (PERMANOVA).** ",
-sprintf("The scar-pattern PERMANOVA by core type stays %s across h (R2 = %s; p %s). The pairwise resolution profile is stable: %d of %d typology pairs are resolved at h = 0.35.",
-        if (exp_perm_all_sig) "significant" else "variable",
-        rng(metrics_df$exp_perm_R2, 3),
-        if (exp_perm_all_sig) "< 0.05 throughout" else "variable",
-        rr$exp_perm_nsig[1], rr$exp_perm_npairs[1]),
-"",
-"**Decoupling (Mantel + RV).** ",
-sprintf("Morphology and scar patterning remain statistically decoupled at every h: global Mantel r = %s (EXP) and %s (SDG), RV = %s (EXP) and %s (SDG), %s. The SDG scar~core-type PERMANOVA is %s (R2 = %s).",
-        rng(metrics_df$exp_mantel_r, 3), rng(metrics_df$sdg_mantel_r, 3),
-        rng(metrics_df$exp_RV, 3), rng(metrics_df$sdg_RV, 3),
-        if (mantel_all_ns && rv_all_ns) "all non-significant (p > 0.05)" else "see table for significance",
-        if (sdg_perm_all_sig) "significant throughout" else "h-dependent (see note)",
-        rng(metrics_df$sdg_perm_scar_coretype_R2, 3)),
-"",
-sprintf("**Verdict.** h = 0.35 sits in a stable plateau: every headline conclusion (early truncation at l = 1-6, ideal-core discrimination, experimental core-type separation, and morphology-technology decoupling) holds across the full h in [%.2f, %.2f] tested. ",
-        min(H_GRID), max(H_GRID)),
-"",
-"### Per-h metric table",
-"",
-"| h | kappa | EXP cum%@l6 | CV>100% at l | IM corr vs .35 | EXP R2 | EXP p | EXP sig pairs | SDG scar~type R2 | SDG p | EXP Mantel r (p) | EXP RV (p) | SDG Mantel r (p) | SDG RV (p) |",
-"|---|---|---|---|---|---|---|---|---|---|---|---|---|---|"
-)
-
-tbl_rows <- metrics_df %>% arrange(h) %>% pmap_chr(function(...) {
-  r <- list(...)
-  sprintf("| %.2f | %.2f | %s | %s | %s | %s | %s | %d/%d | %s | %s | %s (%s) | %s (%s) | %s (%s) | %s (%s) |",
-          r$h, r$kappa, fmt(r$exp_cumpower_l6, 2), as.character(r$exp_cv_cross_l),
-          if (!is.null(r$im_corr_vs_ref)) fmt(r$im_corr_vs_ref, 3) else "NA",
-          fmt(r$exp_perm_R2, 3), fmt(r$exp_perm_p, 3), r$exp_perm_nsig, r$exp_perm_npairs,
-          fmt(r$sdg_perm_scar_coretype_R2, 3), fmt(r$sdg_perm_scar_coretype_p, 3),
-          fmt(r$exp_mantel_r, 3), fmt(r$exp_mantel_p, 3),
-          fmt(r$exp_RV, 3), fmt(r$exp_RV_p, 3),
-          fmt(r$sdg_mantel_r, 3), fmt(r$sdg_mantel_p, 3),
-          fmt(r$sdg_RV, 3), fmt(r$sdg_RV_p, 3))
-})
-
-md <- c(md, tbl_rows, "",
-  "*Notes.* Pseudo-F, R2 and Mantel/RV statistics are deterministic given the spectra; permutation p-values carry ~+/-0.005 Monte-Carlo jitter. Figures: `fig_S_bandwidth_orderselection.png` (cumulative power & CV by degree, overlaid across h), `fig_S_bandwidth_summary.png` (each metric vs h), `fig_S_bandwidth_IM_heatmaps.png` (ideal-core distance at h = 0.20/0.35/0.50). Generated by `02_bandwidth_sensitivity_stats.R`.")
-
-writeLines(md, file.path(OUT_DIR, "SI_bandwidth_sensitivity_summary.md"))
-cat("Wrote SI_bandwidth_sensitivity_summary.md\n")
 
 # ---- flag any metric that is sensitive to h (printed for the analyst) -------
 cat("\n", strrep("=", 70), "\n", sep = "")
@@ -675,9 +602,5 @@ if (!cv_cross_stable)  { flag_any <- TRUE; cat(sprintf("  * EXP CV>100%% crossin
 if (!is.na(im_corr_min) && im_corr_min < 0.95) { flag_any <- TRUE;
   cat(sprintf("  * IM distance-matrix correlation vs h=0.35 drops to %.3f.\n", im_corr_min)) }
 if (!flag_any) cat("  None: every headline conclusion is stable across the tested h grid.\n")
-
-# Record exact R library versions used (reproducibility).
-writeLines(capture.output(sessionInfo()), file.path(OUT_DIR, "r_sessioninfo.txt"))
-cat("\nWrote r_sessioninfo.txt\n")
 
 cat("\nDone.\n")

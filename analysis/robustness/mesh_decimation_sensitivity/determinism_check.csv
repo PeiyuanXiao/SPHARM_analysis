@@ -1,0 +1,127 @@
+ID,mesh_identical,n_faces_decimated,max_power_diff
+EXP01_Levallois preferential,True,20000,0.0
+EXP02_Cylindrical bidirectional,True,20000,0.0
+EXP03_Conical unidirectional,True,20000,0.0
+EXP04_Levallois preferential,True,20000,0.0
+EXP05_Levallois preferential,True,20000,0.0
+EXP06_Levallois convergent,True,20000,0.0
+EXP07_Levallois preferential,True,20000,0.0
+EXP08_Levallois preferential,True,20000,0.0
+EXP09_Levallois preferential,True,20000,0.0
+EXP10_Cylindrical unidirectional,True,20000,0.0
+EXP11_Cylindrical bidirectional,True,20000,0.0
+EXP12_Discoid,True,20000,0.0
+EXP13_Conical unidirectional,True,20000,0.0
+EXP14_Levallois convergent,True,20000,0.0
+EXP15_Levallois convergent,True,20000,0.0
+EXP16_Discoid,True,20000,0.0
+EXP17_Discoid,True,20000,0.0
+EXP18_Discoid,True,20000,0.0
+EXP19_Levallois preferential,True,20000,0.0
+EXP20_Cylindrical bidirectional,True,20000,0.0
+EXP21_Levallois preferential,True,20000,0.0
+EXP22_Cylindrical unidirectional,True,20000,0.0
+EXP23_Cylindrical unidirectional,True,20000,0.0
+EXP24_Cylindrical unidirectional,True,20000,0.0
+EXP25_Levallois Nubian,True,20000,0.0
+EXP26_Levallois recurrent,True,20000,0.0
+EXP27_Levallois convergent,True,20000,0.0
+EXP28_Levallois convergent,True,20000,0.0
+EXP29_Levallois preferential,True,20000,0.0
+EXP30_Levallois Nubian,True,20000,0.0
+EXP31_Levallois laminar,True,20000,0.0
+EXP32_Conical unidirectional,True,20000,0.0
+EXP33_Cylindrical bidirectional,True,20000,0.0
+EXP34_Multiplatform,True,20000,0.0
+EXP35_Levallois laminar,True,20000,0.0
+EXP36_Conical unidirectional,True,20000,0.0
+EXP37_Conical unidirectional,True,20000,0.0
+EXP38_Multiplatform,True,20000,0.0
+EXP39_Multiplatform,True,20000,0.0
+EXP40_Conical unidirectional,True,20000,0.0
+EXP41_Subconical unidirectional,True,20000,0.0
+EXP42_Multiplatform,True,20000,0.0
+EXP43_Biface,True,20000,0.0
+EXP44_Multiplatform,True,20000,0.0
+EXP45_Conical unidirectional,True,20000,0.0
+EXP46_Conical unidirectional,True,20000,0.0
+EXP47_Conical bidirectional,True,20000,0.0
+EXP48_Multiplatform,True,20000,0.0
+EXP49_Discoid,True,20000,0.0
+EXP50_Multiplatform,True,20000,0.0
+EXP51_Conical unidirectional,True,20000,0.0
+EXP52_Levallois preferential,True,20000,0.0
+EXP53_Levallois recurrent,True,20000,0.0
+EXP54_Multiplatform,True,20000,0.0
+EXP55_Multiplatform,True,20000,0.0
+EXP56_Multiplatform,True,20000,0.0
+EXP57_Conical bidirectional,True,20000,0.0
+EXP58_Conical unidirectional,True,20000,0.0
+EXP59_Subconical unidirectional,True,20000,0.0
+IM_Levallois_convergent,True,19572,0.0
+IM_Levallois_laminar,True,19588,0.0
+IM_Levallois_preferential,True,16166,0.0
+IM_Multiplatform,True,12,0.0
+IM_biface,True,1780,0.0
+IM_conical_unipolar_cortical,True,92,0.0
+IM_conical_unipolar_scarred,True,92,0.0
+IM_cylindrical_bipolar,True,96,0.0
+IM_cylindrical_unipolar_cortical,True,96,0.0
+IM_cylindrical_unipolar_scarred,True,96,0.0
+IM_discoid,True,4096,0.0
+IM_discoid_unifacial,True,4096,0.0
+SDG_L2_489,True,20000,0.0
+SDG_L2_494,True,20000,0.0
+SDG_L3_1066,True,20000,0.0
+SDG_L3_1163,True,20000,0.0
+SDG_L3_1191,True,20000,0.0
+SDG_L3_1318,True,20000,0.0
+SDG_L3_1416,True,20000,0.0
+SDG_L3_1437,True,20000,0.0
+SDG_L3_1492,True,20000,0.0
+SDG_L3_1547,True,20000,0.0
+SDG_L3_155,True,20000,0.0
+SDG_L3_1677,True,20000,0.0
+SDG_L3_1748,True,20000,0.0
+SDG_L3_188,True,20000,0.0
+SDG_L3_303,True,20000,0.0
+SDG_L3_434,True,20000,0.0
+SDG_L3_55,True,20000,0.0
+SDG_L3_636,True,20000,0.0
+SDG_L3_645,True,20000,0.0
+SDG_L3_804,True,20000,0.0
+SDG_L3_890,True,20000,0.0
+SDG_L3_978,True,20000,0.0
+SDG_L4_1788,True,20000,0.0
+SDG_L4_1884,True,20000,0.0
+SDG_L4_1916,True,20000,0.0
+SDG_L4_1951,True,20000,0.0
+SDG_L4_2001,True,20000,0.0
+SDG_L4_2004,True,20000,0.0
+SDG_L4_2158,True,20000,0.0
+SDG_L4_2164,True,20000,0.0
+SDG_L4_2165,True,20000,0.0
+SDG_L4_2182,True,20000,0.0
+SDG_L4_2213,True,20000,0.0
+SDG_L4_2292,True,20000,0.0
+SDG_L4_2389,True,20000,0.0
+SDG_L4_2527,True,20000,0.0
+SDG_L4_2733,True,20000,0.0
+SDG_L4_2818,True,20000,0.0
+SDG_L4_3095,True,20000,0.0
+SDG_L4_3155,True,20000,0.0
+SDG_L4_3192,True,20000,0.0
+SDG_L4_3283,True,20000,0.0
+SDG_L4_3341,True,20000,0.0
+SDG_L4_3342,True,20000,0.0
+SDG_L4_3506,True,20000,0.0
+SDG_L4_3513,True,20000,0.0
+SDG_L4_3821,True,20000,0.0
+SDG_L4_3952,True,20000,0.0
+SDG_L4_3971,True,20000,0.0
+SDG_L4_4262,True,20000,0.0
+SDG_L4_4386,True,20000,0.0
+SDG_L4_4460,True,20000,0.0
+SDG_L4_4583,True,20000,0.0
+SDG_L4_4604,True,20000,0.0
+SDG_L4_4858,True,20000,0.0

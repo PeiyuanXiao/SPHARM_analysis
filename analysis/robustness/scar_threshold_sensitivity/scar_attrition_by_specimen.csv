@@ -1,0 +1,379 @@
+ID,group,Typology,threshold_mm,n_total,n_retained,pct_retained,L_min_retained,L_max_retained
+EXP01_Levallois preferential,EXP,Levallois preferential,0.0,35,35,100.0,7.243,84.916
+EXP01_Levallois preferential,EXP,Levallois preferential,5.0,35,35,100.0,7.243,84.916
+EXP01_Levallois preferential,EXP,Levallois preferential,10.0,35,32,91.43,12.558,84.916
+EXP02_Cylindrical bidirectional,EXP,Bidirectional,0.0,19,19,100.0,8.344,49.506
+EXP02_Cylindrical bidirectional,EXP,Bidirectional,5.0,19,19,100.0,8.344,49.506
+EXP02_Cylindrical bidirectional,EXP,Bidirectional,10.0,19,17,89.47,10.354,49.506
+EXP03_Conical unidirectional,EXP,Unidirectional,0.0,10,10,100.0,11.606,24.854
+EXP03_Conical unidirectional,EXP,Unidirectional,5.0,10,10,100.0,11.606,24.854
+EXP03_Conical unidirectional,EXP,Unidirectional,10.0,10,10,100.0,11.606,24.854
+EXP04_Levallois preferential,EXP,Levallois preferential,0.0,29,29,100.0,2.447,66.639
+EXP04_Levallois preferential,EXP,Levallois preferential,5.0,29,26,89.66,7.0,66.639
+EXP04_Levallois preferential,EXP,Levallois preferential,10.0,29,20,68.97,10.332,66.639
+EXP05_Levallois preferential,EXP,Levallois preferential,0.0,24,24,100.0,2.977,82.297
+EXP05_Levallois preferential,EXP,Levallois preferential,5.0,24,23,95.83,7.785,82.297
+EXP05_Levallois preferential,EXP,Levallois preferential,10.0,24,20,83.33,10.153,82.297
+EXP06_Levallois convergent,EXP,Levallois convergent,0.0,22,22,100.0,2.782,62.932
+EXP06_Levallois convergent,EXP,Levallois convergent,5.0,22,18,81.82,5.245,62.932
+EXP06_Levallois convergent,EXP,Levallois convergent,10.0,22,13,59.09,10.164,62.932
+EXP07_Levallois preferential,EXP,Levallois preferential,0.0,27,27,100.0,7.457,59.872
+EXP07_Levallois preferential,EXP,Levallois preferential,5.0,27,27,100.0,7.457,59.872
+EXP07_Levallois preferential,EXP,Levallois preferential,10.0,27,21,77.78,10.628,59.872
+EXP08_Levallois preferential,EXP,Levallois preferential,0.0,28,28,100.0,5.308,52.802
+EXP08_Levallois preferential,EXP,Levallois preferential,5.0,28,28,100.0,5.308,52.802
+EXP08_Levallois preferential,EXP,Levallois preferential,10.0,28,19,67.86,12.236,52.802
+EXP09_Levallois preferential,EXP,Levallois preferential,0.0,27,27,100.0,2.876,18.992
+EXP09_Levallois preferential,EXP,Levallois preferential,5.0,27,19,70.37,5.173,18.992
+EXP09_Levallois preferential,EXP,Levallois preferential,10.0,27,8,29.63,10.118,18.992
+EXP10_Cylindrical unidirectional,EXP,Unidirectional,0.0,33,33,100.0,2.272,29.265
+EXP10_Cylindrical unidirectional,EXP,Unidirectional,5.0,33,20,60.61,5.748,29.265
+EXP10_Cylindrical unidirectional,EXP,Unidirectional,10.0,33,15,45.45,10.071,29.265
+EXP11_Cylindrical bidirectional,EXP,Bidirectional,0.0,20,20,100.0,4.146,36.499
+EXP11_Cylindrical bidirectional,EXP,Bidirectional,5.0,20,19,95.0,5.545,36.499
+EXP11_Cylindrical bidirectional,EXP,Bidirectional,10.0,20,14,70.0,10.151,36.499
+EXP12_Discoid,EXP,Discoid,0.0,17,17,100.0,6.745,27.113
+EXP12_Discoid,EXP,Discoid,5.0,17,17,100.0,6.745,27.113
+EXP12_Discoid,EXP,Discoid,10.0,17,14,82.35,11.178,27.113
+EXP13_Conical unidirectional,EXP,Unidirectional,0.0,16,16,100.0,6.63,48.691
+EXP13_Conical unidirectional,EXP,Unidirectional,5.0,16,16,100.0,6.63,48.691
+EXP13_Conical unidirectional,EXP,Unidirectional,10.0,16,14,87.5,13.801,48.691
+EXP14_Levallois convergent,EXP,Levallois convergent,0.0,19,19,100.0,4.311,62.659
+EXP14_Levallois convergent,EXP,Levallois convergent,5.0,19,16,84.21,5.647,62.659
+EXP14_Levallois convergent,EXP,Levallois convergent,10.0,19,11,57.89,12.0,62.659
+EXP15_Levallois convergent,EXP,Levallois convergent,0.0,17,17,100.0,4.006,87.696
+EXP15_Levallois convergent,EXP,Levallois convergent,5.0,17,16,94.12,6.3,87.696
+EXP15_Levallois convergent,EXP,Levallois convergent,10.0,17,14,82.35,10.188,87.696
+EXP16_Discoid,EXP,Discoid,0.0,17,17,100.0,6.423,29.728
+EXP16_Discoid,EXP,Discoid,5.0,17,17,100.0,6.423,29.728
+EXP16_Discoid,EXP,Discoid,10.0,17,16,94.12,11.902,29.728
+EXP17_Discoid,EXP,Discoid,0.0,18,18,100.0,7.972,31.163
+EXP17_Discoid,EXP,Discoid,5.0,18,18,100.0,7.972,31.163
+EXP17_Discoid,EXP,Discoid,10.0,18,13,72.22,11.266,31.163
+EXP18_Discoid,EXP,Discoid,0.0,16,16,100.0,5.345,20.392
+EXP18_Discoid,EXP,Discoid,5.0,16,16,100.0,5.345,20.392
+EXP18_Discoid,EXP,Discoid,10.0,16,10,62.5,12.277,20.392
+EXP19_Levallois preferential,EXP,Levallois preferential,0.0,27,27,100.0,7.16,50.749
+EXP19_Levallois preferential,EXP,Levallois preferential,5.0,27,27,100.0,7.16,50.749
+EXP19_Levallois preferential,EXP,Levallois preferential,10.0,27,23,85.19,10.062,50.749
+EXP20_Cylindrical bidirectional,EXP,Bidirectional,0.0,11,11,100.0,6.746,32.564
+EXP20_Cylindrical bidirectional,EXP,Bidirectional,5.0,11,11,100.0,6.746,32.564
+EXP20_Cylindrical bidirectional,EXP,Bidirectional,10.0,11,8,72.73,13.935,32.564
+EXP21_Levallois preferential,EXP,Levallois preferential,0.0,37,37,100.0,3.95,46.687
+EXP21_Levallois preferential,EXP,Levallois preferential,5.0,37,35,94.59,5.557,46.687
+EXP21_Levallois preferential,EXP,Levallois preferential,10.0,37,21,56.76,10.859,46.687
+EXP22_Cylindrical unidirectional,EXP,Unidirectional,0.0,24,24,100.0,4.606,42.382
+EXP22_Cylindrical unidirectional,EXP,Unidirectional,5.0,24,22,91.67,5.52,42.382
+EXP22_Cylindrical unidirectional,EXP,Unidirectional,10.0,24,16,66.67,12.143,42.382
+EXP23_Cylindrical unidirectional,EXP,Unidirectional,0.0,27,27,100.0,4.407,33.732
+EXP23_Cylindrical unidirectional,EXP,Unidirectional,5.0,27,26,96.3,6.05,33.732
+EXP23_Cylindrical unidirectional,EXP,Unidirectional,10.0,27,20,74.07,10.627,33.732
+EXP24_Cylindrical unidirectional,EXP,Unidirectional,0.0,12,12,100.0,5.537,25.896
+EXP24_Cylindrical unidirectional,EXP,Unidirectional,5.0,12,12,100.0,5.537,25.896
+EXP24_Cylindrical unidirectional,EXP,Unidirectional,10.0,12,10,83.33,13.216,25.896
+EXP25_Levallois Nubian,EXP,Levallois preferential,0.0,24,24,100.0,7.532,63.036
+EXP25_Levallois Nubian,EXP,Levallois preferential,5.0,24,24,100.0,7.532,63.036
+EXP25_Levallois Nubian,EXP,Levallois preferential,10.0,24,23,95.83,10.745,63.036
+EXP26_Levallois recurrent,EXP,Levallois recurrent,0.0,21,21,100.0,10.913,67.386
+EXP26_Levallois recurrent,EXP,Levallois recurrent,5.0,21,21,100.0,10.913,67.386
+EXP26_Levallois recurrent,EXP,Levallois recurrent,10.0,21,21,100.0,10.913,67.386
+EXP27_Levallois convergent,EXP,Levallois convergent,0.0,22,22,100.0,16.736,112.159
+EXP27_Levallois convergent,EXP,Levallois convergent,5.0,22,22,100.0,16.736,112.159
+EXP27_Levallois convergent,EXP,Levallois convergent,10.0,22,22,100.0,16.736,112.159
+EXP28_Levallois convergent,EXP,Levallois convergent,0.0,21,21,100.0,7.647,71.204
+EXP28_Levallois convergent,EXP,Levallois convergent,5.0,21,21,100.0,7.647,71.204
+EXP28_Levallois convergent,EXP,Levallois convergent,10.0,21,19,90.48,14.063,71.204
+EXP29_Levallois preferential,EXP,Levallois preferential,0.0,35,35,100.0,8.799,87.022
+EXP29_Levallois preferential,EXP,Levallois preferential,5.0,35,35,100.0,8.799,87.022
+EXP29_Levallois preferential,EXP,Levallois preferential,10.0,35,33,94.29,11.96,87.022
+EXP30_Levallois Nubian,EXP,Levallois preferential,0.0,29,29,100.0,11.785,98.427
+EXP30_Levallois Nubian,EXP,Levallois preferential,5.0,29,29,100.0,11.785,98.427
+EXP30_Levallois Nubian,EXP,Levallois preferential,10.0,29,29,100.0,11.785,98.427
+EXP31_Levallois laminar,EXP,Levallois laminar,0.0,32,32,100.0,9.685,113.868
+EXP31_Levallois laminar,EXP,Levallois laminar,5.0,32,32,100.0,9.685,113.868
+EXP31_Levallois laminar,EXP,Levallois laminar,10.0,32,31,96.88,14.33,113.868
+EXP32_Conical unidirectional,EXP,Unidirectional,0.0,16,16,100.0,6.125,33.72
+EXP32_Conical unidirectional,EXP,Unidirectional,5.0,16,16,100.0,6.125,33.72
+EXP32_Conical unidirectional,EXP,Unidirectional,10.0,16,11,68.75,10.814,33.72
+EXP33_Cylindrical bidirectional,EXP,Bidirectional,0.0,15,15,100.0,6.518,43.168
+EXP33_Cylindrical bidirectional,EXP,Bidirectional,5.0,15,15,100.0,6.518,43.168
+EXP33_Cylindrical bidirectional,EXP,Bidirectional,10.0,15,14,93.33,11.929,43.168
+EXP34_Multiplatform,EXP,Multiplatform,0.0,12,12,100.0,9.74,39.068
+EXP34_Multiplatform,EXP,Multiplatform,5.0,12,12,100.0,9.74,39.068
+EXP34_Multiplatform,EXP,Multiplatform,10.0,12,11,91.67,10.402,39.068
+EXP35_Levallois laminar,EXP,Levallois laminar,0.0,16,16,100.0,3.672,39.178
+EXP35_Levallois laminar,EXP,Levallois laminar,5.0,16,15,93.75,7.786,39.178
+EXP35_Levallois laminar,EXP,Levallois laminar,10.0,16,13,81.25,10.821,39.178
+EXP36_Conical unidirectional,EXP,Unidirectional,0.0,25,25,100.0,9.375,48.91
+EXP36_Conical unidirectional,EXP,Unidirectional,5.0,25,25,100.0,9.375,48.91
+EXP36_Conical unidirectional,EXP,Unidirectional,10.0,25,24,96.0,10.046,48.91
+EXP37_Conical unidirectional,EXP,Unidirectional,0.0,19,19,100.0,4.319,28.643
+EXP37_Conical unidirectional,EXP,Unidirectional,5.0,19,18,94.74,5.521,28.643
+EXP37_Conical unidirectional,EXP,Unidirectional,10.0,19,13,68.42,10.266,28.643
+EXP38_Multiplatform,EXP,Multiplatform,0.0,17,17,100.0,9.094,53.489
+EXP38_Multiplatform,EXP,Multiplatform,5.0,17,17,100.0,9.094,53.489
+EXP38_Multiplatform,EXP,Multiplatform,10.0,17,16,94.12,11.048,53.489
+EXP39_Multiplatform,EXP,Multiplatform,0.0,25,25,100.0,2.948,28.425
+EXP39_Multiplatform,EXP,Multiplatform,5.0,25,22,88.0,5.078,28.425
+EXP39_Multiplatform,EXP,Multiplatform,10.0,25,16,64.0,11.156,28.425
+EXP40_Conical unidirectional,EXP,Unidirectional,0.0,24,24,100.0,3.988,30.868
+EXP40_Conical unidirectional,EXP,Unidirectional,5.0,24,23,95.83,5.165,30.868
+EXP40_Conical unidirectional,EXP,Unidirectional,10.0,24,17,70.83,10.374,30.868
+EXP41_Subconical unidirectional,EXP,Unidirectional,0.0,11,11,100.0,18.466,119.044
+EXP41_Subconical unidirectional,EXP,Unidirectional,5.0,11,11,100.0,18.466,119.044
+EXP41_Subconical unidirectional,EXP,Unidirectional,10.0,11,11,100.0,18.466,119.044
+EXP42_Multiplatform,EXP,Multiplatform,0.0,16,16,100.0,6.813,24.226
+EXP42_Multiplatform,EXP,Multiplatform,5.0,16,16,100.0,6.813,24.226
+EXP42_Multiplatform,EXP,Multiplatform,10.0,16,10,62.5,10.255,24.226
+EXP43_Biface,EXP,Biface,0.0,19,19,100.0,11.745,39.071
+EXP43_Biface,EXP,Biface,5.0,19,19,100.0,11.745,39.071
+EXP43_Biface,EXP,Biface,10.0,19,19,100.0,11.745,39.071
+EXP44_Multiplatform,EXP,Multiplatform,0.0,14,14,100.0,6.671,31.332
+EXP44_Multiplatform,EXP,Multiplatform,5.0,14,14,100.0,6.671,31.332
+EXP44_Multiplatform,EXP,Multiplatform,10.0,14,13,92.86,10.014,31.332
+EXP45_Conical unidirectional,EXP,Unidirectional,0.0,19,19,100.0,6.505,67.531
+EXP45_Conical unidirectional,EXP,Unidirectional,5.0,19,19,100.0,6.505,67.531
+EXP45_Conical unidirectional,EXP,Unidirectional,10.0,19,17,89.47,13.142,67.531
+EXP46_Conical unidirectional,EXP,Unidirectional,0.0,19,19,100.0,3.962,43.43
+EXP46_Conical unidirectional,EXP,Unidirectional,5.0,19,18,94.74,6.16,43.43
+EXP46_Conical unidirectional,EXP,Unidirectional,10.0,19,16,84.21,12.077,43.43
+EXP47_Conical bidirectional,EXP,Bidirectional,0.0,13,13,100.0,6.137,72.362
+EXP47_Conical bidirectional,EXP,Bidirectional,5.0,13,13,100.0,6.137,72.362
+EXP47_Conical bidirectional,EXP,Bidirectional,10.0,13,12,92.31,13.142,72.362
+EXP48_Multiplatform,EXP,Multiplatform,0.0,17,17,100.0,9.782,47.054
+EXP48_Multiplatform,EXP,Multiplatform,5.0,17,17,100.0,9.782,47.054
+EXP48_Multiplatform,EXP,Multiplatform,10.0,17,16,94.12,13.862,47.054
+EXP49_Discoid,EXP,Discoid,0.0,12,12,100.0,7.198,29.805
+EXP49_Discoid,EXP,Discoid,5.0,12,12,100.0,7.198,29.805
+EXP49_Discoid,EXP,Discoid,10.0,12,10,83.33,12.884,29.805
+EXP50_Multiplatform,EXP,Multiplatform,0.0,13,13,100.0,6.727,22.353
+EXP50_Multiplatform,EXP,Multiplatform,5.0,13,13,100.0,6.727,22.353
+EXP50_Multiplatform,EXP,Multiplatform,10.0,13,11,84.62,12.61,22.353
+EXP51_Conical unidirectional,EXP,Unidirectional,0.0,15,15,100.0,3.408,35.668
+EXP51_Conical unidirectional,EXP,Unidirectional,5.0,15,13,86.67,5.656,35.668
+EXP51_Conical unidirectional,EXP,Unidirectional,10.0,15,11,73.33,11.461,35.668
+EXP52_Levallois preferential,EXP,Levallois preferential,0.0,26,26,100.0,6.017,90.266
+EXP52_Levallois preferential,EXP,Levallois preferential,5.0,26,26,100.0,6.017,90.266
+EXP52_Levallois preferential,EXP,Levallois preferential,10.0,26,23,88.46,10.107,90.266
+EXP53_Levallois recurrent,EXP,Levallois recurrent,0.0,14,14,100.0,6.766,50.6
+EXP53_Levallois recurrent,EXP,Levallois recurrent,5.0,14,14,100.0,6.766,50.6
+EXP53_Levallois recurrent,EXP,Levallois recurrent,10.0,14,12,85.71,11.397,50.6
+EXP54_Multiplatform,EXP,Multiplatform,0.0,10,10,100.0,15.923,38.755
+EXP54_Multiplatform,EXP,Multiplatform,5.0,10,10,100.0,15.923,38.755
+EXP54_Multiplatform,EXP,Multiplatform,10.0,10,10,100.0,15.923,38.755
+EXP55_Multiplatform,EXP,Multiplatform,0.0,11,11,100.0,7.692,32.719
+EXP55_Multiplatform,EXP,Multiplatform,5.0,11,11,100.0,7.692,32.719
+EXP55_Multiplatform,EXP,Multiplatform,10.0,11,10,90.91,11.229,32.719
+EXP56_Multiplatform,EXP,Multiplatform,0.0,15,15,100.0,9.59,40.842
+EXP56_Multiplatform,EXP,Multiplatform,5.0,15,15,100.0,9.59,40.842
+EXP56_Multiplatform,EXP,Multiplatform,10.0,15,14,93.33,14.776,40.842
+EXP57_Conical bidirectional,EXP,Bidirectional,0.0,14,14,100.0,8.082,39.368
+EXP57_Conical bidirectional,EXP,Bidirectional,5.0,14,14,100.0,8.082,39.368
+EXP57_Conical bidirectional,EXP,Bidirectional,10.0,14,13,92.86,10.837,39.368
+EXP58_Conical unidirectional,EXP,Unidirectional,0.0,16,16,100.0,5.269,47.728
+EXP58_Conical unidirectional,EXP,Unidirectional,5.0,16,16,100.0,5.269,47.728
+EXP58_Conical unidirectional,EXP,Unidirectional,10.0,16,12,75.0,11.799,47.728
+EXP59_Subconical unidirectional,EXP,Unidirectional,0.0,26,26,100.0,3.765,47.912
+EXP59_Subconical unidirectional,EXP,Unidirectional,5.0,26,25,96.15,9.708,47.912
+EXP59_Subconical unidirectional,EXP,Unidirectional,10.0,26,24,92.31,10.171,47.912
+IM_Levallois_convergent,IM,Levallois_convergent,0.0,24,24,100.0,7.433,50.967
+IM_Levallois_convergent,IM,Levallois_convergent,5.0,24,24,100.0,7.433,50.967
+IM_Levallois_convergent,IM,Levallois_convergent,10.0,24,22,91.67,14.845,50.967
+IM_Levallois_laminar,IM,Levallois_laminar,0.0,25,25,100.0,9.835,58.409
+IM_Levallois_laminar,IM,Levallois_laminar,5.0,25,25,100.0,9.835,58.409
+IM_Levallois_laminar,IM,Levallois_laminar,10.0,25,24,96.0,10.161,58.409
+IM_Levallois_preferential,IM,Levallois_preferential,0.0,24,24,100.0,7.002,58.657
+IM_Levallois_preferential,IM,Levallois_preferential,5.0,24,24,100.0,7.002,58.657
+IM_Levallois_preferential,IM,Levallois_preferential,10.0,24,22,91.67,14.829,58.657
+IM_Multiplatform,IM,multifacial,0.0,6,6,100.0,29.712,29.908
+IM_Multiplatform,IM,multifacial,5.0,6,6,100.0,29.712,29.908
+IM_Multiplatform,IM,multifacial,10.0,6,6,100.0,29.712,29.908
+IM_biface,IM,biface,0.0,24,24,100.0,9.434,15.062
+IM_biface,IM,biface,5.0,24,24,100.0,9.434,15.062
+IM_biface,IM,biface,10.0,24,20,83.33,11.518,15.062
+IM_conical_unipolar_cortical,IM,conical_unipolar_cortical,0.0,12,12,100.0,72.203,72.359
+IM_conical_unipolar_cortical,IM,conical_unipolar_cortical,5.0,12,12,100.0,72.203,72.359
+IM_conical_unipolar_cortical,IM,conical_unipolar_cortical,10.0,12,12,100.0,72.203,72.359
+IM_conical_unipolar_scarred,IM,conical_unipolar_scarred,0.0,13,13,100.0,37.033,72.359
+IM_conical_unipolar_scarred,IM,conical_unipolar_scarred,5.0,13,13,100.0,37.033,72.359
+IM_conical_unipolar_scarred,IM,conical_unipolar_scarred,10.0,13,13,100.0,37.033,72.359
+IM_cylindrical_bipolar,IM,cylindrical_bipolar,0.0,12,12,100.0,69.742,70.001
+IM_cylindrical_bipolar,IM,cylindrical_bipolar,5.0,12,12,100.0,69.742,70.001
+IM_cylindrical_bipolar,IM,cylindrical_bipolar,10.0,12,12,100.0,69.742,70.001
+IM_cylindrical_unipolar_cortical,IM,cylindrical_unipolar_cortical,0.0,12,12,100.0,69.724,70.002
+IM_cylindrical_unipolar_cortical,IM,cylindrical_unipolar_cortical,5.0,12,12,100.0,69.724,70.002
+IM_cylindrical_unipolar_cortical,IM,cylindrical_unipolar_cortical,10.0,12,12,100.0,69.724,70.002
+IM_cylindrical_unipolar_scarred,IM,cylindrical_unipolar_scarred,0.0,13,13,100.0,38.404,70.002
+IM_cylindrical_unipolar_scarred,IM,cylindrical_unipolar_scarred,5.0,13,13,100.0,38.404,70.002
+IM_cylindrical_unipolar_scarred,IM,cylindrical_unipolar_scarred,10.0,13,13,100.0,38.404,70.002
+IM_discoid,IM,bifacial_discoid,0.0,16,16,100.0,2.059,2.1
+IM_discoid,IM,bifacial_discoid,5.0,16,0,0.0,,
+IM_discoid,IM,bifacial_discoid,10.0,16,0,0.0,,
+IM_discoid_unifacial,IM,unifacial_discoid,0.0,8,8,100.0,2.059,2.1
+IM_discoid_unifacial,IM,unifacial_discoid,5.0,8,0,0.0,,
+IM_discoid_unifacial,IM,unifacial_discoid,10.0,8,0,0.0,,
+SDG_L2_489,SDG,,0.0,4,4,100.0,13.972,25.156
+SDG_L2_489,SDG,,5.0,4,4,100.0,13.972,25.156
+SDG_L2_489,SDG,,10.0,4,4,100.0,13.972,25.156
+SDG_L2_494,SDG,,0.0,5,5,100.0,7.319,27.035
+SDG_L2_494,SDG,,5.0,5,5,100.0,7.319,27.035
+SDG_L2_494,SDG,,10.0,5,4,80.0,11.239,27.035
+SDG_L3_1066,SDG,,0.0,12,12,100.0,6.851,29.282
+SDG_L3_1066,SDG,,5.0,12,12,100.0,6.851,29.282
+SDG_L3_1066,SDG,,10.0,12,10,83.33,10.094,29.282
+SDG_L3_1163,SDG,,0.0,6,6,100.0,21.448,51.605
+SDG_L3_1163,SDG,,5.0,6,6,100.0,21.448,51.605
+SDG_L3_1163,SDG,,10.0,6,6,100.0,21.448,51.605
+SDG_L3_1191,SDG,,0.0,6,6,100.0,5.693,30.899
+SDG_L3_1191,SDG,,5.0,6,6,100.0,5.693,30.899
+SDG_L3_1191,SDG,,10.0,6,5,83.33,10.415,30.899
+SDG_L3_1318,SDG,,0.0,9,9,100.0,12.702,154.614
+SDG_L3_1318,SDG,,5.0,9,9,100.0,12.702,154.614
+SDG_L3_1318,SDG,,10.0,9,9,100.0,12.702,154.614
+SDG_L3_1416,SDG,,0.0,11,11,100.0,8.529,27.202
+SDG_L3_1416,SDG,,5.0,11,11,100.0,8.529,27.202
+SDG_L3_1416,SDG,,10.0,11,9,81.82,10.828,27.202
+SDG_L3_1437,SDG,,0.0,8,8,100.0,9.164,23.731
+SDG_L3_1437,SDG,,5.0,8,8,100.0,9.164,23.731
+SDG_L3_1437,SDG,,10.0,8,7,87.5,10.325,23.731
+SDG_L3_1492,SDG,,0.0,12,12,100.0,6.184,28.575
+SDG_L3_1492,SDG,,5.0,12,12,100.0,6.184,28.575
+SDG_L3_1492,SDG,,10.0,12,6,50.0,14.762,28.575
+SDG_L3_1547,SDG,,0.0,10,10,100.0,24.814,185.279
+SDG_L3_1547,SDG,,5.0,10,10,100.0,24.814,185.279
+SDG_L3_1547,SDG,,10.0,10,10,100.0,24.814,185.279
+SDG_L3_155,SDG,,0.0,15,15,100.0,8.473,47.745
+SDG_L3_155,SDG,,5.0,15,15,100.0,8.473,47.745
+SDG_L3_155,SDG,,10.0,15,14,93.33,10.307,47.745
+SDG_L3_1677,SDG,,0.0,8,8,100.0,7.194,29.489
+SDG_L3_1677,SDG,,5.0,8,8,100.0,7.194,29.489
+SDG_L3_1677,SDG,,10.0,8,7,87.5,17.548,29.489
+SDG_L3_1748,SDG,,0.0,7,7,100.0,15.526,106.138
+SDG_L3_1748,SDG,,5.0,7,7,100.0,15.526,106.138
+SDG_L3_1748,SDG,,10.0,7,7,100.0,15.526,106.138
+SDG_L3_188,SDG,,0.0,7,7,100.0,4.993,37.549
+SDG_L3_188,SDG,,5.0,7,6,85.71,8.146,37.549
+SDG_L3_188,SDG,,10.0,7,5,71.43,12.266,37.549
+SDG_L3_303,SDG,,0.0,10,10,100.0,7.723,23.346
+SDG_L3_303,SDG,,5.0,10,10,100.0,7.723,23.346
+SDG_L3_303,SDG,,10.0,10,9,90.0,12.324,23.346
+SDG_L3_434,SDG,,0.0,6,6,100.0,14.484,42.288
+SDG_L3_434,SDG,,5.0,6,6,100.0,14.484,42.288
+SDG_L3_434,SDG,,10.0,6,6,100.0,14.484,42.288
+SDG_L3_55,SDG,,0.0,6,6,100.0,9.383,34.529
+SDG_L3_55,SDG,,5.0,6,6,100.0,9.383,34.529
+SDG_L3_55,SDG,,10.0,6,5,83.33,10.026,34.529
+SDG_L3_636,SDG,,0.0,9,9,100.0,5.827,25.453
+SDG_L3_636,SDG,,5.0,9,9,100.0,5.827,25.453
+SDG_L3_636,SDG,,10.0,9,6,66.67,13.188,25.453
+SDG_L3_645,SDG,,0.0,3,3,100.0,11.942,29.808
+SDG_L3_645,SDG,,5.0,3,3,100.0,11.942,29.808
+SDG_L3_645,SDG,,10.0,3,3,100.0,11.942,29.808
+SDG_L3_804,SDG,,0.0,6,6,100.0,3.649,16.814
+SDG_L3_804,SDG,,5.0,6,5,83.33,5.979,16.814
+SDG_L3_804,SDG,,10.0,6,4,66.67,10.401,16.814
+SDG_L3_890,SDG,,0.0,4,4,100.0,22.209,64.698
+SDG_L3_890,SDG,,5.0,4,4,100.0,22.209,64.698
+SDG_L3_890,SDG,,10.0,4,4,100.0,22.209,64.698
+SDG_L3_978,SDG,,0.0,7,7,100.0,10.451,26.024
+SDG_L3_978,SDG,,5.0,7,7,100.0,10.451,26.024
+SDG_L3_978,SDG,,10.0,7,7,100.0,10.451,26.024
+SDG_L4_1788,SDG,,0.0,6,6,100.0,31.74,84.682
+SDG_L4_1788,SDG,,5.0,6,6,100.0,31.74,84.682
+SDG_L4_1788,SDG,,10.0,6,6,100.0,31.74,84.682
+SDG_L4_1884,SDG,,0.0,7,7,100.0,8.014,31.53
+SDG_L4_1884,SDG,,5.0,7,7,100.0,8.014,31.53
+SDG_L4_1884,SDG,,10.0,7,6,85.71,14.169,31.53
+SDG_L4_1916,SDG,,0.0,12,12,100.0,24.252,110.641
+SDG_L4_1916,SDG,,5.0,12,12,100.0,24.252,110.641
+SDG_L4_1916,SDG,,10.0,12,12,100.0,24.252,110.641
+SDG_L4_1951,SDG,,0.0,7,7,100.0,5.395,39.282
+SDG_L4_1951,SDG,,5.0,7,7,100.0,5.395,39.282
+SDG_L4_1951,SDG,,10.0,7,4,57.14,19.163,39.282
+SDG_L4_2001,SDG,,0.0,4,4,100.0,8.791,20.276
+SDG_L4_2001,SDG,,5.0,4,4,100.0,8.791,20.276
+SDG_L4_2001,SDG,,10.0,4,3,75.0,14.774,20.276
+SDG_L4_2004,SDG,,0.0,9,9,100.0,18.386,42.89
+SDG_L4_2004,SDG,,5.0,9,9,100.0,18.386,42.89
+SDG_L4_2004,SDG,,10.0,9,9,100.0,18.386,42.89
+SDG_L4_2158,SDG,,0.0,20,20,100.0,11.023,55.491
+SDG_L4_2158,SDG,,5.0,20,20,100.0,11.023,55.491
+SDG_L4_2158,SDG,,10.0,20,20,100.0,11.023,55.491
+SDG_L4_2164,SDG,,0.0,6,6,100.0,8.719,32.246
+SDG_L4_2164,SDG,,5.0,6,6,100.0,8.719,32.246
+SDG_L4_2164,SDG,,10.0,6,5,83.33,15.187,32.246
+SDG_L4_2165,SDG,,0.0,6,6,100.0,6.825,17.554
+SDG_L4_2165,SDG,,5.0,6,6,100.0,6.825,17.554
+SDG_L4_2165,SDG,,10.0,6,5,83.33,10.981,17.554
+SDG_L4_2182,SDG,,0.0,13,13,100.0,10.651,35.117
+SDG_L4_2182,SDG,,5.0,13,13,100.0,10.651,35.117
+SDG_L4_2182,SDG,,10.0,13,13,100.0,10.651,35.117
+SDG_L4_2213,SDG,,0.0,5,5,100.0,6.042,37.014
+SDG_L4_2213,SDG,,5.0,5,5,100.0,6.042,37.014
+SDG_L4_2213,SDG,,10.0,5,4,80.0,24.023,37.014
+SDG_L4_2292,SDG,,0.0,5,5,100.0,17.112,34.97
+SDG_L4_2292,SDG,,5.0,5,5,100.0,17.112,34.97
+SDG_L4_2292,SDG,,10.0,5,5,100.0,17.112,34.97
+SDG_L4_2389,SDG,,0.0,16,16,100.0,8.306,76.893
+SDG_L4_2389,SDG,,5.0,16,16,100.0,8.306,76.893
+SDG_L4_2389,SDG,,10.0,16,14,87.5,11.502,76.893
+SDG_L4_2527,SDG,,0.0,8,8,100.0,10.507,43.384
+SDG_L4_2527,SDG,,5.0,8,8,100.0,10.507,43.384
+SDG_L4_2527,SDG,,10.0,8,8,100.0,10.507,43.384
+SDG_L4_2733,SDG,,0.0,8,8,100.0,8.865,40.479
+SDG_L4_2733,SDG,,5.0,8,8,100.0,8.865,40.479
+SDG_L4_2733,SDG,,10.0,8,7,87.5,10.338,40.479
+SDG_L4_2818,SDG,,0.0,10,10,100.0,20.556,73.973
+SDG_L4_2818,SDG,,5.0,10,10,100.0,20.556,73.973
+SDG_L4_2818,SDG,,10.0,10,10,100.0,20.556,73.973
+SDG_L4_3095,SDG,,0.0,6,6,100.0,6.85,16.251
+SDG_L4_3095,SDG,,5.0,6,6,100.0,6.85,16.251
+SDG_L4_3095,SDG,,10.0,6,3,50.0,10.672,16.251
+SDG_L4_3155,SDG,,0.0,9,9,100.0,9.884,42.769
+SDG_L4_3155,SDG,,5.0,9,9,100.0,9.884,42.769
+SDG_L4_3155,SDG,,10.0,9,8,88.89,14.792,42.769
+SDG_L4_3192,SDG,,0.0,6,6,100.0,22.342,51.462
+SDG_L4_3192,SDG,,5.0,6,6,100.0,22.342,51.462
+SDG_L4_3192,SDG,,10.0,6,6,100.0,22.342,51.462
+SDG_L4_3283,SDG,,0.0,10,10,100.0,27.929,60.395
+SDG_L4_3283,SDG,,5.0,10,10,100.0,27.929,60.395
+SDG_L4_3283,SDG,,10.0,10,10,100.0,27.929,60.395
+SDG_L4_3341,SDG,,0.0,16,16,100.0,5.775,93.625
+SDG_L4_3341,SDG,,5.0,16,16,100.0,5.775,93.625
+SDG_L4_3341,SDG,,10.0,16,15,93.75,17.935,93.625
+SDG_L4_3342,SDG,,0.0,8,8,100.0,19.296,38.133
+SDG_L4_3342,SDG,,5.0,8,8,100.0,19.296,38.133
+SDG_L4_3342,SDG,,10.0,8,8,100.0,19.296,38.133
+SDG_L4_3506,SDG,,0.0,16,16,100.0,5.129,25.637
+SDG_L4_3506,SDG,,5.0,16,16,100.0,5.129,25.637
+SDG_L4_3506,SDG,,10.0,16,14,87.5,10.119,25.637
+SDG_L4_3513,SDG,,0.0,21,21,100.0,6.862,82.861
+SDG_L4_3513,SDG,,5.0,21,21,100.0,6.862,82.861
+SDG_L4_3513,SDG,,10.0,21,17,80.95,15.547,82.861
+SDG_L4_3821,SDG,,0.0,6,6,100.0,11.572,26.11
+SDG_L4_3821,SDG,,5.0,6,6,100.0,11.572,26.11
+SDG_L4_3821,SDG,,10.0,6,6,100.0,11.572,26.11
+SDG_L4_3952,SDG,,0.0,3,3,100.0,22.691,40.694
+SDG_L4_3952,SDG,,5.0,3,3,100.0,22.691,40.694
+SDG_L4_3952,SDG,,10.0,3,3,100.0,22.691,40.694
+SDG_L4_3971,SDG,,0.0,7,7,100.0,15.599,33.907
+SDG_L4_3971,SDG,,5.0,7,7,100.0,15.599,33.907
+SDG_L4_3971,SDG,,10.0,7,7,100.0,15.599,33.907
+SDG_L4_4262,SDG,,0.0,7,7,100.0,8.896,39.311
+SDG_L4_4262,SDG,,5.0,7,7,100.0,8.896,39.311
+SDG_L4_4262,SDG,,10.0,7,6,85.71,16.098,39.311
+SDG_L4_4386,SDG,,0.0,7,7,100.0,11.846,38.175
+SDG_L4_4386,SDG,,5.0,7,7,100.0,11.846,38.175
+SDG_L4_4386,SDG,,10.0,7,7,100.0,11.846,38.175
+SDG_L4_4460,SDG,,0.0,8,8,100.0,10.3,47.571
+SDG_L4_4460,SDG,,5.0,8,8,100.0,10.3,47.571
+SDG_L4_4460,SDG,,10.0,8,8,100.0,10.3,47.571
+SDG_L4_4583,SDG,,0.0,7,7,100.0,7.358,27.965
+SDG_L4_4583,SDG,,5.0,7,7,100.0,7.358,27.965
+SDG_L4_4583,SDG,,10.0,7,6,85.71,15.891,27.965
+SDG_L4_4604,SDG,,0.0,26,26,100.0,7.01,53.635
+SDG_L4_4604,SDG,,5.0,26,26,100.0,7.01,53.635
+SDG_L4_4604,SDG,,10.0,26,25,96.15,10.007,53.635
+SDG_L4_4858,SDG,,0.0,27,27,100.0,3.457,55.832
+SDG_L4_4858,SDG,,5.0,27,25,92.59,6.304,55.832
+SDG_L4_4858,SDG,,10.0,27,18,66.67,13.175,55.832

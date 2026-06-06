@@ -1,2 +1,6 @@
 main:
   store: /project/analysis/paper/_targets
+
+supplementary:
+  script: _targets_supplementary.R
+  store: /project/analysis/robustness/_targets_store

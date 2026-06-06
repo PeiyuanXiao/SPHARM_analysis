@@ -1,0 +1,4 @@
+threshold_mm,is_reference,n_specimens,scars_kept_total,scars_kept_EXP,scars_kept_SDG,scars_kept_IM,output_csv,max_abs_diff_cache,sanity_flag
+0.0,True,126,1877,1185,503,189,analysis/scar_threshold_sensitivity/spectra/SPHARM_direction_t00.0.csv,0.0,OK
+5.0,False,126,1824,1136,499,189,analysis/scar_threshold_sensitivity/spectra/SPHARM_direction_t05.0.csv,,
+10.0,False,126,1590,956,445,189,analysis/scar_threshold_sensitivity/spectra/SPHARM_direction_t10.0.csv,,

@@ -37,7 +37,6 @@ HOW TO RUN (canonical environment):
 Outputs (all NEW, under analysis/bandwidth_sensitivity/):
     spectra/SPHARM_direction_h0.20.csv ... SPHARM_direction_h0.50.csv
     sweep_manifest.csv      (one row per h: kappa, n_specimens, max|diff| vs cache)
-    versions.txt            (exact library versions used)
 
 Then run 02_bandwidth_sensitivity_stats.R to evaluate stability of the
 downstream conclusions across h.
@@ -254,24 +253,6 @@ def main() -> None:
     except Exception:
         pysh_v = "not importable"
 
-    versions = [
-        "SP-SPHARM bandwidth sweep — library versions",
-        "=" * 46,
-        f"timestamp        : {pd.Timestamp.now().isoformat()}",
-        f"python           : {platform.python_version()} ({sys.executable})",
-        f"platform         : {platform.platform()}",
-        f"numpy            : {np.__version__}",
-        f"pandas           : {pd.__version__}",
-        f"scipy            : {scipy_v}",
-        f"pyshtools        : {pysh_v}",
-        "",
-        "Pinned reference environment (analysis/scripts/environment.yml):",
-        "  numpy=1.26.4, scipy=1.12.0, pyshtools=4.13.1, OpenBLAS 0.3.30",
-        "If the versions above differ, the h=0.35 sanity check in sweep_manifest.csv",
-        "confirms whether the numerical results still reproduce the cached spectra.",
-    ]
-    (OUT_DIR / "versions.txt").write_text("\n".join(versions), encoding="utf-8")
-    print(f"Wrote {(OUT_DIR / 'versions.txt').relative_to(PROJ_ROOT)}")
     print("\nDone. Next: Rscript analysis/bandwidth_sensitivity/02_bandwidth_sensitivity_stats.R")
 
 
