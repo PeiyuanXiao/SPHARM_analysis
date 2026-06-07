@@ -99,11 +99,9 @@ statistical results are included in this repository under
 `analysis/data/raw_data/`.
 
 The 3D core meshes (`.stl` files) are too large for version control and
-are archived separately. Download the `3D_models_cores` folder from the
-project's OSF repository (anonymous view-only link for peer review:
-<https://osf.io/d82c5/?view_only=6c99cd80609f4081983cb6afd82ca4e4>; a
-permanent Zenodo archive will be added upon publication) and place its
-contents in:
+are archived separately in the project's public OSF repository
+(<https://doi.org/10.17605/OSF.IO/d82c5>). Download the `3D_models_cores`
+folder from OSF and place its contents in:
 
     analysis/data/3D_models_cores/
 
