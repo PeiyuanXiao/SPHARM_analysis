@@ -55,7 +55,7 @@ list(
     local({
       source(rob("bandwidth_sensitivity/02_bandwidth_sensitivity_stats.R"), local = TRUE)
       list(metrics = metrics_df, order_long = order_long_df,
-           fig_orderselection = p_cum / p_cv, fig_summary = p_sum,
+           fig_orderselection = p_cum / p_cv,
            fig_im_heatmaps = p_heat)
     })
   }),
@@ -73,7 +73,7 @@ list(
     local({
       source(rob("scar_threshold_sensitivity/02_scar_threshold_sensitivity_stats.R"), local = TRUE)
       list(metrics = metrics_df, order_long = order_long_df,
-           fig_orderselection = p_cum / p_cv, fig_summary = p_sum,
+           fig_orderselection = p_cum / p_cv,
            fig_scarcounts = p_sc)
     })
   }),
@@ -87,7 +87,7 @@ list(
     local({
       source(rob("mesh_decimation_sensitivity/02_mesh_sensitivity_stats.R"), local = TRUE)
       list(metrics = metrics_df, order_long = order_long_df,
-           fig_orderselection = p_cum / p_cv, fig_summary = p_sum)
+           fig_orderselection = p_cum / p_cv)
     })
   })
 )

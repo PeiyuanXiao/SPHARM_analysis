@@ -32,7 +32,6 @@
 #   bandwidth_sensitivity_metrics.csv     tidy: one row per h
 #   bandwidth_orderselection_by_degree.csv per-degree cumulative power & CV per h
 #   figures/fig_S_bandwidth_orderselection.png
-#   figures/fig_S_bandwidth_summary.png
 #   figures/fig_S_bandwidth_IM_heatmaps.png
 #
 # HOW TO RUN (canonical environment, R 4.4 + renv):
@@ -524,32 +523,7 @@ tryCatch({
   ggsave(file.path(FIG_DIR, "fig_S_bandwidth_orderselection.png"),
          p_cum / p_cv, width = 9, height = 8, dpi = 300)
 
-  # --- Figure 2: summary metrics vs h ---
-  base_m <- metrics_df %>%
-    select(h,
-           `EXP PERMANOVA R2 (scar~typology)` = exp_perm_R2,
-           `SDG PERMANOVA R2 (scar~core type)` = sdg_perm_scar_coretype_R2,
-           `EXP Mantel r` = exp_mantel_r, `SDG Mantel r` = sdg_mantel_r,
-           `EXP RV` = exp_RV, `SDG RV` = sdg_RV)
-  if ("im_corr_vs_ref" %in% names(metrics_df))
-    base_m$`IM dist-matrix corr vs h=0.35` <- metrics_df$im_corr_vs_ref
-  long_metrics <- base_m %>%
-    pivot_longer(-h, names_to = "metric", values_to = "value") %>%
-    filter(!is.na(value))
-
-  p_sum <- ggplot(long_metrics, aes(h, value)) +
-    geom_vline(xintercept = H_REF, linetype = "dashed", color = "#802520", linewidth = 0.4) +
-    geom_line(color = "#4A6E8A", linewidth = 0.7) +
-    geom_point(color = "#4A6E8A", size = 1.8) +
-    facet_wrap(~ metric, scales = "free_y", ncol = 2) +
-    scale_x_continuous(breaks = H_GRID) +
-    labs(x = "vMF bandwidth h", y = NULL) +
-    theme_bw() + theme(panel.grid.minor = element_blank(),
-                       strip.text = element_text(size = 8))
-  ggsave(file.path(FIG_DIR, "fig_S_bandwidth_summary.png"),
-         p_sum, width = 9, height = 8, dpi = 300)
-
-  # --- Figure 3: IM distance heatmaps for a few h (small multiples) ---
+  # --- Figure 2: IM distance heatmaps for a few h (small multiples) ---
   hsel <- intersect(sprintf("%.2f", c(0.20, 0.35, 0.50)), names(im_matrices))
   heat_df <- map_dfr(hsel, function(k) {
     m <- im_matrices[[k]]
@@ -570,7 +544,7 @@ tryCatch({
   ggsave(file.path(FIG_DIR, "fig_S_bandwidth_IM_heatmaps.png"),
          p_heat, width = 11, height = 4.5, dpi = 300)
 
-  cat("Wrote 3 figures to", FIG_DIR, "\n")
+  cat("Wrote 2 figures to", FIG_DIR, "\n")
 }, error = function(e) {
   ok_fig <<- FALSE
   cat("Figure generation failed (non-critical):", conditionMessage(e), "\n")

@@ -56,7 +56,7 @@ import platform
 from pathlib import Path
 
 # ---------------------------------------------------------------------------
-# PARAMETERS  (keep in sync with 00_mesh_inventory.py and 02_*.R)
+# PARAMETERS  (keep in sync with 02_*.R)
 # ---------------------------------------------------------------------------
 FACE_TARGETS = [10000, 20000, 50000]   # decimation target face counts (production = 20000)
 SMOOTH_ITERS = [0, 3, 6]               # Laplacian smoothing iterations (production = 3)

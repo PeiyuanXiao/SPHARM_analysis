@@ -22,8 +22,6 @@
 # it evaluates whether the paper's morphology conclusions hold:
 #   (a) order selection : M-SPHARM cumulative power (% at l=8) and whether cross-
 #                         specimen CV stays < 90% through l=8 (the l=1-8 criterion).
-#   (b) ideal cores     : M-SPHARM standardised-distance structure (power_l1:8) and
-#                         its correlation with the production (20000,3) matrix.
 #   (c) experimental    : EXP morphology PERMANOVA core-type R2/F/p + resolution profile.
 #   (d) archaeological  : SDG morphology PERMANOVA by core type (should dominate),
 #                         raw material and layer (should stay small / non-significant).
@@ -34,11 +32,10 @@
 #   mesh_sensitivity_metrics.csv             tidy: one row per setting
 #   mesh_orderselection_by_degree.csv        per-degree cumulative power & CV per setting
 #   figures/fig_S_mesh_orderselection.png
-#   figures/fig_S_mesh_summary.png
 #
 # HOW TO RUN (canonical environment, R 4.4 + renv):
 #   Rscript analysis/robustness/mesh_decimation_sensitivity/02_mesh_sensitivity_stats.R
-#   # prerequisite: run 00_mesh_inventory.py and 01_sweep_mesh_spharm.py first.
+#   # prerequisite: run 01_sweep_mesh_spharm.py first.
 # =============================================================================
 
 suppressPackageStartupMessages({
@@ -87,7 +84,6 @@ spectra_path <- function(face, smooth)
 POWER_COLS_ALL   <- paste0("power_l", 1:20)
 POWER_COLS_DIR   <- paste0("power_l", 1:6)   # scar descriptor (FIXED side)
 POWER_COLS_MORPH <- paste0("power_l", 1:8)   # morphology descriptor (perturbed side)
-POWER_COLS_IM_M  <- paste0("power_l", 1:8)   # ideal-core morphology distance (full morph descriptor)
 
 EXCLUDE_TYPES      <- c("Biface")
 LEVALLOIS_MERGE    <- c("Levallois convergent", "Levallois laminar",
@@ -203,15 +199,6 @@ order_block <- function(morph_df) {
 cumpower_at <- function(os, l) os$cumul_pct[os$order == l]
 maxcv_through <- function(os, l) max(os$cv_pct[os$order <= l], na.rm = TRUE)
 
-# ---- (b) ideal-core morphology distance (power_l1:8, scaled Euclidean) -------
-im_morph_distance <- function(morph_df) {
-  IM <- morph_df %>% filter(str_starts(ID, "IM_")) %>% arrange(ID)
-  X  <- IM %>% select(all_of(POWER_COLS_IM_M)) %>% as.matrix()
-  d  <- as.matrix(stats::dist(base::scale(X), method = "euclidean"))
-  rownames(d) <- colnames(d) <- IM$ID
-  d
-}
-
 # ---- (c) EXP morphology PERMANOVA `perm_morph` (spharm_analysis.R:121,387) ----
 exp_permanova_block <- function(morph_df, power_cols = POWER_COLS_MORPH) {
   filt <- filter_spharm(morph_df, power_cols, metric_data)
@@ -308,8 +295,7 @@ sdg_block <- function(ilr) {
 # =============================================================================
 # Sweep over settings
 # =============================================================================
-metrics <- list(); order_long <- list(); im_mats <- list()
-prod_key <- sprintf("f%d_s%d", PROD_FACES, PROD_SMOOTH)
+metrics <- list(); order_long <- list()
 
 for (st in SETTINGS) {
   face <- st$face; smooth <- st$smooth
@@ -326,7 +312,6 @@ for (st in SETTINGS) {
   morph_df <- morph_df %>% left_join(TYPOLOGY_MAP, by = "ID")
 
   os  <- order_block(morph_df)
-  imD <- im_morph_distance(morph_df); im_mats[[key]] <- imD
   ep  <- exp_permanova_block(morph_df)
   ilr_exp <- build_ilr_dists(morph_df, restrict = "exp_im")  # EXP set (exp_cores_statistics.R)
   ilr_all <- build_ilr_dists(morph_df)                       # SDG set (full EXP+SDG+IM)
@@ -355,20 +340,6 @@ for (st in SETTINGS) {
 metrics_df <- bind_rows(metrics)
 if (nrow(metrics_df) == 0) stop("No spectra found. Run 01_sweep_mesh_spharm.py first.")
 order_long_df <- bind_rows(order_long)
-
-# ---- (b) IM morph distance correlation vs production -------------------------
-if (!is.null(im_mats[[prod_key]])) {
-  ref_vec <- im_mats[[prod_key]][upper.tri(im_mats[[prod_key]])]
-  corr_tbl <- map_dfr(names(im_mats), function(k) {
-    v <- im_mats[[k]][upper.tri(im_mats[[k]])]
-    tibble(setting = k,
-           im_morph_corr_vs_prod = stats::cor(v, ref_vec, method = "pearson"),
-           im_morph_mantel_vs_prod = suppressWarnings(
-             mantel(as.dist(im_mats[[k]]), as.dist(im_mats[[prod_key]]),
-                    method = "spearman", permutations = 999)$statistic))
-  })
-  metrics_df <- metrics_df %>% left_join(corr_tbl, by = "setting")
-}
 
 # =============================================================================
 # Anchor check at production (20000, 3) vs committed values
@@ -445,30 +416,7 @@ tryCatch({
   ggsave(file.path(FIG_DIR, "fig_S_mesh_orderselection.png"), p_cum / p_cv,
          width = 9, height = 8, dpi = 300)
 
-  # Figure 2: key metrics vs face count (at prod smoothing) and vs smoothing (at prod faces).
-  face_df <- metrics_df %>% filter(smooth_iters == PROD_SMOOTH) %>%
-    transmute(x = face_target, axis = "Decimation target (faces); smooth = prod",
-              `Morph core-type R2 (SDG)` = sdg_morph_coretype_R2,
-              `Morph core-type R2 (EXP)` = exp_morph_perm_R2,
-              `IM morph corr vs prod` = im_morph_corr_vs_prod,
-              `EXP Mantel r` = exp_mantel_r, `SDG Mantel r` = sdg_mantel_r,
-              `EXP RV` = exp_RV, `SDG RV` = sdg_RV)
-  smooth_df <- metrics_df %>% filter(face_target == PROD_FACES) %>%
-    transmute(x = smooth_iters, axis = "Smoothing iterations; faces = prod",
-              `Morph core-type R2 (SDG)` = sdg_morph_coretype_R2,
-              `Morph core-type R2 (EXP)` = exp_morph_perm_R2,
-              `IM morph corr vs prod` = im_morph_corr_vs_prod,
-              `EXP Mantel r` = exp_mantel_r, `SDG Mantel r` = sdg_mantel_r,
-              `EXP RV` = exp_RV, `SDG RV` = sdg_RV)
-  long2 <- bind_rows(face_df, smooth_df) %>%
-    pivot_longer(-c(x, axis), names_to = "metric", values_to = "value") %>% filter(!is.na(value))
-  p_sum <- ggplot(long2, aes(x, value)) +
-    geom_line(color = "#4A6E8A", linewidth = 0.6) + geom_point(color = "#802520", size = 1.6) +
-    facet_grid(metric ~ axis, scales = "free") +
-    labs(x = NULL, y = NULL) +
-    theme_bw() + theme(panel.grid.minor = element_blank(), strip.text = element_text(size = 7))
-  ggsave(file.path(FIG_DIR, "fig_S_mesh_summary.png"), p_sum, width = 9, height = 10, dpi = 300)
-  cat("Wrote 2 figures to", FIG_DIR, "\n")
+  cat("Wrote 1 figure to", FIG_DIR, "\n")
 }, error = function(e) cat("Figure generation failed (non-critical):", conditionMessage(e), "\n"))
 
 # =============================================================================
@@ -484,8 +432,6 @@ rv_all_ns        <- all(metrics_df$exp_RV_p >= 0.05, na.rm = TRUE) &&
                     all(metrics_df$sdg_RV_p >= 0.05, na.rm = TRUE)
 cv_ok            <- all(metrics_df$exp_morph_maxcv_l8 < 90, na.rm = TRUE) &&
                     all(metrics_df$sdg_morph_maxcv_l8 < 90, na.rm = TRUE)
-im_corr_min      <- if ("im_morph_corr_vs_prod" %in% names(metrics_df))
-                      min(metrics_df$im_morph_corr_vs_prod, na.rm = TRUE) else NA
 
 # ---- flag any metric sensitive to decimation/smoothing ----------------------
 cat("\n", strrep("=", 70), "\n", sep = "")
@@ -499,8 +445,6 @@ if (!layer_all_ns)     { flag_any <- TRUE; cat("  * SDG layer term: becomes sign
 if (!mantel_all_ns)    { flag_any <- TRUE; cat("  * Global Mantel: significant at some setting.\n") }
 if (!rv_all_ns)        { flag_any <- TRUE; cat("  * RV: significant at some setting.\n") }
 if (!cv_ok)            { flag_any <- TRUE; cat("  * Morph CV exceeds 90% within l1-8 at some setting.\n") }
-if (!is.na(im_corr_min) && im_corr_min < 0.95) { flag_any <- TRUE;
-  cat(sprintf("  * IM morph distance correlation vs production drops to %.3f.\n", im_corr_min)) }
 if (!flag_any) cat("  None: every morphology conclusion is stable across the tested settings.\n")
 
 cat("\nDone.\n")

@@ -55,6 +55,8 @@ editor_options:
   chunk_output_type: console
 ---
 
+
+
 <!-- This is the format for text comments that will be ignored during renderings. Do not put R code in these comments because it will not be ignored. -->
 
 <!-- With the following code you can access and display values from the yml header above. -->
@@ -64,6 +66,8 @@ Keywords: `r rmarkdown::metadata$keywords`
 Highlights: `r rmarkdown::metadata$highlights`
 
 <!-- The actual document text starts here: -->
+
+
 
 ```{r}
 #| label: setup
@@ -80,6 +84,8 @@ dist_spharm <- im$dist_spharm
 cia         <- tar_read(exp_cia_analysis)
 sdg         <- tar_read(sdg_cia_analysis)
 ```
+
+
 
 # Introduction
 
@@ -108,6 +114,8 @@ Three datasets were used in this study, each serving a distinct analytical role.
 [Archaeological specimens]{.underline} The archaeological specimens derive from Sandinggai (hereafter SDG) in Hunan Province, China, previously reported by Li. The SDG sequence comprises three cultural layers (L2, L3, and L4), dated by optically stimulated luminescence (OSL) to approximately 100–20 ka. The lithic assemblage is characterized by two operational sequences: (1) a small-flake system primarily based on chert, and (2) a large-flake and large cutting tool (LCT) system primarily based on quartz sandstone.
 
 From the previously reported SDG core assemblage, 51 complete and well-preserved specimens retaining clear technological information were selected for analysis, after excluding incomplete, heavily abraded, and test cores. These derive from Layers 2, 3, and 4; however, because only two cores originate from Layer 2, our statistical analyses were restricted to Layers 3 and 4. Core classifications follow the original paper, and details of core types and raw materials are provided in @tbl-sdg-inventory. Archaeological cores were digitized using an EinScan Pro XS handheld 3D scanner (SHINING 3D) with a turntable and fixed camera stand. Model alignment and export were completed using the accompanying EinScan-Pro software.
+
+
 
 ```{r}
 #| label: tbl-sdg-inventory
@@ -155,6 +163,8 @@ knitr::kable(sdg_inventory,
              row.names = FALSE)
 ```
 
+
+
 For both experimental and archaeological datasets, post-processing was conducted in Geomagic Wrap 2021, including the filling of minor holes and the correction of mesh defects such as non-manifold edges and self-intersections.
 
 ## Data Extraction
@@ -167,6 +177,8 @@ Two alignment procedures were employed to eliminate initial phase differences am
 
 Spherical harmonic analysis represents the three-dimensional extension of elliptic Fourier analysis. The method characterizes surfaces of closed genus-zero objects by mapping each vertex onto the unit sphere through equivalent coordinate functions and representing the surface as a weighted sum of spherical harmonic basis functions. The resulting shape descriptors are invariant to rotation, translation, and scaling, and can be used to reconstruct the original three-dimensional morphology directly. SPHARM was originally developed for morphometric analysis of brain structures in medical imaging and has since been applied across multiple disciplines. In lithic studies, Sholts used spherical harmonics to quantify asymmetry in Clovis points, while Muller and Ye applied the method to spheroid morphology. Beyond morphological characterization, mathematical relationships between spherical harmonic representations and directional data have also been established. In the present study, we exploit this relationship by applying SPHARM to scar orientation data for the first time, as shown in @fig-spspharm-concept.
 
+
+
 ```{r, echo=FALSE}
 #| label: fig-spspharm-concept
 #| fig-cap: "Application of spherical harmonic analysis to scar orientation data, demonstrated on five idealized core types: **(A)** unidirectional, **(B)** bidirectional, **(C)** Levallois, **(D)** discoidal, and **(E)** polyhedral. For each type, the idealized 3D core model with its scar pattern (left) is converted into a continuous spherical density and expanded into a rotation-invariant power spectrum. The scar pattern reconstructed from the harmonic coefficients is also shown on the right."
@@ -174,6 +186,8 @@ Spherical harmonic analysis represents the three-dimensional extension of ellipt
 
 knitr::include_graphics(here::here("asset/IM_SPSPHARM.png"))
 ```
+
+
 
 Our analytical workflow for scar pattern analysis proceeds as follows. Discrete scar vectors are first transformed into a continuous density distribution on the sphere using von Mises–Fisher spherical kernel density estimation (VMF-sKDE):
 
@@ -193,6 +207,8 @@ where the coefficients $\hat{f}(l, m)$ quantify the contribution of each basis f
 
 For core morphological analysis, we followed the procedures established by Ye. Three-dimensional models (.stl/.ply) were downsampled to 20,000 faces, and Laplacian smoothing was applied to reduce surface noise and regularize vertex distribution. Centroid normalization and principal-axis alignment were then performed to position all vertices within a common coordinate system, which was transformed into spherical coordinates for harmonic expansion. Spherical harmonic coefficients and morphological spherical harmonic (hereafter M-SPHARM) power spectra were calculated at $l_{\max}$ = 20, as for the scar pattern analysis. The complete workflow is illustrated in @fig-spharm-workflow.
 
+
+
 ```{r, echo=FALSE}
 #| label: fig-spharm-workflow
 #| fig-cap: "Overview of the unified spherical harmonic workflow for jointly describing core morphology and scar organization."
@@ -200,6 +216,8 @@ For core morphological analysis, we followed the procedures established by Ye. T
 
 knitr::include_graphics(here::here("asset/SPHARM_workflow.png"))
 ```
+
+
 
 Although coefficients were computed to $l_{\max}$ = 20 for faithful reconstruction, retaining all 20 orders for statistical comparison would add dimensionality and, for scar patterns, noise. We therefore screened orders prior to all statistical analyses using two diagnostics: the across-specimen coefficient of variation (CV), indexing the reliability of each order's between-specimen signal, and cumulative power, indexing the share of total variance each order carries. The two spectra behaved differently and were truncated on different grounds. For SP-SPHARM, power was effectively exhausted by the sixth order (cumulative energy ≈ 99.9%), and higher orders were noise-dominated (CV \> 100% from $\mathbf{l}$ ≈ 9); we therefore retained $\mathbf{l}$ = 1–6. For M-SPHARM, between-specimen signal remained reliable across all orders (CV \< 90% throughout), but variance was strongly concentrated in the low orders, with \~98% of cumulative power captured by the eighth order; we retained $\mathbf{l}$ = 1–8, since the reliable but very low-energy higher orders (together under 2% of power) would inflate dimensionality and dilute multivariate comparisons without materially improving discrimination. This contrast confirms that scar pattern spectra are markedly lower-dimensional than morphological spectra (diagnostics in Fig. SX).
 
@@ -221,6 +239,8 @@ The CoIA ordination axes represent the principal directions of shared variation 
 
 To further characterize sample correspondences, we employed Kruskal–Wallis tests to compare line lengths among groups, assessing whether the degree of technology–morphology coupling differs across core types. Rayleigh tests were applied to line directions to evaluate whether orientations exhibit significant directional clustering. Because line directions in CoIA represent axial correspondences rather than unidirectional vectors, they were treated as axial data, with directions differing by 180° considered equivalent. The combined analysis of line lengths and directions enables simultaneous evaluation of coupling strength and structural consistency from both distance-based and directional perspectives. The whole workflow is shown in @fig-coia-workflow.
 
+
+
 ```{r, echo=FALSE}
 #| label: fig-coia-workflow
 #| fig-cap: "Workflow of the Co-inertia Analysis (CoIA) framework for jointly analysing morphology and scar pattern."
@@ -228,6 +248,8 @@ To further characterize sample correspondences, we employed Kruskal–Wallis tes
 
 knitr::include_graphics(here::here("asset/COIA_workflow.png"))
 ```
+
+
 
 *Reconstruction along CoIA axes.* To visualize the coupled techno–morphological variation captured by CoIA, we developed a continuous reconstruction framework operating directly in spherical harmonic coefficient space. Spherical harmonic coefficients of individual specimens were projected onto the CoIA axes, and at evenly spaced positions along each axis, reconstructed forms were generated by Gaussian kernel-weighted averaging of neighboring specimens' coefficients. The weighted coefficients were then transformed back into three-dimensional meshes (M-SPHARM) or spherical density surfaces (SP-SPHARM) through inverse spherical harmonic reconstruction. The resulting forms represent localized structural tendencies along covariance gradients rather than static group averages, enabling gradual transitions in morphology and scar organization to be visualized as continuous trajectories within the shared CoIA space.
 
@@ -247,6 +269,8 @@ SP-SPHARM descriptors exhibited small systematic biases in low-order power ($\ma
 
 The low-order biases most likely originate from upstream computational steps such as KDE interpolation and coordinate mapping rather than from the power spectrum formulation itself. Crucially, a consistent alignment method applied uniformly across all specimens ensures that this systematic error does not alter relative differences among them. All subsequent analyses therefore employ the technological fitted plane for alignment.
 
+
+
 ```{r}
 #| label: fig-rotation-validity
 #| fig-cap: "Bland-Altman analysis of rotational invariance. **(A-C)** SPI across three coordinate conditions. **(D-F)** Fabric elongation ratio across three coordinate conditions. **(G-I)** Fabric isotropy ratio across three coordinate conditions. **(J)** SP-SPHARM power spectra bias across three coordinate conditions and random Z-axis perturbation."
@@ -257,9 +281,13 @@ The low-order biases most likely originate from upstream computational steps suc
 tar_read(p_rotational_invariance_validity)
 ```
 
+
+
 ## Validity of the SPHARM Method for Scar Pattern Analysis
 
 **Test of idealized models** Inter-type separation increased progressively from SPI to fabric metrics to SP-SPHARM descriptors, as revealed by pairwise standardized Euclidean distance heatmaps (@fig-im-comparison). Mean distances confirmed this ordering: SP-SPHARM yielded the greatest overall separation ($\bar{d}_{\mathrm{E,std}}$ = `r dist_spharm`), substantially exceeding fabric metrics ($\bar{d}_{\mathrm{E,std}}$ = `r dist_fabric`) and SPI ($\bar{d}_{\mathrm{E, std}}$ = `r dist_spi`).
+
+
 
 ```{r}
 #| label: fig-im-comparison
@@ -272,9 +300,13 @@ tar_read(p_rotational_invariance_validity)
 im$p_heatmap
 ```
 
+
+
 SPI produced moderate distances between unidirectional types (cylindrical, conical) and radial or centripetal types (discoidal, Levallois), but near-zero distances among Levallois subtypes (preferential, convergent, and laminar) and between discoidal variants, indicating that it primarily captures the degree of directional concentration while remaining insensitive to finer structural differences. Fabric metrics substantially improved separation between unidirectional and radial categories but, like SPI, failed to distinguish scar patterns sharing parallel but opposing orientations. Distances between unipolar and bipolar cylindrical types remained near zero. SP-SPHARM produced the highest pairwise distances across nearly all comparisons. Notably, it achieved clear separation between discoidal and Levallois types and between bifacial and unifacial discoidal patterns, distinctions that neither SPI nor fabric metrics resolved. Multiplatform cores were most strongly differentiated from all other types under SP-SPHARM. However, distances between types sharing bipolar symmetry in the power spectrum domain, such as bifacial discoidal and bipolar cylindrical patterns, remained comparatively modest, foreshadowing a limitation also observed in the experimentally knapped core analysis below.
 
 **Test of experimentally knapped cores** To evaluate the sensitivity of each method on empirical data, we computed all three measures for experimentally knapped cores and conducted statistical comparisons by core type. All three methods detected significant inter-type differences (@fig-exp-method-compare), but they resolved different sets of distinctions. SP-SPHARM descriptors separated the broadest set of type pairs, including several that neither summary metric could. Fabric metrics distinguished the majority of type pairs but failed to differentiate unidirectional from bidirectional cores. SPI was the most limited, detecting differences only where unidirectional cores were involved.
+
+
 
 ```{r}
 #| label: fig-exp-method-compare
@@ -286,6 +318,8 @@ SPI produced moderate distances between unidirectional types (cylindrical, conic
 tar_read(spharm_analysis)$p_exp_method_combined
 ```
 
+
+
 These results suggest that the three methods are complementary. SP-SPHARM descriptors capture the overall structure of scar patterning for most pairwise comparisons, though separation is reduced for patterns with bipolar symmetry, such as discoidal-bidirectional pairs ($P_{\text{adj}}$ = `r ph$p_dir_disc_bi`). Fabric metrics effectively distinguishes differences between unidirectional and bidirectional cores from Levallois and discoidal cores, but cannot differentiate unidirectional from bidirectional cores ($P_{\text{adj}}$ = `r ph$p_fab_uni_bi`), nor Levallois from discoidal cores ($P_{\text{adj}}$ = `r ph$p_fab_lev_disc`). SPI is most sensitive to the unidirectional type but shows limited discriminative capacity for other types. Notably, although SP-SPHARM descriptors failed to separate discoidal from bidirectional cores due to their similarity structures in SPHARM power spectrum (@fig-im-comparison), this distinction is successfully recovered by fabric metrics ($P_{\text{adj}}$ = `r ph$p_fab_disc_bi`). PERMDISP tests further revealed that discoidal and multiplatform cores exhibit greater within-group dispersion than other types, suggesting that these core types may be operationally more variable. It should also be noted that bidirectional (n = 6) and discoidal (n = 5) are represented by considerably fewer specimens than other types, which limits statistical power for comparisons involving these groups.
 
 ## Joint Analysis of Scar Patterns and Core Morphology in Experimental Knapping Specimens
@@ -293,6 +327,8 @@ These results suggest that the three methods are complementary. SP-SPHARM descri
 PERMANOVA tests using M-SPHARM descriptors showed core type to account for only a modest, non-significant fraction of morphological variation ($R^2$ = `r sa$perm_morph_r2`, $\text{pseudo-}F$ = `r sa$perm_morph_f`, $P$ = `r sa$perm_morph_p`). The global Mantel test likewise revealed no significant correlation between M-SPHARM and SP-SPHARM descriptor sets (Mantel's $r$ = `r cia$mantel_global_r`, $P$ = `r cia$mantel_global_p`), and the RV coefficient from CoIA did not reach significance ($\text{RV}$ = `r cia$rv`, $P$ = `r cia$rv_p`). Both association measures were negligible in magnitude, indicating that core morphology and scar organization vary largely independently at the assemblage level, rather than reflecting a mere failure to detect a relationship.
 
 Because the global tests above provide no evidence of covariation, the CoIA axes are interpreted here descriptively — as the directions of maximal shared variation extracted by the method — rather than as a statistically supported covariance structure. The first two CoIA axes account for 85.6% of total covariation (Axis 1 = 65.5%, Axis 2 = 20.1%; @fig-exp-cia). Along Axis 1, M-SPHARM reconstructions shift from rounded, equidimensional forms to progressively flattened profiles, while SP-SPHARM reconstructions transition from concentrated, directionally organized density distributions to more dispersed, multidirectional patterns characteristic of centripetal or multiplatform scar organizations. Axis 2 captures a secondary morphological gradient from laterally convex, disk-shaped cross-sections to more uniform, flattened elliptical forms. On the scar pattern side, both axes capture broadly similar transitions in scar organization, reflecting a shift from ordered, directionally structured arrangements, such as unidirectional and bidirectional patterns, toward more dispersed, multidirectional configurations typical of discoidal and multiplatform cores (@fig-exp-cia).
+
+
 
 ```{r}
 #| label: fig-exp-cia
@@ -305,6 +341,8 @@ Because the global tests above provide no evidence of covariation, the CoIA axes
 cia$p_final
 ```
 
+
+
 Kruskal–Wallis tests revealed no significant difference in line lengths across core types (@fig-exp-cia), indicating that the degree of morphology–scar correspondence does not differ detectably across reduction strategies. Overall, the experimental assemblage shows no detectable covariation between core morphology and scar pattern: both the global Mantel test and the RV coefficient are negligible. At the within-type level, the only directional signal is the clustering of CoIA line directions among bidirectional cores ($P$ = `r cia$rayleigh_bi_p`); because this rests on just six specimens and emerges from an ordination that itself shows no significant assemblage-level covariation, we treat it as a tentative observation rather than established within-type structure. The broader pattern is consistent with morphology and scar organization varying along largely independent axes, while underscoring that larger per-type samples are needed to test for within-type structure directly.
 
 ## Archaeological Case Study: Core Analysis from Sandinggai
@@ -312,6 +350,8 @@ Kruskal–Wallis tests revealed no significant difference in line lengths across
 As with the experimental cores, the global Mantel test revealed no significant correlation between M-SPHARM and SP-SPHARM descriptors for the SDG assemblage (Mantel's $r$ = `r sdg$mantel_global_r`, $P$ = `r sdg$mantel_global_p`). Cross-frequency Mantel tests remained non-significant after Holm–Bonferroni correction, confirming that no covariation is detectable in any frequency band. The RV coefficient likewise did not reach significance ($\text{RV}$ = `r sdg$rv`, $P$ = `r sdg$rv_p`).
 
 As in the experimental assemblage, the non-significant global tests mean that the CoIA axes below are read descriptively rather than as evidence of a real covariance structure. The first two CoIA axes account for 90.6% of total covariation (Axis 1 = 57.6%, Axis 2 = 33.0%; @fig-coia-composite). Along Axis 1, M-SPHARM reconstructions transition from flattened, dorsoventrally compressed forms to more rounded, equidimensional profiles, while SP-SPHARM reconstructions shift from concentrated, unidirectionally organized density distributions to more symmetrically opposed, bidirectional patterns. Axis 2 captures additional variation in both dimensions. On the scar pattern side, it distinguishes unidirectional and bidirectional organizations from more centripetal, dispersed configurations. On the morphology side, it primarily reflects mid-frequency shape variation associated with three-fold and four-fold rotational symmetry, likely corresponding to differences in core cross-sectional geometry (@fig-coia-composite).
+
+
 
 ```{r}
 #| label: fig-coia-composite
@@ -324,9 +364,13 @@ As in the experimental assemblage, the non-significant global tests mean that th
 sdg$fig_coia_composite
 ```
 
+
+
 Line lengths showed no significant differences among layers ($\chi^2$ = `r sdg$kw_arrow_layer_chi2`, $\text{df}$ = 1, $P$ = `r sdg$kw_arrow_layer_p`), raw materials ($\chi^2$ = `r sdg$kw_arrow_rawmat_chi2`, $\text{df}$ = 1, $P$ = `r sdg$kw_arrow_rawmat_p`), or core types ($\chi^2$ = `r sdg$kw_arrow_type_chi2`, $\text{df}$ = 5, $P$ = `r sdg$kw_arrow_type_p`; @fig-coia-composite), indicating that the degree of morphology–scar correspondence does not differ detectably across any grouping condition. Rayleigh tests on line direction revealed no significant directional concentration in any layer, raw material, or core type (all $P$ \> 0.05). The absence of any directionally structured group indicates that the decoupling between morphology and scar organization holds consistently down to the within-type level, with no core type showing a structured techno-morphological trajectory.
 
 PERMANOVA identified core type as the dominant factor structuring both dimensions, with significant and comparable effects on morphological and scar pattern variation, whereas raw material and layer each accounted for substantially less variation (@tbl-sdg-permanova). Raw material explained only a small, non-significant fraction of morphological variation and had a negligible effect on scar pattern, while layer effects were negligible for both dimensions, consistent with continuity in knapping behavior across the stratigraphic sequence.
+
+
 
 ```{r}
 #| label: tbl-sdg-permanova
@@ -352,6 +396,8 @@ knitr::kable(
   align = c("l", "r", "r", "r", "r", "r", "r", "r")
 )
 ```
+
+
 
 Two patterns emerge from these effect sizes. First, core type explained roughly four to five times more variation than either raw material or layer in both dimensions, identifying it as the principal axis of structured variability at SDG. Second, although core type significantly structured both morphology and scar organization, the two dimensions showed no detectable pairwise covariation (Mantel's $r$ = `r sdg$mantel_global_r`; $\text{RV}$ = `r sdg$rv`): type-level differences in form and in scar organization are not aligned along a shared axis, each responding to core type but largely independently of the other. The somewhat larger effect of raw material on morphology ($R^2$ = `r sdg$perm_morph_rawmat_r2`) than on scar organization ($R^2$ = `r sdg$perm_scar_rawmat_r2`) is consistent with material properties influencing form more than reduction organization, but both effects are small and this tendency should not be over-interpreted at the present sample size.
 
@@ -420,6 +466,8 @@ The authors declare that they have no known competing financial interests or per
 
 This report was generated on `r Sys.time()` using the following computational environment and dependencies:
 
+
+
 ```{r}
 #| label: colophon
 #| cache: false
@@ -427,3 +475,4 @@ This report was generated on `r Sys.time()` using the following computational en
 # which R packages and versions?
 if ("devtools" %in% installed.packages()) devtools::session_info()
 ```
+

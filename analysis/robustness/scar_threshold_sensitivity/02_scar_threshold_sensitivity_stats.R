@@ -34,7 +34,6 @@
 #   threshold_sensitivity_metrics.csv         tidy: one row per threshold
 #   threshold_orderselection_by_degree.csv    per-degree cumulative power & CV per T
 #   figures/fig_S_threshold_orderselection.png
-#   figures/fig_S_threshold_summary.png
 #   figures/fig_S_threshold_scarcounts.png
 #
 # HOW TO RUN (canonical environment, R 4.4 + renv):
@@ -528,30 +527,7 @@ tryCatch({
   ggsave(file.path(FIG_DIR, "fig_S_threshold_orderselection.png"),
          p_cum / p_cv, width = 9, height = 8, dpi = 300)
 
-  # --- Figure 2: summary metrics vs threshold ---
-  base_m <- metrics_df %>%
-    select(threshold_mm,
-           `EXP PERMANOVA R2 (scar~typology)` = exp_perm_R2,
-           `SDG PERMANOVA R2 (scar~core type)` = sdg_perm_scar_coretype_R2,
-           `EXP Mantel r` = exp_mantel_r, `SDG Mantel r` = sdg_mantel_r,
-           `EXP RV` = exp_RV, `SDG RV` = sdg_RV)
-  long_metrics <- base_m %>%
-    pivot_longer(-threshold_mm, names_to = "metric", values_to = "value") %>%
-    filter(!is.na(value))
-
-  p_sum <- ggplot(long_metrics, aes(threshold_mm, value)) +
-    geom_vline(xintercept = T_REF, linetype = "dashed", color = "#4A6E8A", linewidth = 0.4) +
-    geom_line(color = "#802520", linewidth = 0.7) +
-    geom_point(color = "#802520", size = 1.8) +
-    facet_wrap(~ metric, scales = "free_y", ncol = 2) +
-    scale_x_continuous(breaks = THRESHOLDS) +
-    labs(x = "Scar minimum-size threshold (mm); 0 = production (all scars)", y = NULL) +
-    theme_bw() + theme(panel.grid.minor = element_blank(),
-                       strip.text = element_text(size = 8))
-  ggsave(file.path(FIG_DIR, "fig_S_threshold_summary.png"),
-         p_sum, width = 9, height = 7, dpi = 300)
-
-  # --- Figure 3: per-specimen scar retention (from 00_scar_attrition.py) -------
+  # --- Figure 2: per-specimen scar retention (from 00_scar_attrition.py) -------
   att_csv <- file.path(OUT_DIR, "scar_attrition_by_specimen.csv")
   if (file.exists(att_csv)) {
     att <- read_csv(att_csv, show_col_types = FALSE) %>%
@@ -570,9 +546,9 @@ tryCatch({
       theme_bw() + theme(panel.grid.minor = element_blank())
     ggsave(file.path(FIG_DIR, "fig_S_threshold_scarcounts.png"),
            p_sc, width = 9, height = 4.5, dpi = 300)
-    cat("Wrote 3 figures to", FIG_DIR, "\n")
+    cat("Wrote 2 figures to", FIG_DIR, "\n")
   } else {
-    cat("Wrote 2 figures to", FIG_DIR,
+    cat("Wrote 1 figure to", FIG_DIR,
         "(scar-count figure skipped: run 00_scar_attrition.py first)\n")
   }
 }, error = function(e) {
