@@ -49,7 +49,13 @@ jobs:
           tags: spharm_analysis:ci
           load: true
           cache-from: type=gha
-          cache-to: type=gha,mode=max
+          # Layer cache is only a build speed-up for this reproducibility job, so
+          # a flaky cache export must never fail the run (ignore-error=true). The
+          # Dockerfile is single-stage, so mode=min already caches every expensive
+          # layer (renv::restore, conda env create); mode=max would only add value
+          # for multi-stage builds and bloats the export past the 10 GB repo cache
+          # quota, which triggered the "exporting to cache ... ERROR: not_found".
+          cache-to: type=gha,mode=min,ignore-error=true
 
       - name: Sanity-check the conda `spharm` Python environment
         # Fast early failure: confirm the env solved and the project modules
