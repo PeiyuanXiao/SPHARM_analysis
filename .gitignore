@@ -59,6 +59,7 @@ __pycache__/
 # ==============================================================================
 # Root-level junk / temporary files
 # ==============================================================================
+.cache/
 Rplots.pdf
 Docker SPHARM start.txt
 Start_SPHARM.bat
