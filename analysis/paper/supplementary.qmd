@@ -117,22 +117,22 @@ the 0.05 threshold, but not the magnitude of the effects themselves.
 
 ## Bandwidth of the von Mises–Fisher kernel
 
-The spherical kernel density bandwidth was fixed at $h = 0.35$
-(concentration $\kappa = 1/h^2 = 8.16$) in the main analysis. We
+The spherical kernel density bandwidth was fixed at $h$ = 0.35
+(concentration $\kappa$ = 1/$h^2$ = 8.16) in the main analysis. We
 recomputed the SP-SPHARM power spectra over
-$h \in \{0.20, 0.25, 0.30, 0.35, 0.40, 0.45, 0.50\}$
-($\kappa = 4.0$–$25.0$), holding everything else fixed (alignment, the
-spherical evaluation grid and Driscoll–Healy transform, $l_{\max} = 20$,
+$h$ ∈ {0.20, 0.25, 0.30, 0.35, 0.40, 0.45, 0.50}
+($\kappa$ = 4.0–25.0), holding everything else fixed (alignment, the
+spherical evaluation grid and Driscoll–Healy transform, $l_{\max}$ = 20,
 normalisation, and seeds). Morphology (M-SPHARM) is independent of $h$
-and was reused unchanged. At $h = 0.35$ the recomputed spectra reproduce
+and was reused unchanged. At $h$ = 0.35 the recomputed spectra reproduce
 the cached values.
 
 Across all $h$, SP-SPHARM power saturates early: cumulative power
-through $l = 6$ is 96.71–99.99%, and the cross specimen coefficient of
-variation (CV) first exceeds 100% at degree $l = 7$–$14$. The
-$l = 1$–$6$ truncation is robust to $h$; it is most complete at
+through $l$ = 6 is 96.71–99.99%, and the cross specimen coefficient of
+variation (CV) first exceeds 100% at degree $l$ = 7–14. The
+$l$ = 1–6 truncation is robust to $h$; it is most complete at
 moderate-to-large $h$ (at the smallest $h$ a little reliable signal
-persists beyond $l = 6$).
+persists beyond $l$ = 6).
 
 ```{r}
 #| label: fig-si-bandwidth-order
@@ -143,42 +143,42 @@ bw$fig_orderselection
 ```
 
 The pairwise standardised Euclidean distance structure is highly stable:
-each $h$'s distance matrix correlates with the $h = 0.35$ matrix at
-Pearson $r \ge 0.961$, and key separations persist at every $h$ (e.g.
+each $h$'s distance matrix correlates with the $h$ = 0.35 matrix at
+Pearson $r$ ≥ 0.961, and key separations persist at every $h$ (e.g.
 discoidal vs Levallois).
 
 ```{r}
 #| label: fig-si-bandwidth-im
-#| fig-cap: "Idealized core standardised Euclidean distance matrices at $h = 0.20$, $0.35$ and $0.50$."
+#| fig-cap: "Idealized core standardised Euclidean distance matrices at $h$ = 0.20, 0.35 and 0.50."
 #| fig-width: 11
 #| fig-height: 4.5
 bw$fig_im_heatmaps
 ```
 
 The scar pattern PERMANOVA by experimental core type stays significant
-across $h$ ($R^2 = 0.259$–$0.374$; $P < 0.05$ throughout). The pairwise
+across $h$ ($R^2$ = 0.259–0.374; $P$ \< 0.05 throughout). The pairwise
 resolution profile is consistent across the central range: 8 of 10
-typology pairs are resolved at $h = 0.30$–$0.45$ (including the chosen
-$h = 0.35$), dropping to 6/10 at the two smallest bandwidths and 7/10 at
+typology pairs are resolved at $h$ = 0.30–0.45 (including the chosen
+$h$ = 0.35), dropping to 6/10 at the two smallest bandwidths and 7/10 at
 the largest. The association between morphology and scar patterning is
-negligible in magnitude at every bandwidth: Mantel $r \approx 0$
-throughout (EXP $-0.062$ to $-0.008$; SDG $0.001$ to $0.017$) and RV
-$\approx 0.10$–$0.12$ (EXP) and $\approx 0.09$ (SDG). For SDG both
+negligible in magnitude at every bandwidth: Mantel $r$ ≈ 0
+throughout (EXP -0.062 to -0.008; SDG 0.001 to 0.017) and RV
+≈ 0.10–0.12 (EXP) and ≈ 0.09 (SDG). For SDG both
 measures are non-significant across the entire range. For the
 experimental assemblage the Mantel test is non-significant at every $h$,
-and the RV coefficient is non-significant from $h = 0.20$ to $0.40$,
-becomes marginal at $h = 0.45$ ($P = 0.078$), and crosses $P < 0.05$
-only at the most over smoothed setting ($h = 0.50$: RV $= 0.117$,
-$P = 0.044$), where the association is still negligible and is not
-corroborated by the Mantel test ($r = -0.008$, $P = 0.54$). Read on
+and the RV coefficient is non-significant from $h$ = 0.20 to 0.40,
+becomes marginal at $h$ = 0.45 ($P$ = 0.078), and crosses $P$ \< 0.05
+only at the most over smoothed setting ($h$ = 0.50: RV = 0.117,
+$P$ = 0.044), where the association is still negligible and is not
+corroborated by the Mantel test ($r$ = -0.008, $P$ = 0.54). Read on
 effect size, the decoupling is robust across the full range, and the
-chosen $h = 0.35$ sits well inside the non-significant regime. The SDG
+chosen $h$ = 0.35 sits well inside the non-significant regime. The SDG
 scar–core type PERMANOVA remains significant throughout
-($R^2 = 0.166$–$0.177$; $P < 0.05$).
+($R^2$ = 0.166–0.177; $P$ \< 0.05).
 
 ```{r}
 #| label: tbl-si-bandwidth
-#| tbl-cap: "Per bandwidth sensitivity metrics. The asterisk marks the main analysis setting ($h = 0.35$). Reported metrics include cumulative power, coefficient of variation (CV), idealized-model (IM) correlation, $R^2$, and Mantel/RV estimates."
+#| tbl-cap: "Per bandwidth sensitivity metrics. The asterisk marks the main analysis setting ($h$ = 0.35). Reported metrics include cumulative power, coefficient of variation (CV), idealized-model (IM) correlation, $R^2$, and Mantel/RV estimates."
 bw$metrics |>
   arrange(h) |>
   transmute(
@@ -207,13 +207,13 @@ bw$metrics |>
 To test whether the results depend on flaking scar size, and in
 particular whether they are driven by small, less reliably measured
 scars, we recomputed the SP-SPHARM power spectra after dropping scars at
-or below increasing cutoffs $T \in \{2, 5, 10\}$ mm (retaining length
-$> T$), holding everything else fixed (alignment, $h = 0.35$, the
-evaluation and transform grids, $l_{\max} = 20$, normalisation, seeds).
-The cutoff $T = 2$ was used as the main analysis, at which the
+or below increasing cutoffs $T$ ∈ {2, 5, 10} mm (retaining length
+\> $T$), holding everything else fixed (alignment, $h$ = 0.35, the
+evaluation and transform grids, $l_{\max}$ = 20, normalisation, seeds).
+The cutoff $T$ = 2 was used as the main analysis, at which the
 recomputed descriptors reproduced the saved descriptor values used in
-the main analysis. The $>5$ mm rule retains 95.9% (EXP) and 99.2% (SDG)
-of scars and $>10$ mm retains 80.7% and 88.5%. The threshold is not
+the main analysis. The \>5 mm rule retains 95.9% (EXP) and 99.2% (SDG)
+of scars and \>10 mm retains 80.7% and 88.5%. The threshold is not
 applied to the idealized cores, whose scar lengths are fixed values, so
 their discriminability is unchanged by construction.
 
@@ -226,8 +226,8 @@ scar$fig_scarcounts
 ```
 
 SP-SPHARM power saturates early at every threshold: cumulative power
-through $l = 6$ is 99.91–99.92%, and the cross-specimen CV first exceeds
-100% at degree $l = 9$ for all cutoff value. The $l = 1$–$6$ truncation
+through $l$ = 6 is 99.91–99.92%, and the cross-specimen CV first exceeds
+100% at degree $l$ = 9 for all cutoff value. The $l$ = 1–6 truncation
 is robust to the inclusion rule.
 
 ```{r}
@@ -239,19 +239,19 @@ scar$fig_orderselection
 ```
 
 The scar pattern PERMANOVA by core type is significant at every
-threshold ($R^2 = 0.307$–$0.360$; $P < 0.05$ throughout). The pairwise
+threshold ($R^2$ = 0.307–0.360; $P$ \< 0.05 throughout). The pairwise
 resolution profile is 8/10 typology pairs at the main analysis baseline,
-6/10 at $>5$ mm, and 10/10 at $>10$ mm. Restricting the analysis to
+6/10 at \>5 mm, and 10/10 at \>10 mm. Restricting the analysis to
 larger, more reliably measured scars therefore does not weaken type
-discrimination and, at $>10$ mm, sharpens it; the experimental core-type
+discrimination and, at \>10 mm, sharpens it; the experimental core-type
 signal is carried by the larger scars and is not an artifact of small
 scars.
 
 Morphology and scar patterning remain negligibly associated and
-non-significant at every threshold: Mantel $r \approx 0$ (EXP $-0.061$
-to $0.004$; SDG $-0.047$ to $0.012$) and RV $= 0.101$–$0.109$ (EXP) and
-$0.057$–$0.091$ (SDG), all $P > 0.05$. The SDG scar–core type PERMANOVA
-is significant throughout ($R^2 = 0.168$–$0.171$).
+non-significant at every threshold: Mantel $r$ ≈ 0 (EXP -0.061
+to 0.004; SDG -0.047 to 0.012) and RV = 0.101–0.109 (EXP) and
+0.057–0.091 (SDG), all $P$ \> 0.05. The SDG scar–core type PERMANOVA
+is significant throughout ($R^2$ = 0.168–0.171).
 
 ```{r}
 #| label: tbl-si-scar
@@ -286,16 +286,16 @@ face count (main analysis = 20,000) and Laplacian-smoothed (main
 analysis = 3 iterations) before the spherical harmonic expansion. We
 recomputed the M-SPHARM power spectra over two one-dimensional sweeps
 through the main analysis setting: decimation target
-$\in \{10000, 20000, 50000\}$ faces (at production smoothing) and
-smoothing $\in \{0, 3, 6\}$ iterations (at the production target),
+∈ {10000, 20000, 50000} faces (at production smoothing) and
+smoothing ∈ {0, 3, 6} iterations (at the production target),
 holding everything else fixed (the quadric-decimation algorithm, mesh
 normalisation, deterministic area-weighted PCA alignment, the spherical
-sampling grid, $l_{\max} = 20$, normalisation, seeds).
+sampling grid, $l_{\max}$ = 20, normalisation, seeds).
 
-M-SPHARM power concentrates by $l = 8$ (cumulative power 97.98–98.58%
+M-SPHARM power concentrates by $l$ = 8 (cumulative power 97.98–98.58%
 EXP, 97.75–98.59% SDG) and the cross-specimen CV stays below the 90%
-reliability line through $l = 8$ (maximum CV 82.5–88.6% EXP, 54.6–69.6%
-SDG). The $l = 1$–$8$ truncation is robust to decimation and smoothing.
+reliability line through $l$ = 8 (maximum CV 82.5–88.6% EXP, 54.6–69.6%
+SDG). The $l$ = 1–8 truncation is robust to decimation and smoothing.
 
 ```{r}
 #| label: fig-si-mesh-order
@@ -306,29 +306,29 @@ mesh$fig_orderselection
 ```
 
 The experimental morphology PERMANOVA by core type is weak and its
-significance is not robust ($R^2 = 0.107$–$0.154$; non-significant at
-the production setting, $P = 0.082$; 0 of 10 typology pairs resolved).
+significance is not robust ($R^2$ = 0.107–0.154; non-significant at
+the production setting, $P$ = 0.082; 0 of 10 typology pairs resolved).
 In the experimental assemblage, type information therefore resides in
 the scar-pattern descriptor (which resolves 8/10 pairs; S2) rather than
 in morphology, evidence that the two descriptors are complementary
 rather than redundant. Core type is the dominant, significant morphology
-term across all settings ($R^2 = 0.178$–$0.216$; $P < 0.05$ throughout),
-while raw material is small ($R^2 = 0.013$–$0.051$; significant only at
-the heaviest smoothing) and layer is negligible ($R^2 = 0.007$–$0.030$;
+term across all settings ($R^2$ = 0.178–0.216; $P$ \< 0.05 throughout),
+while raw material is small ($R^2$ = 0.013–0.051; significant only at
+the heaviest smoothing) and layer is negligible ($R^2$ = 0.007–0.030;
 non-significant throughout). The "core type dominant, technological
 continuity across layers and raw materials" picture holds across all
 settings.
 
 With the perturbed morphology and the fixed scar descriptor, the
 association between morphology and scar patterning is negligible in
-magnitude at every setting: Mantel $r \approx 0$ (EXP $-0.106$ to
-$-0.048$; SDG $-0.058$ to $0.102$) and RV $\approx 0.10$ (EXP
-$0.095$–$0.116$; SDG $0.072$–$0.093$). The Mantel test is
+magnitude at every setting: Mantel $r$ ≈ 0 (EXP -0.106 to
+-0.048; SDG -0.058 to 0.102) and RV ≈ 0.10 (EXP
+0.095–0.116; SDG 0.072–0.093). The Mantel test is
 non-significant throughout (EXP and SDG), and the RV is non-significant
 at every setting except the unsmoothed mesh (0 smoothing iterations: EXP
-RV $= 0.116$, $P = 0.043$) — where, as for the most over smoothed
+RV = 0.116, $P$ = 0.043) — where, as for the most over smoothed
 bandwidth in S1, the association is still negligible and is not
-corroborated by the Mantel test ($r = -0.069$, $P = 0.83$). Read on
+corroborated by the Mantel test ($r$ = -0.069, $P$ = 0.83). Read on
 effect size, the decoupling holds under perturbation of the morphology
 descriptor as well as the scar descriptor (S1–S2).
 
@@ -360,8 +360,8 @@ mesh$metrics |>
 ## Summary
 
 Across both descriptors, every conclusion the analysis relies on is
-robust to its principal free parameters: early truncation ($l = 1$–$6$
-for the scar descriptor, $l = 1$–$8$ for morphology); idealized core
+robust to its principal free parameters: early truncation ($l$ = 1–6
+for the scar descriptor, $l$ = 1–8 for morphology); idealized core
 discrimination; the dominance of core type over raw material and layer
 in the archaeological (SDG) morphology and scar pattern signals; and the
 decoupling of morphology and scar patterning, which holds under

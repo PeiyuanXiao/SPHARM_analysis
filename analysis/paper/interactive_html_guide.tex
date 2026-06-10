@@ -1,0 +1,368 @@
+% Options for packages loaded elsewhere
+% Options for packages loaded elsewhere
+\PassOptionsToPackage{unicode}{hyperref}
+\PassOptionsToPackage{hyphens}{url}
+\PassOptionsToPackage{dvipsnames,svgnames,x11names}{xcolor}
+%
+\documentclass[
+  letterpaper,
+  DIV=11,
+  numbers=noendperiod]{scrartcl}
+\usepackage{xcolor}
+\usepackage{amsmath,amssymb}
+\setcounter{secnumdepth}{-\maxdimen} % remove section numbering
+\usepackage{iftex}
+\ifPDFTeX
+  \usepackage[T1]{fontenc}
+  \usepackage[utf8]{inputenc}
+  \usepackage{textcomp} % provide euro and other symbols
+\else % if luatex or xetex
+  \usepackage{unicode-math} % this also loads fontspec
+  \defaultfontfeatures{Scale=MatchLowercase}
+  \defaultfontfeatures[\rmfamily]{Ligatures=TeX,Scale=1}
+\fi
+\usepackage{lmodern}
+\ifPDFTeX\else
+  % xetex/luatex font selection
+\fi
+% Use upquote if available, for straight quotes in verbatim environments
+\IfFileExists{upquote.sty}{\usepackage{upquote}}{}
+\IfFileExists{microtype.sty}{% use microtype if available
+  \usepackage[]{microtype}
+  \UseMicrotypeSet[protrusion]{basicmath} % disable protrusion for tt fonts
+}{}
+\makeatletter
+\@ifundefined{KOMAClassName}{% if non-KOMA class
+  \IfFileExists{parskip.sty}{%
+    \usepackage{parskip}
+  }{% else
+    \setlength{\parindent}{0pt}
+    \setlength{\parskip}{6pt plus 2pt minus 1pt}}
+}{% if KOMA class
+  \KOMAoptions{parskip=half}}
+\makeatother
+% Make \paragraph and \subparagraph free-standing
+\makeatletter
+\ifx\paragraph\undefined\else
+  \let\oldparagraph\paragraph
+  \renewcommand{\paragraph}{
+    \@ifstar
+      \xxxParagraphStar
+      \xxxParagraphNoStar
+  }
+  \newcommand{\xxxParagraphStar}[1]{\oldparagraph*{#1}\mbox{}}
+  \newcommand{\xxxParagraphNoStar}[1]{\oldparagraph{#1}\mbox{}}
+\fi
+\ifx\subparagraph\undefined\else
+  \let\oldsubparagraph\subparagraph
+  \renewcommand{\subparagraph}{
+    \@ifstar
+      \xxxSubParagraphStar
+      \xxxSubParagraphNoStar
+  }
+  \newcommand{\xxxSubParagraphStar}[1]{\oldsubparagraph*{#1}\mbox{}}
+  \newcommand{\xxxSubParagraphNoStar}[1]{\oldsubparagraph{#1}\mbox{}}
+\fi
+\makeatother
+
+
+\usepackage{longtable,booktabs,array}
+\newcounter{none} % for unnumbered tables
+\usepackage{calc} % for calculating minipage widths
+% Correct order of tables after \paragraph or \subparagraph
+\usepackage{etoolbox}
+\makeatletter
+\patchcmd\longtable{\par}{\if@noskipsec\mbox{}\fi\par}{}{}
+\makeatother
+% Allow footnotes in longtable head/foot
+\IfFileExists{footnotehyper.sty}{\usepackage{footnotehyper}}{\usepackage{footnote}}
+\makesavenoteenv{longtable}
+\usepackage{graphicx}
+\makeatletter
+\newsavebox\pandoc@box
+\newcommand*\pandocbounded[1]{% scales image to fit in text height/width
+  \sbox\pandoc@box{#1}%
+  \Gscale@div\@tempa{\textheight}{\dimexpr\ht\pandoc@box+\dp\pandoc@box\relax}%
+  \Gscale@div\@tempb{\linewidth}{\wd\pandoc@box}%
+  \ifdim\@tempb\p@<\@tempa\p@\let\@tempa\@tempb\fi% select the smaller of both
+  \ifdim\@tempa\p@<\p@\scalebox{\@tempa}{\usebox\pandoc@box}%
+  \else\usebox{\pandoc@box}%
+  \fi%
+}
+% Set default figure placement to htbp
+\def\fps@figure{htbp}
+\makeatother
+
+
+
+
+
+\setlength{\emergencystretch}{3em} % prevent overfull lines
+
+\providecommand{\tightlist}{%
+  \setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
+
+
+
+ 
+
+
+\KOMAoption{captions}{tableheading}
+\makeatletter
+\@ifpackageloaded{caption}{}{\usepackage{caption}}
+\AtBeginDocument{%
+\ifdefined\contentsname
+  \renewcommand*\contentsname{Table of contents}
+\else
+  \newcommand\contentsname{Table of contents}
+\fi
+\ifdefined\listfigurename
+  \renewcommand*\listfigurename{List of Figures}
+\else
+  \newcommand\listfigurename{List of Figures}
+\fi
+\ifdefined\listtablename
+  \renewcommand*\listtablename{List of Tables}
+\else
+  \newcommand\listtablename{List of Tables}
+\fi
+\ifdefined\figurename
+  \renewcommand*\figurename{Figure}
+\else
+  \newcommand\figurename{Figure}
+\fi
+\ifdefined\tablename
+  \renewcommand*\tablename{Table}
+\else
+  \newcommand\tablename{Table}
+\fi
+}
+\@ifpackageloaded{float}{}{\usepackage{float}}
+\floatstyle{ruled}
+\@ifundefined{c@chapter}{\newfloat{codelisting}{h}{lop}}{\newfloat{codelisting}{h}{lop}[chapter]}
+\floatname{codelisting}{Listing}
+\newcommand*\listoflistings{\listof{codelisting}{List of Listings}}
+\makeatother
+\makeatletter
+\makeatother
+\makeatletter
+\@ifpackageloaded{caption}{}{\usepackage{caption}}
+\@ifpackageloaded{subcaption}{}{\usepackage{subcaption}}
+\makeatother
+\usepackage{bookmark}
+\IfFileExists{xurl.sty}{\usepackage{xurl}}{} % add URL line breaks if available
+\urlstyle{same}
+\hypersetup{
+  pdftitle={Guide to the Interactive HTML Outputs},
+  colorlinks=true,
+  linkcolor={blue},
+  filecolor={Maroon},
+  citecolor={Blue},
+  urlcolor={Blue},
+  pdfcreator={LaTeX via pandoc}}
+
+
+\title{Guide to the Interactive HTML Outputs}
+\author{}
+\date{June 9, 2026}
+\begin{document}
+\maketitle
+
+
+\subsection{Overview}\label{overview}
+
+This folder contains a set of interactive HTML files, all generated by
+the analysis scripts included in the online repository, designed to
+allow readers to visually inspect the primary analytical pipeline of
+this study. Each file is a standalone web page: open it in any modern
+browser by double-clicking, no server, internet connection, or
+additional software is required.
+
+All interactive files live under \texttt{analysis/output/html/}:
+
+\begin{verbatim}
+analysis/output/html/
+├── scar_alignment_svd.html              # technological alignment diagnostic
+├── scar_alignment_lin2024.html          # morphological alignment diagnostic
+├── kde_sphere_interactive/              # scar vector density on a sphere
+│   ├── kde_sphere_EXP.html
+│   ├── kde_sphere_IM.html
+│   └── kde_sphere_SDG.html
+└── reconstruction_interactive/          # spherical harmonic reconstructions
+    ├── interactive_EXP.html
+    ├── interactive_IM.html
+    ├── interactive_SDG.html
+    ├── interactive_EXP_CoIA_axes.html
+    └── interactive_SDG_CoIA_axes.html
+\end{verbatim}
+
+Three dataset codes appear throughout the filenames:
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{IM:} the idealized digital core models.
+\item
+  \textbf{EXP:} the experimental knapped cores.
+\item
+  \textbf{SDG:} the archaeological Sandinggai cores.
+\end{itemize}
+
+The sections below describe what each file shows and how to read it,
+together with the script that generates it.
+
+\subsection{Alignment diagnostics}\label{alignment-diagnostics}
+
+These two pages visualise, specimen by specimen, the orientation
+standardisation that is applied to the raw flaking scar vectors before
+any SPHARM analysis. In both pages a dropdown at the top selects the
+specimen, every panel is a fully rotatable/zoomable 3D plot, and a short
+caption beneath each panel states what that step does.
+
+\subsubsection{\texorpdfstring{\texttt{scar\_alignment\_svd.html}}{scar\_alignment\_svd.html}}\label{scar_alignment_svd.html}
+
+Generated by \texttt{analysis/scripts/r\_alignment/align\_svd.R}. This
+is the alignment used for the main analysis. It shows the four step SVD
+pipeline as four side-by-side panels:
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Step 0: Raw data.} Scar start/end points in their original
+  coordinates, with the SVD-fitted best-fit plane and its normal.
+\item
+  \textbf{Step 1: Rotate.} The best-fit plane normal (the third right
+  singular vector of the unit scar direction vectors) is rotated onto
+  the Z-axis, so the plane lies flat in XY.
+\item
+  \textbf{Step 2: Translate.} The centroid of all scar endpoints is
+  moved to the origin, removing positional bias between specimens.
+\item
+  \textbf{Step 3: Rotate XY.} The dominant in-plane scar direction
+  (first singular vector of the XY projections) is rotated onto the
+  X-axis, so every specimen shares a common reference frame.
+\end{itemize}
+
+\subsubsection{\texorpdfstring{\texttt{scar\_alignment\_lin2024.html}}{scar\_alignment\_lin2024.html}}\label{scar_alignment_lin2024.html}
+
+Generated by \texttt{analysis/scripts/r\_alignment/align\_lin2024.R}.
+This page documents the alternative alignment of Lin et al., 2024, used
+in the rotational-invariance validation rather than the main pipeline.
+It has three panels:
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Step 0: Direction vectors / reference normal.} Unit direction
+  vectors are computed from scar endpoints; the morphological plane
+  normal (\texttt{Norm\_X/Y/Z}, measured externally in Geomagic Wrap
+  software) serves as the reference orientation.
+\item
+  \textbf{Step 1: Rotate.} A Rodrigues rotation aligns the measured
+  morphological normal with the Z-axis, placing the best-fit plane in
+  XY.
+\item
+  \textbf{Step 2: Translate.} The longest scar is identified and its
+  rotated start-point is moved to (0, 0), anchoring the origin while
+  preserving the absolute spatial relationships between scars.
+\end{itemize}
+
+\subsection{Scar vector density on the
+sphere}\label{scar-vector-density-on-the-sphere}
+
+\subsubsection{\texorpdfstring{\texttt{kde\_sphere\_interactive/kde\_sphere\_\{EXP,IM,SDG\}.html}}{kde\_sphere\_interactive/kde\_sphere\_\{EXP,IM,SDG\}.html}}\label{kde_sphere_interactivekde_sphere_expimsdg.html}
+
+Generated by
+\texttt{analysis/scripts/SPHARM\_modules/spherical\_kde\_interactive\_export.py},
+one file per dataset. Each page renders the von Mises--Fisher kernel
+density estimate (KDE) of a specimen's flaking-scar direction vectors on
+a single unit sphere, coloured by density. This is the spherical density
+that the SP-SPHARM descriptors are computed from, shown here as a
+directly inspectable surface.
+
+Only the raw direction vectors are embedded; the KDE itself is
+recomputed in the browser, so the density responds live to the bandwidth
+control.
+
+Controls:
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Specimen dropdown}, grouped by core type.
+\item
+  \textbf{Bandwidth slider (\texttt{bw}):} recomputes the KDE on the
+  fly; the concentration parameter is \emph{κ = 1/bw²}.
+\item
+  \textbf{Type Mean:} pools the direction vectors of every specimen of
+  the selected type and re-fits the KDE, giving a per-type average
+  pattern.
+\item
+  \textbf{Scars:} toggles the scatter of individual scar vector points
+  over the density surface.
+\item
+  \textbf{Contours:} overlays iso-density contour lines.
+\item
+  \textbf{2D Map:} an equirectangular density map.
+\item
+  \textbf{Graticule}, \textbf{view presets} (Iso / Top / Front),
+  \textbf{material} selector, \textbf{Info} panel, a density
+  \textbf{colour bar}, and \textbf{PNG} export.
+\end{itemize}
+
+\subsection{SPHARM reconstructions}\label{spharm-reconstructions}
+
+\subsubsection{\texorpdfstring{\texttt{reconstruction\_interactive/interactive\_\{EXP,IM,SDG\}.html}}{reconstruction\_interactive/interactive\_\{EXP,IM,SDG\}.html}}\label{reconstruction_interactiveinteractive_expimsdg.html}
+
+Generated by
+\texttt{analysis/scripts/SPHARM\_modules/spharm\_interactive\_export.py},
+one file per dataset. Each page is a dual viewport: the Morphology
+reconstruction (M-SPHARM, left) and the Scar pattern reconstruction
+(SP-SPHARM, right) for the same specimen, with synchronised rotation and
+zoom. The surfaces are synthesised in the browser in real time from the
+stored spherical-harmonic coefficients (up to degree \emph{l} = 20).
+
+Controls:
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Specimen dropdown}, grouped by core type.
+\item
+  \textbf{Degree slider (\texttt{l\ ≤})} with a \textbf{play button:}
+  rebuilds the surface using only harmonics up to the chosen degree, and
+  animates \emph{l} = 1 → 20 to show how detail accumulates as higher
+  frequencies are added.
+\item
+  \textbf{Type Mean:} averages the coefficients across all specimens of
+  the selected type and reconstructs that mean shape.
+\item
+  \textbf{Colormap:} shades the surface by radial deviation from its
+  mean radius (blue = inward, red = outward), with a colour bar.
+\item
+  \textbf{Wire} (wireframe), \textbf{material} selector, \textbf{view
+  presets}, \textbf{Info} panel, plus \textbf{PNG} screenshot and
+  \textbf{OBJ} mesh export.
+\end{itemize}
+
+\subsubsection{\texorpdfstring{\texttt{reconstruction\_interactive/interactive\_\{EXP,SDG\}\_CoIA\_axes.html}}{reconstruction\_interactive/interactive\_\{EXP,SDG\}\_CoIA\_axes.html}}\label{reconstruction_interactiveinteractive_expsdg_coia_axes.html}
+
+Generated by the \texttt{export\_axis\_interactive\_html()} routine in
+\texttt{analysis/scripts/SPHARM\_modules/spharm\_reconstruction.py}
+(reusing the viewer above). These pages exist only for the two datasets
+that have a co-inertia analysis (CoIA): \textbf{EXP} and \textbf{SDG}.
+
+Instead of individual specimens, the dropdown steps through synthetic
+average shapes sampled along the CoIA axes that summarise the
+covariation between the morphology block and the scar pattern block. For
+each of \emph{Morph Axis 1/2} and \emph{Scar Axis 1/2}, the axis is
+sampled at a sequence of positions (across a robust percentile range);
+at each position a Gaussian-kernel-weighted mean of the coefficients is
+reconstructed. The Info panel reports the axis, the axis coordinate of
+the current step, the kernel bandwidth, and the effective sample size
+behind each averaged shape.
+
+
+
+
+\end{document}
