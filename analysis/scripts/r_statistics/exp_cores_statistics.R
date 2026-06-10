@@ -109,26 +109,6 @@ circ_stats_one <- function(angles_rad) {
   )
 }
 
-watson_perm_test <- function(x1, x2, B = 9999) {
-  a1      <- circular(x1, type = "angles", units = "radians", modulo = "2pi")
-  a2      <- circular(x2, type = "angles", units = "radians", modulo = "2pi")
-  obs_u2  <- as.numeric(watson.two.test(a1, a2)$statistic)
-  x_all   <- c(x1, x2)
-  n1      <- length(x1)
-  n_all   <- length(x_all)
-  perm_u2 <- replicate(B, {
-    idx <- sample.int(n_all)
-    as.numeric(watson.two.test(
-      circular(x_all[idx[1:n1]],            type = "angles", units = "radians", modulo = "2pi"),
-      circular(x_all[idx[(n1 + 1):n_all]], type = "angles", units = "radians", modulo = "2pi")
-    )$statistic)
-  })
-  list(
-    statistic = obs_u2,
-    p.value   = (sum(perm_u2 >= obs_u2) + 1) / (B + 1)
-  )
-}
-
 # ==============================================================================
 # ---- Data preparation ----
 # ==============================================================================
@@ -1190,25 +1170,6 @@ run_circular_analysis <- function(group_col, group_label, palette) {
            conclusion = ifelse(rt$p.value < 0.05, "concentrated", "uniform"))
   })
   
-  watson_res <- NULL
-  if (length(valid_groups) >= 2) {
-    cat(sprintf("\n----- %s Watson two-sample test -----\n", group_label))
-    pairs <- combn(valid_groups, 2, simplify = FALSE)
-    watson_res <- map_dfr(pairs, function(pair) {
-      x1 <- sub_df %>% filter(.data[[group_col]] == pair[1]) %>% pull(arrow_angle)
-      x2 <- sub_df %>% filter(.data[[group_col]] == pair[2]) %>% pull(arrow_angle)
-      wt <- watson_perm_test(x1, x2, B = 9999)
-      cat(sprintf("  %s vs %s: U2 = %.4f, p = %.4f -> %s\n",
-                  pair[1], pair[2], wt$statistic, wt$p.value,
-                  ifelse(wt$p.value < 0.05, "different", "n.s.")))
-      tibble(group_var    = group_col,
-             group1       = pair[1], group2 = pair[2],
-             U2_statistic = round(wt$statistic, 4),
-             p_value      = round(wt$p.value,   4),
-             conclusion   = ifelse(wt$p.value < 0.05, "different", "ns"))
-    })
-  }
-  
   # Prepare plotting data
   sub_df_plot <- scores_combined %>%
     filter(.data[[group_col]] %in% valid_groups_ordered,
@@ -1258,7 +1219,6 @@ run_circular_analysis <- function(group_col, group_label, palette) {
   list(
     desc      = circ_desc,
     rayleigh  = rayleigh_res,
-    watson    = watson_res,
     kde_df    = kde_df,
     mean_dirs = mean_dirs,
     group_col = group_col,
@@ -1339,15 +1299,15 @@ cat("\n[Sankey] EXP_L1_CIA_Sankey.png\n")
 
 # Step 1: tag each subplot
 p_cia_biplot_tagged <- p_cia_biplot +
-  labs(tag = "A") +
+  labs(tag = "a") +
   theme(plot.tag = element_text(size = 13, face = "bold"))
 
 p_len_tagged <- res_len_typology$p +
-  labs(tag = "B") +
+  labs(tag = "b") +
   theme(plot.tag = element_text(size = 13, face = "bold"))
 
 p_rose_tagged <- res_circ_typology$p_rose +
-  labs(tag = "C") +
+  labs(tag = "c") +
   theme(plot.tag = element_text(size = 13, face = "bold"))
 
 # Step 2: recompose p_composite (no plot_annotation)
@@ -1361,7 +1321,7 @@ p_composite <- (
 external_img <- png::readPNG(here("asset/Axis_trajectory.png"))
 grob_img     <- grid::rasterGrob(external_img, interpolate = TRUE)
 p_external   <- wrap_elements(full = grob_img) +
-  labs(tag = "D") +
+  labs(tag = "d") +
   theme(
     plot.tag    = element_text(size = 13, face = "bold"),
     plot.margin = margin(0, 0, 0, 0)

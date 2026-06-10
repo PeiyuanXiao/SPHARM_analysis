@@ -12,7 +12,7 @@
 # functions the main pipeline calls — vegan::adonis2 / mantel, ade4::coinertia /
 # randtest, compositions::ilr) and replicates, verbatim, the data-prep steps from
 # the main scripts (same source-line attributions as 02_bandwidth_sensitivity_stats.R):
-#   - r_spharm/power_order_selection.R     (order selection)
+#   - r_spharm/power_degree_selection.R     (degree selection)
 #   - r_spharm/spharm_analysis.R           (EXP PERMANOVA `perm_dir`)
 #   - r_statistics/exp_cores_statistics.R  (EXP Mantel + RV)
 #   - r_statistics/SDG_cores_statistics.R  (SDG Mantel + RV + scar~core-type PERMANOVA)
@@ -160,7 +160,7 @@ scale_features <- function(df_target, cols) {
   base::scale(mat, center = col_mean, scale = col_sd)
 }
 
-# power_order_selection.R:74-124 (trimmed to the quantities used here)
+# power_degree_selection.R:74-124 (trimmed to the quantities used here)
 compute_order_stats <- function(df, cols) {
   mat       <- df %>% select(all_of(cols)) %>% as.matrix()
   n_orders  <- length(cols)

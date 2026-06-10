@@ -25,7 +25,7 @@ import pandas as pd
 
 # ── Config ────────────────────────────────────────────────────────────────────
 DIR_CSV = "analysis/data/derived_data/directions_aligned_svd.csv"
-OUT_DIR = "analysis/output/figures/kde_sphere_interactive"
+OUT_DIR = "analysis/output/html/kde_sphere_interactive"
 
 BANDWIDTH = 0.35  # default vMF bandwidth (matches kde_to_spharm_main.py)
 

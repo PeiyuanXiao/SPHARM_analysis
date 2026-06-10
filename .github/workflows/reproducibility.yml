@@ -117,3 +117,4 @@ jobs:
             analysis/paper/manuscript.docx
             analysis/data/derived_data/**
             analysis/output/figures/**
+            analysis/output/html/**

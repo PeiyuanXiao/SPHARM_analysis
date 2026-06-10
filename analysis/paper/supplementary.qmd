@@ -32,6 +32,7 @@ date-format: long
 format:
   docx:
     reference-doc: "../templates/template.docx"
+    output-file: "ESM_2"
 crossref:
   fig-title: "Figure S"
   fig-prefix: "Figure S"

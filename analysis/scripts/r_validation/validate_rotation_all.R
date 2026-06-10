@@ -506,7 +506,7 @@ cat("\nUpdated: validation_ba_summary.csv\n")
 p_rotational_invariance_validity <- p_rei / p_rot_spharm +
   plot_layout(heights = c(3, 1)) +
   plot_annotation(
-    tag_levels = "A",
+    tag_levels = "a",
     theme = theme(
       plot.tag = element_text(face = "bold")
     )
