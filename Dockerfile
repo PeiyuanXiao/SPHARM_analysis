@@ -1,5 +1,12 @@
 # 1. Use the pre-built geospatial image
-FROM rocker/geospatial:4.4.2
+#    Pin the platform to linux/amd64. The conda env (analysis/scripts/
+#    environment.yml) locks linux-64 package build hashes for numerical
+#    reproducibility, so the image MUST be amd64. Without this flag, building
+#    on an Apple Silicon Mac would target linux/arm64 and the conda solve
+#    would fail (those build hashes do not exist for arm64). On amd64 hosts
+#    (Linux, Windows/Intel, CI) this flag is the native default and is a no-op;
+#    on Apple Silicon it forces emulation, giving bit-identical results.
+FROM --platform=linux/amd64 rocker/geospatial:4.4.2
 
 # 2. Install Python and Conda dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \

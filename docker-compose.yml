@@ -1,6 +1,9 @@
 services:
   spharm-processor:
     image: spharm_analysis
+    # Match the image's build platform. No-op on amd64 hosts; on Apple Silicon
+    # it runs the amd64 image under emulation instead of warning about a mismatch.
+    platform: linux/amd64
     container_name: spharm-processor
     ports:
       - "8787:8787"

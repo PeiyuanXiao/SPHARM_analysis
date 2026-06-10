@@ -142,8 +142,16 @@ root (note the trailing `.`). This step may take some time, as it
 restores all R packages and resolves the conda environment:
 
 ```
-docker build -t spharm_analysis .
+docker build --platform=linux/amd64 -t spharm_analysis .
 ```
+
+> **Note (Apple Silicon Macs):** The `--platform=linux/amd64` flag is
+> required. The conda environment is locked to linux-64 package builds for
+> numerical reproducibility, so the image must be amd64; without the flag,
+> Docker on an Apple Silicon Mac would target arm64 and the conda solve would
+> fail. With the flag, Docker runs the image under emulation (Rosetta 2) —
+> slower, but results are bit-identical to the amd64 reference environment. On
+> Linux and Windows/Intel hosts the flag is the native default and has no effect.
 
 **Step 5 — Start the container.** The simplest approach is via Docker
 Compose, which maps port 8787 and mounts the project at `/project`:
@@ -151,11 +159,6 @@ Compose, which maps port 8787 and mounts the project at `/project`:
 ```
 docker compose up -d
 ```
-
-> **Note:** `docker-compose.yml` references a fixed host path
-> (`/mnt/h/SPHARM_analysis`). Edit the `volumes:` entry to point to your
-> local copy of the project before running, or use the plain `docker run`
-> commands below instead.
 
 Alternatively, with plain Docker:
 
