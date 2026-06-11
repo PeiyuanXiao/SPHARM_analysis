@@ -7,7 +7,7 @@ author:
       institute:
         - ALPHA
         - UCAS
-        - uw
+        - UW
   - Hao Li:
       correspondence: "yes"
       email: lihao@itpcas.ac.cn
@@ -20,12 +20,12 @@ author:
       email: bmarwick@uw.edu
       orcid: 0000-0001-7879-4531
       institute:
-        - uw
+        - UW
 institute:
-  - UCAS: University of Chinese Academy of Sciences, Beijing, China
   - ALPHA: Alpine Paleoecology and Human Adaptation Group (ALPHA Group), State Key Laboratory of Tibetan Plateau Earth System, Environment and Resources, Institute of Tibetan Plateau Research, Chinese Academy of Sciences, Beijing, China; 
+  - UCAS: University of Chinese Academy of Sciences, Beijing, China
+  - UW: Department of Anthropology, University of Washington, Seattle, WA, USA
   - MOE: MOE Key Laboratory of Western China's Environmental System, Center for Excellence in Archaeological Science and Cultural Heritage, Lanzhou University, Lanzhou, China
-  - uw: Department of Anthropology, University of Washington, Seattle, WA, USA
 title-block-published: "Last updated"  
 date: now
 date-format: long
@@ -49,12 +49,11 @@ filters:
 bibliography: references.bib
 csl: "../templates/journal-of-archaeological-method-and-theory.csl"
 keywords:
-  - Spherical harmonics
-  - Lithic core analysis
-  - Scar pattern
+  - Computational archaeology
   - Geometric morphometrics
-  - Co-inertia analysis
-  - Reduction technology
+  - Spherical harmonic
+  - 3D lithic analysis
+  - Core reduction strategy
 abstract: |
   Lithic cores preserve the most direct evidence of past reduction strategies, yet their analysis still relies largely on typological classifications that are subjective and difficult to reproduce. Recent 3D methods quantify core attributes more precisely, but morphology and scar organization are handled in separate mathematical frameworks, precluding joint analysis of how the two relate. Here we present a unified framework based on spherical harmonics that encodes both core morphology (M-SPHARM) and scar patterning (SP-SPHARM) within a single rotation-invariant, landmark-free space, the latter being the first application of spherical harmonics to scar orientation data. Co-inertia Analysis examines their covariation, and harmonic reconstruction renders statistical axes back into interpretable three-dimensional forms. While the methods are complementary, validation on ideal models and experimental cores shows that the scar pattern descriptor resolves finer distinctions among core types than existing metrics, most clearly the radial subtypes others cannot separate. Exploratory analysis on experimental and archaeological assemblages reveals no detectable covariation between morphology and scar organization. We identify core type as the principal factor structuring variation at Sandinggai (Hunan, China). The methods are released as an open-source R package (spharmlithic) with a fully reproducible workflow. More broadly, the framework supports understanding core variability as a continuous techno-morphological space rather than a set of discrete types.
   
@@ -223,7 +222,7 @@ tar_read(degree_selection_diagnostic)
 
 [Rotation Invariance Assessment.]{.underline} Comparing specimens with these metrics presupposes that each captures the scar pattern itself rather than the arbitrary orientation in which a model happens to be digitized. We therefore first evaluated whether each metric is independent of model orientation, that is, whether its value is stable across the original orientation and the two alignment procedures described above. Rotational invariance of three scar pattern metrics (SPI, fabric Elongation and Isotropy, and SP-SPHARM power spectra) was assessed using the Bland–Altman approach. This method evaluates agreement between paired measurements by plotting their difference against their mean [@blandDepartmentClinicalEpidemiology; @blandMeasuringAgreementMethod]. The mean difference represents systematic bias, and the 95% limits of agreement (LoA) define the range within which 95% of differences are expected to fall; narrow LoA with no systematic trends indicate high agreement [@blandMeasuringAgreementMethod]. Each metric was computed under three coordinate conditions: (1) original scar-vector data, (2) morphological-plane alignment, and (3) technological-plane alignment. Pairwise Bland–Altman comparisons among these conditions were conducted, with high agreement interpreted as evidence of rotational invariance.
 
-[Method Comparison.]{.underline} For the idealized digital cores, where only one model exists per type, discriminatory power was assessed using pairwise standardized Euclidean distances in feature space, with greater distances indicating stronger inter-type separation. Results were visualized using heatmaps. For the experimentally knapped cores, a significance-testing framework was employed. SPI, as a univariate metric, was evaluated using the Kruskal–Wallis test [@kruskalUseRanksOneCriterion]. Fabric metrics and SP-SPHARM descriptors were analyzed using PERMANOVA, which tests overall structural differences between groups, complemented by PERMDISP to assess whether differences in within-group dispersion contribute to the observed separation [@andersonNewMethodNonparametric; @andersonDistanceBasedTestsHomogeneity2006]. Significant PERMDISP results warrant cautious interpretation of PERMANOVA outcomes [@andersonDistanceBasedTestsHomogeneity2006; @andersonPermutationalMultivariateAnalysis2017]. All permutation procedures used 9,999 permutations. Where overall tests were significant, *post hoc* pairwise comparisons were performed with Holm–Bonferroni correction [@holmSimpleSequentiallyRejective2026].
+[Method Comparison.]{.underline} For the idealized digital cores, where only one model exists per type, discriminatory power was assessed using pairwise standardized Euclidean distances in feature space, with greater distances indicating stronger inter-type separation. Results were visualized using heatmaps. For the experimentally knapped cores, a significance-testing framework was employed. SPI, as a univariate metric, was evaluated using the Kruskal–Wallis test [@kruskal1952use]. Fabric metrics and SP-SPHARM descriptors were analyzed using PERMANOVA, which tests overall structural differences between groups, complemented by PERMDISP to assess whether differences in within-group dispersion contribute to the observed separation [@anderson2001new; @andersonDistanceBasedTestsHomogeneity2006]. Significant PERMDISP results warrant cautious interpretation of PERMANOVA outcomes [@andersonDistanceBasedTestsHomogeneity2006; @andersonPermutationalMultivariateAnalysis2017]. All permutation procedures used 9,999 permutations. Where overall tests were significant, *post hoc* pairwise comparisons were performed with Holm–Bonferroni correction [@holmSimpleSequentiallyRejective2026].
 
 [Techno-morphological statistical analytical framework.]{.underline} To investigate techno–morphology relationships, we employed a two-step analytical framework: first testing whether overall covariation exists between M-SPHARM and SP-SPHARM power spectra, then exploring interaction patterns through joint dimensional reduction.
 
@@ -420,6 +419,8 @@ The authors declare that they have no known competing financial interests or per
 ## Author Contributions
 
 ## Data Availability
+
+All core models, scar orientation data, and observational data for the Sandinggai cores analysed in this study are available in the [OSF repository](https://doi.org/10.17605/OSF.IO/D82C5) and the [GitHub repository](https://github.com/PeiyuanXiao/SPHARM_analysis). The R and Python code used in this study are likewise archived in these repositories. The repositories include README files that describe the repository structure in detail and provide step-by-step instructions for reproducing the analyses.
 
 # Acknowledgements
 

@@ -3,7 +3,7 @@ title: "Guide to the Interactive HTML Outputs"
 date-format: long
 format:
   pdf:
-    output-file: "ESM_1"
+    output-file: "ESM_2"
     toc: false
     number-sections: false
     documentclass: article
