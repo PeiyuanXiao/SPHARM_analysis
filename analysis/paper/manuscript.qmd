@@ -35,7 +35,7 @@ format:
 crossref:
   fig-title: "Fig."
   fig-prefix: "Fig."
-number-sections: true
+number-sections: false
 execute:
   echo: false
   warning: false
