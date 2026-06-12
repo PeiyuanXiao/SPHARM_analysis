@@ -87,7 +87,7 @@ sdg         <- tar_read(sdg_cia_analysis)
 
 # Introduction
 
-Cores often preserve the most direct evidence of reduction strategies in lithic assemblages. Their analysis can inform not only knapping behavior, including flaking strategies, knapping skill levels, and technological traditions, but also broader questions of hominin cognition, mobility patterns, site function, and social learning [@StudyTechnologicalOrganization; @inizanTechnologyTerminologyKnapped1999; @clarkson2006; @wallaceMobilityPatternsCore2006; @erenMiddlePaleolithicSkill2011; @nonakaHowStoneKnappers2010a; @douglassCoreUseLifeDistributions2018; @mullerStoneToolmakingDifficulty2022; @lin2024]. Core analysis has traditionally relied on typological approaches, in which cores are classified into categories such as Levallois, discoidal, and laminar cores according to hierarchically organized attributes such as morphology, scar patterning, flaking angles, and platform preparation [@boedaDebitageDiscoideDebitage1993; @inizanTechnologyTerminologyKnapped1999]. These frameworks, however, are often weakly standardized: different typological systems often employ distinct descriptive vocabularies, and substantial classification inconsistencies arise both between analysts and within the same analyst over time [@whittakerEvaluatingConsistencyTypology1998; @ruckInterIntraraterReliability2020; @pargeterReplicabilityLithicAnalysis2023]. The emerging debate over Levallois technology in China illustrates this problem clearly. Although researchers commonly apply the criteria proposed by @boeda1995levallois , disagreements persist over whether certain cores from the Shiyu and Guanyindong sites should be classified as Levallois [@liRefutationReportedLevallois2019; @huEvidenceLevalloisStrategies2023; @carmignaniInitialUpperPalaeolithic2024; @yangReplyInitialUpper2024]. Efforts to establish unified classificatory systems, such as the Unified Lithic Taxonomy and the Logic Analytical System, have partially reduced inter-observer variability, yet they remain fundamentally reliant on qualitative judgment [@conardUnifiedLithicTaxonomy2004; @lombaoTechnologicalBehavioursHomo2023].
+Cores often preserve the most direct evidence of reduction strategies in lithic assemblages. Their analysis can inform not only knapping behavior, including flaking strategies [@inizanTechnologyTerminologyKnapped1999; @delagnesDiversityLithicProduction2006; @pandeyStudyLithicRefitting2025], reduction intensity [@clarksonMeasuringCoreReduction2013; @lombaoUnravellingTechnologicalBehaviors2023], and knapping skill levels [@erenMiddlePaleolithicSkill2011; @delpianoExploringNeanderthalSkills2017; @wilsonSkillCoreUniformity2023; @cattabrigaCriteriaIdentifyingKnapping2024], but also broader questions of hominin cognition [@liVictoriaWestEarliest2017; @mullerStoneToolmakingDifficulty2022], mobility patterns [@wallaceMobilityPatternsCore2006; @douglassCoreUseLifeDistributions2018; @lombaoTechnologicalBehavioursHomo2023], and social learning [@vallettaIdentifyingLocalLearning2021; @pargeterTestingEffectLearning2022; @cattabrigaExploringKnappingLearning2024]. Core analysis has traditionally relied on typological approaches, in which cores are classified into categories such as Levallois, discoidal, and laminar cores according to hierarchically organized attributes such as morphology, scar patterning, flaking angles, and platform preparation [@boedaDebitageDiscoideDebitage1993; @inizanTechnologyTerminologyKnapped1999]. These frameworks, however, are often weakly standardized: different typological systems often employ distinct descriptive vocabularies, and substantial classification inconsistencies arise both between analysts and within the same analyst over time [@whittakerEvaluatingConsistencyTypology1998; @ruckInterIntraraterReliability2020; @pargeterReplicabilityLithicAnalysis2023]. The emerging debate over Levallois technology in China illustrates this problem clearly. Although researchers commonly apply the criteria proposed by @boeda1995levallois , disagreements persist over whether certain cores from the Shiyu and Guanyindong sites should be classified as Levallois [@liRefutationReportedLevallois2019; @huEvidenceLevalloisStrategies2023; @carmignaniInitialUpperPalaeolithic2024; @yangReplyInitialUpper2024]. Efforts to establish unified classificatory systems, such as the Unified Lithic Taxonomy and the Logic Analytical System, have partially reduced inter-observer variability, yet they remain fundamentally reliant on qualitative judgment [@conardUnifiedLithicTaxonomy2004; @lombaoTechnologicalBehavioursHomo2023].
 
 Growing demands for precision and reproducibility have driven increasing interest in three-dimensional quantitative approaches to lithic analysis [@grosmanApplication3DScanning2008; @wyatt-sprattRevolutionReview3D2022]. 3D modeling technologies provide substantially higher-resolution data than traditional linear measurements and have been widely applied to flakes [@archerQuantifyingDifferencesHominin2021; @bustos-perezCombiningQuantitativeApproaches2022], retouched tools [@hashemiInvestigationFlakebasedLithic2021; @falcucciContributionIntegrated3D2022], and large cutting tools (LCTs) [@herzlingerNewMethod3D2017; @liCharacterizingShapeLarge2021]. Studies specifically focused on cores, however, remain limited [@wyatt-sprattRevolutionReview3D2022]. Two broad approaches characterize existing work. The first extracts predefined technological variables from 3D models, such as platform angles [@porterComparisonChatelperronianProtoaurignacian2019], cortex proportions [@linApplication3DLaser2010], reduction intensity [@clarksonMeasuringCoreReduction2013], surface convexity [@mullerGettingShapeComputing2026], and scar patterning [@clarkson2006; @lin2024]. The second characterizes overall core morphology, most commonly through landmark-based geometric morphometrics [@lycettComparative3DGeometric2010; @hallinanQuantifyingLevallois3D2025; @hallinanNubianSpectrum3D2026], though recent studies have also applied spherical harmonic methods (SPHARM) to spheroids and polyhedral cores [@muller2023; @yeSphericalHarmonicAnalysis2026]. These two approaches are complementary, and their integration has yielded deeper insights in several studies [@hallinanQuantifyingLevallois3D2025; @hallinanNubianSpectrum3D2026].
 
@@ -174,7 +174,7 @@ Spherical harmonic analysis represents the three-dimensional extension of ellipt
 ```{r, echo=FALSE}
 #| label: fig-spspharm-concept
 #| fig-cap: "Application of spherical harmonic analysis to scar orientation data, demonstrated on five idealized core types: **(a)** unidirectional, **(b)** bidirectional, **(c)** Levallois, **(d)** discoidal, and **(e)** polyhedral. For each type, the idealized 3D core model with its scar pattern (left) is converted into a continuous spherical density and expanded into a rotation-invariant power spectrum. The scar pattern reconstructed from the harmonic coefficients is also shown on the right"
-#| out-width: "85%"
+#| out-width: "100%"
 
 knitr::include_graphics(here::here("asset/IM_SPSPHARM.png"))
 ```
@@ -200,7 +200,7 @@ For core morphological analysis, we followed the procedures established by @yeSp
 ```{r, echo=FALSE}
 #| label: fig-spharm-workflow
 #| fig-cap: "Overview of the unified spherical harmonic workflow for jointly describing core morphology and scar organization"
-#| out-width: "85%"
+#| out-width: "100%"
 
 knitr::include_graphics(here::here("asset/SPHARM_workflow.png"))
 ```
@@ -209,11 +209,11 @@ Although coefficients were computed to $l_{\max}$ = 20 for faithful reconstructi
 
 ```{r}
 #| label: fig-degree-selection
-#| echo: false
+#| fig-cap: "Per-degree diagnostics used to select the spherical-harmonic truncation degree, shown for the experimentally knapped cores (EXP; **a**, **b**) and the Sandinggai assemblage (SDG; **c**, **d**). **(a, c)** Across-specimen coefficient of variation (CV) by harmonic degree *l*; **(b, d)** cumulative power by harmonic degree *l*. In each panel the morphology (M-SPHARM) and scar-direction (SP-SPHARM) power spectra are overlaid. Dashed lines mark the 100% CV reference in (a, c) and the 95% and 99% cumulative-power references in (b, d)"
 #| fig-width: 10
 #| fig-height: 8
 #| out-width: "100%"
-#| fig-cap: "Per-degree diagnostics used to select the spherical-harmonic truncation degree, shown for the experimentally knapped cores (EXP; **a**, **b**) and the Sandinggai assemblage (SDG; **c**, **d**). **(a, c)** Across-specimen coefficient of variation (CV) by harmonic degree *l*; **(b, d)** cumulative power by harmonic degree *l*. In each panel the morphology (M-SPHARM) and scar-direction (SP-SPHARM) power spectra are overlaid. Dashed lines mark the 100% CV reference in (a, c) and the 95% and 99% cumulative-power references in (b, d)"
+#| echo: false
 
 tar_read(degree_selection_diagnostic)
 ```
@@ -239,7 +239,7 @@ To further characterize sample correspondences, we employed Kruskal–Wallis tes
 ```{r, echo=FALSE}
 #| label: fig-coia-workflow
 #| fig-cap: "Workflow of the Co-inertia Analysis (CoIA) framework for jointly analysing morphology and scar pattern"
-#| out-width: "85%"
+#| out-width: "100%"
 
 knitr::include_graphics(here::here("asset/COIA_workflow.png"))
 ```
@@ -267,10 +267,12 @@ The low-degree biases most likely originate from upstream computational steps su
 ```{r}
 #| label: fig-rotation-validity
 #| fig-cap: "Bland-Altman analysis of rotational invariance. **(a-c)** SPI across three coordinate conditions. **(d-f)** Fabric elongation ratio across three coordinate conditions. **(g-i)** Fabric isotropy ratio across three coordinate conditions. **(j)** SP-SPHARM power spectra bias across three coordinate conditions and random Z-axis perturbation"
-#| fig-width: 12
-#| fig-height: 14
+#| fig-width: 6.85
+#| fig-height: 8.0
+#| out-width: "174mm"
 #| echo: false
-#| dpi: 150
+#| dpi: 600
+
 tar_read(p_rotational_invariance_validity)
 ```
 
@@ -281,10 +283,10 @@ tar_read(p_rotational_invariance_validity)
 ```{r}
 #| label: fig-im-comparison
 #| fig-cap: "Discriminatory power of the three scar pattern analytical methods on the idealized digital cores, shown as heatmaps of pairwise standardized Euclidean distances between core types for SPI, fabric metrics, and SP-SPHARM power spectra. Larger distances (darker shading) indicate stronger separation"
+#| fig-width: 6.85
+#| fig-height: 2.85
+#| out-width: "174mm"
 #| echo: false
-#| fig-width: 12
-#| fig-height: 5
-#| out-width: "100%"
 
 im$p_heatmap
 ```
@@ -296,8 +298,9 @@ SPI produced moderate distances between unidirectional types (cylindrical, conic
 ```{r}
 #| label: fig-exp-method-compare
 #| fig-cap: "Comparison of the three scar pattern analytical methods on the experimentally knapped cores, grouped by core type. **(a)** Box-and-whisker plot of SPI distributions by core type with Kruskal–Wallis testing result. **(b)** Fabric metrics shown as a Benn ternary diagram of elongation, planar, and isotropy components with PERMANOVA result. **(c)** SP-SPHARM descriptors projected onto the first two linear discriminant axes with PERMANOVA result. **(d)** Core type pairs significantly separated by each method after Holm–Bonferroni correction; each marker denotes a pair distinguished by the corresponding method. The three methods detect significant inter-type differences but resolve different sets of pairwise distinctions"
-#| fig-width: 10
-#| fig-height: 12
+#| fig-width: 6.85
+#| fig-height: 8.2
+#| out-width: "174mm"
 #| echo: false
 
 tar_read(spharm_analysis)$p_exp_method_combined
@@ -313,11 +316,11 @@ Because the global tests above provide no evidence of covariation, the CoIA axes
 
 ```{r}
 #| label: fig-exp-cia
-#| echo: false
-#| fig-width: 10
-#| fig-height: 12
 #| fig-cap: "Co-inertia analysis (CoIA) of M-SPHARM and SP-SPHARM descriptors for the experimentally knapped cores. **(a)** CoIA ordination on the first two axes; each core is shown as a morphology point (circle) and a scar pattern point (triangle) joined by a line, whose length and direction summarize the morphology–scar pattern correspondence for that specimen. **(b)** Line lengths compared among core types using Kruskal–Wallis test. **(c)** Rose diagrams of line directions by core type with Rayleigh testing results. **(d)** Morphology (top) and scar pattern (bottom) reconstructed along the CoIA axes by inverse spherical harmonic reconstruction"
-#| out-width: "100%"
+#| fig-width: 6.85
+#| fig-height: 8.6
+#| out-width: "174mm"
+#| echo: false
 
 cia$p_final
 ```
@@ -332,11 +335,11 @@ As in the experimental assemblage, the non-significant global tests mean that th
 
 ```{r}
 #| label: fig-coia-composite
-#| echo: false
-#| fig-width: 12
-#| fig-height: 16
 #| fig-cap: "Co-inertia analysis (CoIA) of M-SPHARM and SP-SPHARM descriptors for the Sandinggai (SDG) core assemblage, with specimens grouped by stratigraphic layer **(a–c)**, raw material **(d–f)**, and core type **(g–i)**. In each grouping, the CoIA ordination (left) shows every core as a morphology point (circle) and a scar pattern point (triangle) joined by a line; the centre panel compares line lengths among groups (Kruskal–Wallis test) and the right panel shows rose diagrams of line directions (Rayleigh test). **(j)** Morphology (top) and scar pattern (bottom) reconstructed along the CoIA axes by inverse spherical harmonic reconstruction"
-#| out-width: "100%"
+#| fig-width: 6.85
+#| fig-height: 9.1
+#| out-width: "174mm"
+#| echo: false
 
 sdg$fig_coia_composite
 ```
