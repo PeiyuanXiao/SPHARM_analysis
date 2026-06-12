@@ -537,6 +537,6 @@ left_col <- (p_SPI_box / p_benn_wrap / p_dir_plot) +
 exp_method_compare_combined <- (left_col | p_bubble) +
   plot_layout(ncol = 2, widths = c(1, 0.5)) +
   plot_annotation(
-    tag_levels = "A",
+    tag_levels = "a",
     theme = theme(plot.tag = element_text(face = "bold"))
   )

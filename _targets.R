@@ -472,5 +472,22 @@ list(
         )
       })
     }
+  ),
+
+  # degree-selection diagnostic: per-degree across-specimen CV and cumulative
+  # power for EXP and SDG (morphology & direction), used to justify the l
+  # truncation. Returns the composite figure inserted into the manuscript.
+  tar_target(
+    degree_selection_diagnostic,
+    {
+      force(spharm_morphology_csv)
+      force(spharm_direction_csv)
+
+      local({
+        source(here::here("analysis/scripts/r_spharm/power_degree_selection.R"),
+               local = TRUE)
+        p_degree_selection
+      })
+    }
   )
 )

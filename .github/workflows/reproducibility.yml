@@ -98,6 +98,24 @@ jobs:
           # files written by the (root) container; make them readable to the runner
           sudo chown -R "$USER":"$USER" "${{ github.workspace }}" || true
 
+      - name: Build the supplementary (robustness) pipeline
+        # Independent SI pipeline (_targets_supplementary.R). It reads the
+        # committed per-setting spectra under analysis/robustness/**/spectra plus
+        # the main pipeline's derived CSVs (SPHARM_direction/morphology.csv,
+        # written by the previous step into the mounted workspace) and builds the
+        # robustness figures/tables into its own store
+        # (analysis/robustness/_targets_store). No Python is involved.
+        # Best-effort: a failure here does not fail the reproducibility job — flip
+        # to a gating step (remove continue-on-error) once confirmed green in CI.
+        continue-on-error: true
+        run: |
+          docker run --rm \
+            -e MPLBACKEND=Agg \
+            -v "${{ github.workspace }}":/project -w /project \
+            spharm_analysis:ci \
+            Rscript -e 'Sys.setenv(TAR_PROJECT = "supplementary"); targets::tar_make()'
+          sudo chown -R "$USER":"$USER" "${{ github.workspace }}" || true
+
       - name: Render the manuscript
         continue-on-error: true
         run: |
@@ -107,13 +125,29 @@ jobs:
             quarto render analysis/paper/manuscript.qmd --to docx
           sudo chown -R "$USER":"$USER" "${{ github.workspace }}" || true
 
+      - name: Render the supplementary materials
+        # supplementary.qmd sets its own targets store (the robustness store
+        # built above) and renders the sensitivity analysis to ESM_1.docx
+        # (per its `output-file`).
+        continue-on-error: true
+        run: |
+          docker run --rm \
+            -v "${{ github.workspace }}":/project -w /project \
+            spharm_analysis:ci \
+            quarto render analysis/paper/supplementary.qmd --to docx
+          sudo chown -R "$USER":"$USER" "${{ github.workspace }}" || true
+
       - name: Upload reproduced outputs
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: reproduced-outputs
           if-no-files-found: ignore
+          # derived_data holds large binary intermediates (.npy KDE grids/matrices,
+          # .rds) alongside the tabular results; ship only the CSV tables. `**`
+          # matches zero or more directories, so this captures both the top-level
+          # CSVs (e.g. SPHARM_morphology.csv) and nested ones (validation/**).
           path: |
             analysis/paper/manuscript.docx
-            analysis/data/derived_data/**
-            analysis/output/figures/**
+            analysis/paper/ESM_1.docx
+            analysis/data/derived_data/**/*.csv

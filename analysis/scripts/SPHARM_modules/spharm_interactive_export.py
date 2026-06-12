@@ -21,7 +21,7 @@ import pandas as pd
 # ── 配置 ─────────────────────────────────────────────────────────────────────
 MORPH_CSV = "analysis/data/derived_data/SPHARM_morphology.csv"
 SCAR_CSV  = "analysis/data/derived_data/SPHARM_direction.csv"
-OUT_DIR   = "analysis/output/figures/reconstruction_interactive"
+OUT_DIR   = "analysis/output/html/reconstruction_interactive"
 
 LMAX = 20
 

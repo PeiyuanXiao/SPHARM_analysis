@@ -10,7 +10,7 @@
 # It re-uses the project's statistical machinery (the same package functions the
 # main pipeline calls — vegan::adonis2 / mantel, ade4::coinertia / randtest,
 # compositions::ilr) and replicates, verbatim, the data-prep from:
-#   - r_spharm/power_order_selection.R     (morphology order selection)
+#   - r_spharm/power_degree_selection.R     (morphology degree selection)
 #   - r_spharm/spharm_analysis.R           (EXP morphology PERMANOVA `perm_morph`)
 #   - r_statistics/exp_cores_statistics.R  (EXP Mantel + RV decoupling)
 #   - r_statistics/SDG_cores_statistics.R  (SDG morph PERMANOVA: core type / raw
@@ -92,7 +92,7 @@ EXCLUDE_CORE_TYPES <- c("Handaxe", "Pick")
 
 # Committed production reference values for the anchor check at (20000, 3). All are
 # deterministic; permutation p-values jitter ~+/-0.005 and are excluded. Sources:
-# OrderSelection_stats_morphology_{EXP,SDG}.csv, L3_permanova.csv, EXP_L1_results.csv,
+# DegreeSelection_stats_morphology_{EXP,SDG}.csv, L3_permanova.csv, EXP_L1_results.csv,
 # L1_results.csv.
 REF <- list(
   exp_morph_cumpower_l8 = 98.371, exp_morph_maxcv_l8 = 83.05,
@@ -142,7 +142,7 @@ scale_features <- function(df_target, cols) {           # spharm_analysis.R:109-
   mat <- df_target %>% select(all_of(cols)) %>% as.matrix()
   base::scale(mat, center = col_mean, scale = col_sd)
 }
-compute_order_stats <- function(df, cols) {             # power_order_selection.R:74-124
+compute_order_stats <- function(df, cols) {             # power_degree_selection.R:74-124
   mat <- df %>% select(all_of(cols)) %>% as.matrix()
   col_means <- colMeans(mat, na.rm = TRUE)
   col_sds   <- apply(mat, 2, sd, na.rm = TRUE)
@@ -189,7 +189,7 @@ core_meta <- read_excel(here("analysis/data/raw_data/SDG_core_metric.xlsx")) %>%
 # Per-setting analysis blocks (morphology = swept; scar = fixed committed)
 # =============================================================================
 
-# ---- (a) morphology order selection: EXP & SDG ------------------------------
+# ---- (a) morphology degree selection: EXP & SDG ------------------------------
 order_block <- function(morph_df) {
   m_exp <- morph_df %>% filter(str_starts(ID, "EXP"))
   m_sdg <- morph_df %>% filter(str_starts(ID, "SDG"), !str_starts(ID, "IM_"))
