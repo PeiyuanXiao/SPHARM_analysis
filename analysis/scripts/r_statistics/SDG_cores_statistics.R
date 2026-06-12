@@ -599,16 +599,16 @@ make_coia_biplot <- function(group_col, group_label, palette,
     )
   
   endpoint_shapes <- c("Morphology" = 21, "Scar direction" = 24)
-  endpoint_sizes  <- c("Morphology" = 3.0, "Scar direction" = 2.6)
+  endpoint_sizes  <- c("Morphology" = 2.0, "Scar direction" = 1.7)
   
   p <- ggplot() +
-    geom_hline(yintercept = 0, linetype = "dashed", color = "grey70", linewidth = 0.3) +
-    geom_vline(xintercept = 0, linetype = "dashed", color = "grey70", linewidth = 0.3) +
+    geom_hline(yintercept = 0, linetype = "dashed", color = "grey70", linewidth = 0.25) +
+    geom_vline(xintercept = 0, linetype = "dashed", color = "grey70", linewidth = 0.25) +
     geom_segment(
       data = sub_seg,
       aes(x = Axis1_M, y = Axis2_M, xend = Axis1_S, yend = Axis2_S,
           color = .data[[group_col]]),
-      linewidth = 0.45, alpha = 0.45, lineend = "round"
+      linewidth = 0.32, alpha = 0.45, lineend = "round"
     ) +
     geom_point(
       data = scores_long,
@@ -617,13 +617,13 @@ make_coia_biplot <- function(group_col, group_label, palette,
           color = .data[[group_col]],
           shape = endpoint,
           size  = endpoint),
-      stroke = 0.5, alpha = 0.90
+      stroke = 0.4, alpha = 0.90
     ) +
     scale_color_manual(values = palette, name = group_label, breaks = lvls) +
     scale_fill_manual(values  = palette, name = group_label, breaks = lvls) +
     scale_shape_manual(values = endpoint_shapes, name = "Endpoint") +
     scale_size_manual(values  = endpoint_sizes,  name = "Endpoint") +
-    theme_bw() +
+    theme_bw(base_size = 8) +
     labs(
       x = sprintf("CoIA Axis 1 (%.1f%%)", cia_inertia[1]),
       y = sprintf("CoIA Axis 2 (%.1f%%)", cia_inertia[2])
@@ -632,7 +632,7 @@ make_coia_biplot <- function(group_col, group_label, palette,
       # Colour legend: shown when standalone, hidden in composite (moved to direction plot)
       color = if (show_color_legend) {
         guide_legend(order = 1,
-                     override.aes = list(shape = 21, size = 3),
+                     override.aes = list(shape = 21, size = 2),
                      title = group_label)
       } else {
         "none"
@@ -642,7 +642,7 @@ make_coia_biplot <- function(group_col, group_label, palette,
       shape = guide_legend(order = 2,
                            override.aes = list(fill  = "grey60",
                                                color = "grey30",
-                                               size  = c(3.0, 2.6)),
+                                               size  = c(2.0, 1.7)),
                            title = "Endpoint"),
       size  = "none"
     ) +
@@ -655,10 +655,11 @@ make_coia_biplot <- function(group_col, group_label, palette,
       legend.box           = "vertical",
       legend.box.just      = "left",
       legend.background    = element_rect(fill  = alpha("white", 0.75),
-                                          color = "grey80", linewidth = 0.3),
-      legend.key.size      = unit(0.45, "cm"),
-      legend.text          = element_text(size = 8),
-      legend.margin        = margin(4, 6, 4, 6)
+                                          color = "grey80", linewidth = 0.25),
+      legend.key.size      = unit(0.3, "cm"),
+      legend.text          = element_text(size = 6.5),
+      legend.title         = element_text(size = 7),
+      legend.margin        = margin(2, 4, 2, 4)
     )
   
   tag   <- if (!is.null(fname_tag)) fname_tag else tolower(str_replace_all(group_label, " ", "_"))
@@ -1057,25 +1058,25 @@ run_arrow_length_analysis <- function(group_col, group_label, palette,
   p <- ggplot(sub_df,
               aes(x = .data[[group_col]], y = arrow_length,
                   fill = .data[[group_col]], color = .data[[group_col]])) +
-    geom_boxplot(outlier.shape = 21, outlier.size = 2.5,
-                 alpha = 0.25, linewidth = 0.5) +
-    geom_jitter(width = 0.15, size = 2.5, alpha = 0.7, shape = 16) +
+    geom_boxplot(outlier.shape = 21, outlier.size = 1.6,
+                 alpha = 0.25, linewidth = 0.35) +
+    geom_jitter(width = 0.15, size = 1.6, alpha = 0.7, shape = 16) +
     stat_summary(fun = mean, geom = "point",
-                 shape = 16, size = 4, color = "white") +
+                 shape = 16, size = 2.4, color = "white") +
     annotate("text", x = Inf, y = Inf,
              label = sprintf("Kruskal-Wallis\nchi\u00b2 = %.2f, P = %.3f",
                              kw$statistic, kw$p.value),
-             hjust = 1.05, vjust = 1.2, size = 4, color = "grey40") +
+             hjust = 1.05, vjust = 1.2, size = 2.6, color = "grey40") +
     scale_fill_manual(values  = palette) +
     scale_color_manual(values = palette) +
-    theme_bw() +
+    theme_bw(base_size = 8) +
     theme(
       panel.grid.major.x = element_blank(),
       panel.grid.major.y = element_blank(),
       panel.grid.minor   = element_blank(),
       axis.text.x        = element_blank(),
       axis.ticks.x       = element_blank(),
-      axis.text.y        = element_text(size = 9.5),
+      axis.text.y        = element_text(size = 7),
       legend.position    = "none"
     ) +
     labs(x = NULL, y = "CoIA line length")
@@ -1168,14 +1169,14 @@ plot_rose <- function(res, palette, show_color_legend = TRUE) {
     geom_vline(
       data      = mean_linear,
       aes(xintercept = angle_centered, color = .data[[group_col]]),
-      linewidth = 0.5, linetype = "dashed", alpha = 0.75
+      linewidth = 0.4, linetype = "dashed", alpha = 0.75
     ) +
     geom_text(
       data = rayleigh_labels,
       aes(label = label),
       x = 170, y = Inf,
       hjust = 0.8, vjust = 1.4,
-      size = 3, color = "grey35",
+      size = 2.2, color = "grey35",
       inherit.aes = FALSE
     ) +
     scale_x_continuous(
@@ -1190,14 +1191,14 @@ plot_rose <- function(res, palette, show_color_legend = TRUE) {
     facet_wrap(reformulate(group_col), ncol = 1, scales = "free_y") +
     labs(x    = "CoIA line direction (\u00b0)",
          y    = "von Mises KDE") +
-    theme_bw(base_size = 10) +
+    theme_bw(base_size = 8) +
     theme(
       panel.grid.minor    = element_blank(),
       panel.grid.major.x  = element_blank(),
       panel.grid.major.y  = element_blank(),
       # Facet labels: shown standalone, hidden in composite
       strip.text          = if (isTRUE(show_color_legend)) {
-        element_text(face = "bold", size = 9)
+        element_text(face = "bold", size = 7)
       } else {
         element_blank()
       },
@@ -1206,13 +1207,13 @@ plot_rose <- function(res, palette, show_color_legend = TRUE) {
       } else {
         element_blank()
       },
-      axis.text.x         = element_text(size = 7.5),
+      axis.text.x         = element_text(size = 6),
       axis.text.y         = element_blank(),
       axis.ticks.y        = element_blank(),
       legend.position     = legend_pos,
-      legend.key.size     = unit(0.45, "cm"),
-      legend.text         = element_text(size = 8),
-      legend.title        = element_text(size = 8.5, face = "bold")
+      legend.key.size     = unit(0.32, "cm"),
+      legend.text         = element_text(size = 6.5),
+      legend.title        = element_text(size = 7, face = "bold")
     )
 }
 
@@ -1421,9 +1422,9 @@ if (length(rows_valid) > 0) {
     p_rose <- make_rose_for_composite(res_circ)
     if (is.null(p_coia) || is.null(p_len) || is.null(p_rose)) return(NULL)
     
-    p1 <- strip_margin(p_coia)    + labs(tag = tags[1]) + theme(plot.tag = element_text(size = 11, face = "bold"))
-    p2 <- get_len_plot(p_len)     + labs(tag = tags[2]) + theme(plot.tag = element_text(size = 11, face = "bold"))
-    p3 <- p_rose                  + labs(tag = tags[3]) + theme(plot.tag = element_text(size = 11, face = "bold"))
+    p1 <- strip_margin(p_coia)    + labs(tag = tags[1]) + theme(plot.tag = element_text(size = 8, face = "bold"))
+    p2 <- get_len_plot(p_len)     + labs(tag = tags[2]) + theme(plot.tag = element_text(size = 8, face = "bold"))
+    p3 <- p_rose                  + labs(tag = tags[3]) + theme(plot.tag = element_text(size = 8, face = "bold"))
     
     (p1 | p2 | p3) + plot_layout(widths = c(5, 2, 2))
   }
@@ -1454,7 +1455,7 @@ if (length(rows_valid) > 0) {
   p_external   <- wrap_elements(full = grob_img) +
     labs(tag = next_tag) +
     theme(
-      plot.tag    = element_text(size = 11, face = "bold"),
+      plot.tag    = element_text(size = 8, face = "bold"),
       plot.margin = margin(0, 0, 0, 0)
     )
   

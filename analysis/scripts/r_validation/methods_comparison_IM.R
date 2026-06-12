@@ -272,8 +272,8 @@ dist_all_upper <- dist_all %>%
   dplyr::filter(as.numeric(From) < as.numeric(To))
 
 p_heatmap <- ggplot(dist_all_upper, aes(x = To, y = From, fill = distance)) +
-  geom_tile(color = "white", linewidth = 0.3) +
-  geom_text(aes(label = sprintf("%.1f", distance)), size = 2.2) +
+  geom_tile(color = "white", linewidth = 0.25) +
+  geom_text(aes(label = sprintf("%.1f", distance)), size = 1.9) +
   facet_wrap(~ method, ncol = 3) +
   scale_fill_gradient2(
     low      = "#5C7F71",
@@ -284,10 +284,13 @@ p_heatmap <- ggplot(dist_all_upper, aes(x = To, y = From, fill = distance)) +
   ) +
   scale_x_discrete(guide = guide_axis(angle = 45)) +
   scale_y_discrete(limits = rev) +
-  theme_bw(base_size = 8) +
+  theme_bw(base_size = 7) +
   labs(x = NULL, y = NULL) +
   theme(
-    strip.text       = element_text(face = "bold", size = 9),
+    strip.text       = element_text(face = "bold", size = 7.5),
     strip.background = element_rect(fill = "#EBEBEB", color = "#EBEBEB"),
-    axis.text        = element_text(size = 6.5)
+    axis.text        = element_text(size = 5.5),
+    legend.title     = element_text(size = 7),
+    legend.text      = element_text(size = 6),
+    legend.key.size  = unit(0.32, "cm")
   )

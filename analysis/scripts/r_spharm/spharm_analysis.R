@@ -267,14 +267,14 @@ print(dunn_SPI)
 p_SPI_box <- ggplot(results_typed,
                     aes(x = factor(Typology, levels = TYPOLOGY_ORDER),
                         y = SPI, fill = Typology, color = Typology)) +
-  geom_boxplot(outlier.shape = 21, outlier.size = 2.5,
-               alpha = 0.25, linewidth = 0.5) +
-  geom_jitter(width = 0.15, size = 2.5, alpha = 0.7, shape = 16) +
+  geom_boxplot(outlier.shape = 21, outlier.size = 1.6,
+               alpha = 0.25, linewidth = 0.35) +
+  geom_jitter(width = 0.15, size = 1.6, alpha = 0.7, shape = 16) +
   stat_summary(fun = mean, geom = "point",
-               shape = 16, size = 4, color = "white") +
+               shape = 16, size = 2.4, color = "white") +
   annotate("text", x = Inf, y = Inf,
            label = "SPI: Kruskal-Wallis\nP < 0.001",
-           hjust = 1.05, vjust = 1.2, size = 4, color = "grey40") +
+           hjust = 1.05, vjust = 1.2, size = 2.6, color = "grey40") +
   scale_fill_manual(values  = TYPOLOGY_COLORS) +
   scale_color_manual(values = TYPOLOGY_COLORS) +
   scale_x_discrete(
@@ -289,11 +289,11 @@ p_SPI_box <- ggplot(results_typed,
     expand = expansion(add = 0.6)
   ) +
   scale_y_continuous(limits = c(0.08, 1.0), breaks = seq(0.0, 1.0, by = 0.1)) +
-  theme_bw() +
+  theme_bw(base_size = 8) +
   theme(
     panel.grid     = element_blank(),
-    axis.text.x    = element_text(size = 9.5),
-    axis.text.y    = element_text(size = 9.5),
+    axis.text.x    = element_text(size = 7),
+    axis.text.y    = element_text(size = 7),
     legend.position = "none"
   ) +
   labs(x = NULL, y = "SPI")
@@ -353,7 +353,7 @@ p_benn <- ggtern(
     aes(group = Typology),
     alpha = 0.25, color = NA
   ) +
-  geom_point(size = 1.8, alpha = 0.85, shape = 16) +
+  geom_point(size = 1.3, alpha = 0.85, shape = 16) +
   scale_color_manual(values = TYPOLOGY_COLORS) +
   scale_fill_manual(values  = TYPOLOGY_COLORS) +
   labs(
@@ -367,17 +367,17 @@ p_benn <- ggtern(
   theme(
     tern.panel.grid.major = element_line(color = "grey85", linewidth = 0.15, linetype = "dashed"),
     tern.panel.grid.minor = element_line(color = "grey85", linewidth = 0.15, linetype = "dashed"),
-    tern.axis.title.T     = element_text(size = 10, color = "grey20"),
-    tern.axis.title.L     = element_text(size = 10, color = "grey20"),
-    tern.axis.title.R     = element_text(size = 10, color = "grey20"),
-    tern.axis.text.T = element_text(size = 9),
-    tern.axis.text.L = element_text(size = 9),
-    tern.axis.text.R = element_text(size = 9),
+    tern.axis.title.T     = element_text(size = 7, color = "grey20"),
+    tern.axis.title.L     = element_text(size = 7, color = "grey20"),
+    tern.axis.title.R     = element_text(size = 7, color = "grey20"),
+    tern.axis.text.T = element_text(size = 6),
+    tern.axis.text.L = element_text(size = 6),
+    tern.axis.text.R = element_text(size = 6),
     legend.position       = "right",
-    legend.title          = element_text(size = 11, color = "grey40", 
-                                         margin = margin(b = 10)),
-    legend.text           = element_text(size = 10, color = "grey40"),
-    legend.key.size       = unit(1, "lines"),
+    legend.title          = element_text(size = 7, color = "grey40",
+                                         margin = margin(b = 6)),
+    legend.text           = element_text(size = 6.5, color = "grey40"),
+    legend.key.size       = unit(0.7, "lines"),
     legend.background     = element_rect(fill = "transparent", colour = NA),
     legend.box.background = element_rect(fill = "transparent", colour = NA),
     plot.margin           = ggplot2::margin(2, 2, 2, 2)
@@ -453,13 +453,13 @@ p_bubble <- ggplot(
   aes(x = Method, y = Pair)
 ) +
   geom_point(aes(fill = Sig),
-             shape = 21, size = 10, color = "white", stroke = 0.1, alpha = 0.7) +
+             shape = 21, size = 6, color = "white", stroke = 0.1, alpha = 0.7) +
   geom_text(aes(label = case_when(
     Sig == "p ≤ 0.001" ~ "***",
     Sig == "p ≤ 0.01"  ~ "**",
     TRUE               ~ "*"
   ), color = Sig),
-  size = 5, fontface = "bold") +
+  size = 3.2, fontface = "bold") +
   scale_fill_manual(values  = c("p ≤ 0.001" = "#802520",
                                 "p ≤ 0.01"  = "#B26538",
                                 "p ≤ 0.05"  = "#BA8530"),
@@ -471,14 +471,14 @@ p_bubble <- ggplot(
   scale_x_discrete(position = "top", limits = method_levels) +
   scale_y_discrete(position = "right", limits = levels(plot_data$Pair),
                    expand = expansion(add = 0.6)) +
-  theme_bw() +
+  theme_bw(base_size = 8) +
   theme(
-    panel.grid.major = element_line(color = "gray50", linewidth = 0.35,
+    panel.grid.major = element_line(color = "gray50", linewidth = 0.3,
                                     linetype = "dashed"),
     panel.grid.minor = element_blank(),
-    axis.text.x      = element_text(face = "bold", size = 10, hjust = 0.5,
+    axis.text.x      = element_text(face = "bold", size = 7.5, hjust = 0.5,
                                     margin = ggplot2::margin(b = 4)),
-    axis.text.y      = element_text(size = 10, hjust = 0,
+    axis.text.y      = element_text(size = 7.5, hjust = 0,
                                     margin = ggplot2::margin(r = -1)),
     axis.title       = element_blank(),
     legend.position  = "none",
@@ -510,16 +510,16 @@ hull_dir <- res_dir$scores %>%
 
 p_dir_plot <- ggplot(res_dir$scores,
                      aes(x = LD1, y = LD2, color = Typology)) +
-  geom_hline(yintercept = 0, color = "grey50", linewidth = 0.35, linetype = "dashed") +
-  geom_vline(xintercept = 0, color = "grey50", linewidth = 0.35, linetype = "dashed") +
+  geom_hline(yintercept = 0, color = "grey50", linewidth = 0.25, linetype = "dashed") +
+  geom_vline(xintercept = 0, color = "grey50", linewidth = 0.25, linetype = "dashed") +
   annotate("text", x = Inf, y = Inf,
            label = "SP-SPHARM: PERMANOVA\nP = 0.001",
-           hjust = 1.05, vjust = 1.2, size = 4, color = "grey40") +
+           hjust = 1.05, vjust = 1.2, size = 2.6, color = "grey40") +
   geom_polygon(data = hull_dir, aes(fill = Typology, group = Typology),
                alpha = 0.25, color = NA) +
   geom_polygon(data = hull_dir, aes(color = Typology, group = Typology),
                fill = NA, linewidth = 0.01) +
-  geom_point(size = 2.0, alpha = 0.88, stroke = 0.3, shape = 16) +
+  geom_point(size = 1.4, alpha = 0.88, stroke = 0.25, shape = 16) +
   scale_color_manual(values = TYPOLOGY_COLORS) +
   scale_fill_manual(values  = TYPOLOGY_COLORS) +
   scale_x_continuous(limits = c(-2.5, 4.5), expand = expansion(mult = 0.08),
@@ -528,7 +528,7 @@ p_dir_plot <- ggplot(res_dir$scores,
                      breaks = seq(-5, 3, by = 1)) +
   labs(x = sprintf("LD1 (%.1f%%)", res_dir$prop_var[1] * 100),
        y = sprintf("LD2 (%.1f%%)", res_dir$prop_var[2] * 100)) +
-  theme_bw() +
+  theme_bw(base_size = 8) +
   theme(panel.grid = element_blank(), legend.position = "none")
 
 left_col <- (p_SPI_box / p_benn_wrap / p_dir_plot) +
@@ -538,5 +538,5 @@ exp_method_compare_combined <- (left_col | p_bubble) +
   plot_layout(ncol = 2, widths = c(1, 0.5)) +
   plot_annotation(
     tag_levels = "a",
-    theme = theme(plot.tag = element_text(face = "bold"))
+    theme = theme(plot.tag = element_text(face = "bold", size = 9))
   )

@@ -60,29 +60,29 @@ bland_altman_calc <- function(x, y) {
 plot_ba <- function(ba, title_str, x_label = "Mean", y_label = "Difference") {
   ggplot(ba$df, aes(x = mean, y = diff)) +
     geom_hline(yintercept = ba$bias,      color = "#802520",
-               linewidth = 0.9, linetype = "dashed") +
+               linewidth = 0.6, linetype = "dashed") +
     geom_hline(yintercept = ba$loa_upper, color = "#5C7F71",
-               linewidth = 0.7, linetype = "dotted") +
+               linewidth = 0.45, linetype = "dotted") +
     geom_hline(yintercept = ba$loa_lower, color = "#5C7F71",
-               linewidth = 0.7, linetype = "dotted") +
-    geom_point(size = 2.5, alpha = 0.75, color = "#B8B8B8") +
+               linewidth = 0.45, linetype = "dotted") +
+    geom_point(size = 1.5, alpha = 0.75, color = "#B8B8B8") +
     scale_y_continuous(labels = \(x) formatC(x, format = "e", digits = 1)) +
     annotate("text",
              x = -Inf, y = ba$bias,      hjust = -0.1, vjust = -0.4,
              label = sprintf("Bias = %.2e", ba$bias),
-             color = "#802520", size = 2.8) +
+             color = "#802520", size = 2.0) +
     annotate("text",
              x = -Inf, y = ba$loa_upper, hjust = -0.1, vjust = -0.4,
              label = sprintf("+1.96 SD = %.2e", ba$loa_upper),
-             color = "#5C7F71", size = 2.5) +
+             color = "#5C7F71", size = 1.8) +
     annotate("text",
              x = -Inf, y = ba$loa_lower, hjust = -0.1, vjust =  1.4,
              label = sprintf("-1.96 SD = %.2e", ba$loa_lower),
-             color = "#5C7F71", size = 2.5) +
-    theme_bw(base_size = 9) +
+             color = "#5C7F71", size = 1.8) +
+    theme_bw(base_size = 7) +
     labs(title = title_str, x = x_label, y = y_label) +
-    theme(panel.grid = element_blank(), 
-          plot.title = element_text(face = "bold", size = 9, hjust = 0.5))
+    theme(panel.grid = element_blank(),
+          plot.title = element_text(face = "bold", size = 7, hjust = 0.5))
 }
 
 # --- summary-table helper ---
@@ -428,13 +428,13 @@ p_rot_spharm <- ggplot(ba_combined, aes(x = degree)) +
                   fill = pair),
               alpha = 0.15) +
   geom_line(aes(y = bias, color = pair),
-            linewidth = 1.25) +
+            linewidth = 0.85) +
   geom_hline(yintercept = 0, linetype = "dashed",
              color = "grey50", linewidth = 0.2) +
   scale_color_manual(values = pair_colors) +
   scale_fill_manual(values  = pair_colors) +
   scale_x_continuous(breaks = seq(0, max(ba_combined$degree), by = 1)) +
-  theme_bw(base_size = 10) +
+  theme_bw(base_size = 8) +
   labs(
     x        = "SP-SPHARM power spectra degree (l)",
     y        = "Difference (bias ± 95% LoA)",
@@ -442,11 +442,13 @@ p_rot_spharm <- ggplot(ba_combined, aes(x = degree)) +
     fill     = NULL
   ) +
   theme(
-    panel.grid.major.x = element_line(color = "grey50", linewidth = 0.3, linetype = "dashed"),
+    panel.grid.major.x = element_line(color = "grey50", linewidth = 0.25, linetype = "dashed"),
     panel.grid.major.y = element_blank(),
     panel.grid.minor   = element_blank(),
-    plot.title      = element_text(face = "bold", size = 11, hjust = 0.5),
-    plot.subtitle   = element_text(size = 8.5, hjust = 0.5, color = "grey40"),
+    plot.title      = element_text(face = "bold", size = 8, hjust = 0.5),
+    plot.subtitle   = element_text(size = 7, hjust = 0.5, color = "grey40"),
+    legend.key.size = unit(0.32, "cm"),
+    legend.text     = element_text(size = 6.5),
     legend.position      = c(0.9, 0.2),
     legend.justification = c(0.5, 0.5),
     legend.background    = element_rect(fill = "transparent", colour = NA),
@@ -508,6 +510,6 @@ p_rotational_invariance_validity <- p_rei / p_rot_spharm +
   plot_annotation(
     tag_levels = "a",
     theme = theme(
-      plot.tag = element_text(face = "bold")
+      plot.tag = element_text(face = "bold", size = 9)
     )
   )
