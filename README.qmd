@@ -133,8 +133,8 @@ git clone https://github.com/PeiyuanXiao/SPHARM_analysis.git
 or download the ZIP from GitHub (green `< > Code` button →
 `Download ZIP`) and unzip it.
 
-**Step 3 — Add the 3D models.** Download `3D_models_cores` from the data
-archive (see [Data](#data)) and place the `.stl` files in
+**Step 3 — Add the 3D models.** Download `3D_models_cores` from the [data
+archive](https://doi.org/10.17605/OSF.IO/d82c) (see [Data](#data)) and place the `.stl` files in
 `analysis/data/3D_models_cores/`.
 
 **Step 4 — Build the Docker image.** Run the following from the project
