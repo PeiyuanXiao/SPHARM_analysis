@@ -453,7 +453,7 @@ p_bubble <- ggplot(
   aes(x = Method, y = Pair)
 ) +
   geom_point(aes(fill = Sig),
-             shape = 21, size = 6, color = "white", stroke = 0.1, alpha = 0.7) +
+             shape = 21, size = 7, color = "white", stroke = 0.1, alpha = 0.7) +
   geom_text(aes(label = case_when(
     Sig == "p ≤ 0.001" ~ "***",
     Sig == "p ≤ 0.01"  ~ "**",
@@ -538,5 +538,5 @@ exp_method_compare_combined <- (left_col | p_bubble) +
   plot_layout(ncol = 2, widths = c(1, 0.5)) +
   plot_annotation(
     tag_levels = "a",
-    theme = theme(plot.tag = element_text(face = "bold", size = 9))
+    theme = theme(plot.tag = element_text(face = "bold", size = 7))
   )

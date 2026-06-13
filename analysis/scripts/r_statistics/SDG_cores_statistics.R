@@ -599,7 +599,7 @@ make_coia_biplot <- function(group_col, group_label, palette,
     )
   
   endpoint_shapes <- c("Morphology" = 21, "Scar direction" = 24)
-  endpoint_sizes  <- c("Morphology" = 2.0, "Scar direction" = 1.7)
+  endpoint_sizes  <- c("Morphology" = 1, "Scar direction" = 1.3)
   
   p <- ggplot() +
     geom_hline(yintercept = 0, linetype = "dashed", color = "grey70", linewidth = 0.25) +
@@ -642,7 +642,7 @@ make_coia_biplot <- function(group_col, group_label, palette,
       shape = guide_legend(order = 2,
                            override.aes = list(fill  = "grey60",
                                                color = "grey30",
-                                               size  = c(2.0, 1.7)),
+                                               size  = c(1, 1.3)),
                            title = "Endpoint"),
       size  = "none"
     ) +
@@ -1176,7 +1176,7 @@ plot_rose <- function(res, palette, show_color_legend = TRUE) {
       aes(label = label),
       x = 170, y = Inf,
       hjust = 0.8, vjust = 1.4,
-      size = 2.2, color = "grey35",
+      size = 2, color = "grey35",
       inherit.aes = FALSE
     ) +
     scale_x_continuous(

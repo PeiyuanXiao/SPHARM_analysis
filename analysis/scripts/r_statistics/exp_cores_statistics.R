@@ -575,7 +575,7 @@ scores_long_plot <- bind_rows(
   )
 
 endpoint_shapes <- c("Morphology" = 21, "Scar direction" = 24)
-endpoint_sizes  <- c("Morphology" = 2.0, "Scar direction" = 1.7)
+endpoint_sizes  <- c("Morphology" = 2, "Scar direction" = 1.7)
 
 p_cia_biplot <-
   ggplot() +
@@ -612,7 +612,7 @@ p_cia_biplot <-
     fill  = "none",
     shape = guide_legend(order = 2,
                          override.aes = list(fill = "grey60", color = "grey30",
-                                             size = c(2.0, 1.7)),
+                                             size = c(2, 1.7)),
                          title = "Endpoint"),
     size  = "none"
   ) +
