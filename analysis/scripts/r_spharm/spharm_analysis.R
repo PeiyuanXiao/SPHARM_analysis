@@ -501,7 +501,11 @@ cat("Saved: SPHARM_morphology_filter.rds\n")
 # 7. Combined panel: three left plots + bubble plot
 # ==============================================================================
 benn_grob <- ggplotGrob(p_benn)
-p_benn_wrap <- wrap_elements(full = benn_grob)
+# wrap_elements() holds a raw grob, so the global plot.tag size from
+# plot_annotation() does not reach it (it falls back to the ggtern-modified
+# default theme, making tag "b" oversized). Set the tag size explicitly here.
+p_benn_wrap <- wrap_elements(full = benn_grob) +
+  theme(plot.tag = element_text(size = 9, face = "bold"))
 
 hull_dir <- res_dir$scores %>%
   group_by(Typology) %>%
@@ -538,5 +542,5 @@ exp_method_compare_combined <- (left_col | p_bubble) +
   plot_layout(ncol = 2, widths = c(1, 0.5)) +
   plot_annotation(
     tag_levels = "a",
-    theme = theme(plot.tag = element_text(face = "bold", size = 7))
+    theme = theme(plot.tag = element_text(face = "bold", size = 9))
   )

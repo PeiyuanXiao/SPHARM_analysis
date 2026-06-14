@@ -599,7 +599,7 @@ make_coia_biplot <- function(group_col, group_label, palette,
     )
   
   endpoint_shapes <- c("Morphology" = 21, "Scar direction" = 24)
-  endpoint_sizes  <- c("Morphology" = 1, "Scar direction" = 1.3)
+  endpoint_sizes  <- c("Morphology" = 1.2, "Scar direction" = 1.3)
   
   p <- ggplot() +
     geom_hline(yintercept = 0, linetype = "dashed", color = "grey70", linewidth = 0.25) +
@@ -619,8 +619,10 @@ make_coia_biplot <- function(group_col, group_label, palette,
           size  = endpoint),
       stroke = 0.4, alpha = 0.90
     ) +
-    scale_color_manual(values = palette, name = group_label, breaks = lvls) +
-    scale_fill_manual(values  = palette, name = group_label, breaks = lvls) +
+    scale_color_manual(values = palette, name = group_label, breaks = lvls,
+                       labels = function(x) gsub("_", " ", x)) +
+    scale_fill_manual(values  = palette, name = group_label, breaks = lvls,
+                      labels = function(x) gsub("_", " ", x)) +
     scale_shape_manual(values = endpoint_shapes, name = "Endpoint") +
     scale_size_manual(values  = endpoint_sizes,  name = "Endpoint") +
     theme_bw(base_size = 8) +
@@ -1138,9 +1140,9 @@ plot_rose <- function(res, palette, show_color_legend = TRUE) {
   rayleigh_labels <- res$rayleigh %>%
     mutate(
       label = case_when(
-        rayleigh_p < 0.001 ~ "Rayleigh\nP < 0.001",
-        rayleigh_p < 0.05  ~ sprintf("Rayleigh\nP = %.3f", rayleigh_p),
-        TRUE               ~ sprintf("Rayleigh\nP = %.3f", rayleigh_p)
+        rayleigh_p < 0.001 ~ "Rayleigh P < 0.001",
+        rayleigh_p < 0.05  ~ sprintf("Rayleigh P = %.3f", rayleigh_p),
+        TRUE               ~ sprintf("Rayleigh P = %.3f", rayleigh_p)
       ),
       !!group_col := factor(group, levels = levels(kde_df[[group_col]]))
     )
@@ -1174,9 +1176,9 @@ plot_rose <- function(res, palette, show_color_legend = TRUE) {
     geom_text(
       data = rayleigh_labels,
       aes(label = label),
-      x = 170, y = Inf,
-      hjust = 0.8, vjust = 1.4,
-      size = 2, color = "grey35",
+      x = 160, y = Inf,
+      hjust = 1, vjust = 1.4,
+      size = 2.4, color = "grey35",
       inherit.aes = FALSE
     ) +
     scale_x_continuous(
@@ -1422,9 +1424,9 @@ if (length(rows_valid) > 0) {
     p_rose <- make_rose_for_composite(res_circ)
     if (is.null(p_coia) || is.null(p_len) || is.null(p_rose)) return(NULL)
     
-    p1 <- strip_margin(p_coia)    + labs(tag = tags[1]) + theme(plot.tag = element_text(size = 8, face = "bold"))
-    p2 <- get_len_plot(p_len)     + labs(tag = tags[2]) + theme(plot.tag = element_text(size = 8, face = "bold"))
-    p3 <- p_rose                  + labs(tag = tags[3]) + theme(plot.tag = element_text(size = 8, face = "bold"))
+    p1 <- strip_margin(p_coia)    + labs(tag = tags[1]) + theme(plot.tag = element_text(size = 9, face = "bold"))
+    p2 <- get_len_plot(p_len)     + labs(tag = tags[2]) + theme(plot.tag = element_text(size = 9, face = "bold"))
+    p3 <- p_rose                  + labs(tag = tags[3]) + theme(plot.tag = element_text(size = 9, face = "bold"))
     
     (p1 | p2 | p3) + plot_layout(widths = c(5, 2, 2))
   }
@@ -1455,7 +1457,7 @@ if (length(rows_valid) > 0) {
   p_external   <- wrap_elements(full = grob_img) +
     labs(tag = next_tag) +
     theme(
-      plot.tag    = element_text(size = 8, face = "bold"),
+      plot.tag    = element_text(size = 9, face = "bold"),
       plot.margin = margin(0, 0, 0, 0)
     )
   

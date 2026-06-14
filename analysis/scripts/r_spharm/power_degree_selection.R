@@ -167,20 +167,34 @@ degree_plot_df <- bind_rows(
 ) %>%
   mutate(descriptor = factor(descriptor, levels = c("M-SPHARM", "SP-SPHARM")))
 
-make_cv_panel <- function(ds) {
-  ggplot(filter(degree_plot_df, dataset == ds),
+# dataset label shown in a panel corner (replaces the EXP/SDG y-axis prefix)
+ds_label <- function(ds) if (identical(ds, "EXP")) "Experimental cores" else "Sandinggai cores"
+
+# red dashed vertical lines marking the retained truncation degrees (l = 6, 8)
+trunc_lines <- geom_vline(xintercept = c(6, 8), color = "red",
+                          linetype = "dashed", linewidth = 0.3)
+
+make_cv_panel <- function(ds, y_nbreaks = NULL) {
+  p <- ggplot(filter(degree_plot_df, dataset == ds),
          aes(degree, cv_pct, color = descriptor)) +
     geom_hline(yintercept = 100, linetype = "dashed",
                color = "grey55", linewidth = 0.3) +
+    trunc_lines +
     geom_line(linewidth = 0.6) +
     geom_point(size = 1.4) +
+    annotate("text", x = -Inf, y = 100, label = "CV = 100%",
+             hjust = -0.06, vjust = -0.4, size = 2.6, color = "grey40") +
+    annotate("text", x = -Inf, y = Inf, label = ds_label(ds),
+             hjust = -0.06, vjust = 1.5, size = 3, fontface = "bold") +
     scale_color_manual(values = DESCRIPTOR_COLORS) +
     scale_x_continuous(breaks = seq(2, 20, 2)) +
     labs(x = "Spherical harmonic degree (l)",
-         y = sprintf("%s: across-specimen CV (%%)", ds),
+         y = "Across-specimen CV (%)",
          color = NULL) +
     theme_bw(base_size = 11) +
     theme(panel.grid.minor = element_blank())
+  if (!is.null(y_nbreaks)) p <- p + scale_y_continuous(n.breaks = y_nbreaks)
+  p
 }
 
 make_cumulative_panel <- function(ds) {
@@ -188,24 +202,31 @@ make_cumulative_panel <- function(ds) {
          aes(degree, cumul_pct, color = descriptor)) +
     geom_hline(yintercept = c(95, 99), linetype = "dashed",
                color = "grey55", linewidth = 0.3) +
+    trunc_lines +
     geom_line(linewidth = 0.6) +
     geom_point(size = 1.4) +
+    annotate("text", x = -Inf, y = 99, label = "Power = 99%",
+             hjust = -0.06, vjust = -0.4, size = 2.6, color = "grey40") +
+    annotate("text", x = -Inf, y = 95, label = "Power = 95%",
+             hjust = -0.06, vjust = 1.4, size = 2.6, color = "grey40") +
+    annotate("text", x = Inf, y = -Inf, label = ds_label(ds),
+             hjust = 1.06, vjust = -0.7, size = 3, fontface = "bold") +
     scale_color_manual(values = DESCRIPTOR_COLORS) +
     scale_x_continuous(breaks = seq(2, 20, 2)) +
     labs(x = "Spherical harmonic degree (l)",
-         y = sprintf("%s: cumulative power (%%)", ds),
+         y = "Cumulative power (%)",
          color = NULL) +
     theme_bw(base_size = 11) +
     theme(panel.grid.minor = element_blank())
 }
 
 p_degree_selection <- (
-  (make_cv_panel("EXP") | make_cumulative_panel("EXP")) /
-    (make_cv_panel("SDG") | make_cumulative_panel("SDG"))
+  (make_cv_panel("EXP")              | make_cumulative_panel("EXP")) /
+    (make_cv_panel("SDG", y_nbreaks = 10) | make_cumulative_panel("SDG"))
 ) +
   plot_layout(guides = "collect") +
   plot_annotation(tag_levels = "a",
-                  theme = theme(plot.tag = element_text(face = "bold")))
+                  theme = theme(plot.tag = element_text(face = "bold", size = 14)))
 p_degree_selection <- p_degree_selection & theme(legend.position = "bottom")
 
 cat("\n========== Degree-selection diagnostic complete ==========\n")

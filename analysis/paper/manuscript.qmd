@@ -423,11 +423,15 @@ Future work should focus on expanding sample sizes and assemblage diversity, and
 
 ## Funding
 
+This work was financially supported through the National Natural Science Foundation of China (No. xx), and China Scholarship Council Programme for international students (CSC No. 202504910326).
+
 ## Competing Interests
 
 The authors declare that they have no known competing financial interests or personal relationships that could have appeared to influence the work reported in this paper.
 
 ## Author Contributions
+
+Peiyuan Xiao: Conceptualization, Data curation, Formal analysis, Investigation, Methodology, Software, Validation, Visualization, Writing – original draft. Hao Li: Funding acquisition, Resources, Supervision, Writing – review & editing. Ben Marwick: Conceptualization, Methodology, Software, Supervision, Validation, Writing – review & editing.
 
 ## Data Availability
 

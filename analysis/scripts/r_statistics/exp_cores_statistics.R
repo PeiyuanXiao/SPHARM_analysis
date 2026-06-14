@@ -603,8 +603,8 @@ p_cia_biplot <-
   scale_size_manual(values  = endpoint_sizes,  name = "Endpoint") +
   theme_bw(base_size = 8) +
   labs(
-    x = sprintf("Axis1(%.1f%%)", cia_inertia[1]),
-    y = sprintf("Axis2(%.1f%%)", cia_inertia[2])
+    x = sprintf("CoIA Axis1 (%.1f%%)", cia_inertia[1]),
+    y = sprintf("CoIA Axis2 (%.1f%%)", cia_inertia[2])
   ) +
   guides(
     color = guide_legend(order = 1, override.aes = list(shape = 21, size = 2),
@@ -620,8 +620,8 @@ p_cia_biplot <-
     panel.grid.major.x = element_blank(),
     panel.grid.major.y = element_blank(),
     panel.grid.minor   = element_blank(),
-    legend.position   = c(0.01, 0.01),
-    legend.justification = c(0, 0),
+    legend.position   = c(0.01, 0.99),
+    legend.justification = c(0, 1),
     legend.background = element_rect(fill = alpha("white", 0.75),
                                      color = "grey80", linewidth = 0.3),
     legend.key.size   = unit(0.32, "cm"),
@@ -1319,7 +1319,13 @@ p_composite <- (
 
 # Step 3: tag the external image as D
 external_img <- png::readPNG(here("asset/Axis_trajectory.png"))
-grob_img     <- grid::rasterGrob(external_img, interpolate = TRUE)
+# Place the image so its frame spans the same left/right (43..996 px of a
+# 1027 px-wide render) as the panels above: width = 0.949 npc, centred at
+# x = 0.5055 npc of the full-width cell. Width-constrained, so the right edge
+# stays aligned regardless of the PNG's exact aspect ratio (target W:H ~= 2.95).
+grob_img     <- grid::rasterGrob(external_img, interpolate = TRUE,
+                                 x     = grid::unit(0.5055, "npc"),
+                                 width = grid::unit(0.949,  "npc"))
 p_external   <- wrap_elements(full = grob_img) +
   labs(tag = "d") +
   theme(
