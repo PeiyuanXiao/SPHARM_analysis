@@ -8,6 +8,7 @@
 *.las
 *.laz
 **/3D_models_cores/
+**/3D_models_cores.zip
 
 # ==============================================================================
 # Generated data — all reproducible via tar_make()

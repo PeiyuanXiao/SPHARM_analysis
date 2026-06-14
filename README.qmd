@@ -105,19 +105,18 @@ statistical results are included in this repository under
 
 The 3D core meshes (`.stl` files) are too large for version control and
 are archived separately in the project's public OSF repository
-(<https://doi.org/10.17605/OSF.IO/d82c5>). On OSF, download the
-`3D_models_cores` folder (OSF packages it as a `.zip`); unzip it and move
-it so that the `.stl` files sit **directly** in:
+(<https://doi.org/10.17605/OSF.IO/d82c5>). Download `3D_models_cores.zip`
+from OSF and unzip it into `analysis/data/` — the archive contains a
+`3D_models_cores/` folder, so the meshes land at:
 
 ```
 analysis/data/3D_models_cores/
 ```
 
 so that each core mesh (e.g. `EXP01_Levallois preferential.stl`) sits
-directly in that folder, with no extra nested sub-folder. (If you instead
-download the entire OSF storage, it arrives as `osfstorage-archive.zip`
-and the meshes are nested under `osfstorage-archive/3D_models_cores/` —
-move that inner folder's contents to the path above.)
+directly in that folder. (If the zip expands into a `3D_models_cores/`
+sub-folder, move that sub-folder's contents up one level so the `.stl`
+files end up directly in the path above.)
 
 ------------------------------------------------------------------------
 

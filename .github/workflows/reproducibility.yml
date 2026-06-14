@@ -75,9 +75,17 @@ jobs:
           # Public OSF project (https://doi.org/10.17605/OSF.IO/d82c5); no token needed.
           URL="https://files.osf.io/v1/resources/${OSF_NODE}/providers/osfstorage/?zip="
           echo "Downloading meshes from public OSF node ${OSF_NODE} ..."
-          curl -fsSL --retry 3 --retry-delay 5 "$URL" -o models.zip
-          unzip -o -q models.zip -d "$DEST"
-          rm -f models.zip
+          curl -fsSL --retry 3 --retry-delay 5 "$URL" -o osf_storage.zip
+          # The OSF storage holds the meshes inside a 3D_models_cores.zip, so the
+          # whole-storage download is a zip-of-zip: unzip the outer archive, unzip
+          # any nested .zip it contains, then flatten every .stl into DEST.
+          rm -rf osf_tmp && mkdir -p osf_tmp
+          unzip -o -q osf_storage.zip -d osf_tmp
+          find osf_tmp -iname '*.zip' -print0 | while IFS= read -r -d '' z; do
+            unzip -o -q "$z" -d "$(dirname "$z")" && rm -f "$z"
+          done
+          find osf_tmp -iname '*.stl' -exec mv -t "$DEST" {} +
+          rm -rf osf_storage.zip osf_tmp
           COUNT=$(find "$DEST" -iname '*.stl' | wc -l)
           echo "Downloaded ${COUNT} .stl files into ${DEST}"
           if [ "$COUNT" -eq 0 ]; then
