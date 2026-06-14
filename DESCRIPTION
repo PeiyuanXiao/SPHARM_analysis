@@ -16,6 +16,9 @@ Description: Research compendium with the data and code to reproduce the
     analysis of core meshes and scar-orientation kernel-density estimates,
     and R statistical analysis, orchestrated as a single reproducible
     'targets' pipeline.
+Imports:
+    quarto,
+    visNetwork
 License: MIT + file LICENSE
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)

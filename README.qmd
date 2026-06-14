@@ -164,16 +164,16 @@ Alternatively, with plain Docker:
 
 *Linux/macOS:*
 ```
-docker run -d -p 8787:8787 -v $(pwd):/project -w /project -e PASSWORD=spharm spharm_analysis
+docker run -d -p 8787:8787 -v $(pwd):/project -w /project -e PASSWORD=rstudio spharm_analysis
 ```
 
 *Windows (Git Bash):*
 ```
-MSYS_NO_PATHCONV=1 docker run -d -p 8787:8787 -v $(pwd):/project -w /project -e PASSWORD=spharm spharm_analysis
+MSYS_NO_PATHCONV=1 docker run -d -p 8787:8787 -v $(pwd):/project -w /project -e PASSWORD=rstudio spharm_analysis
 ```
 
 **Step 6 — Open RStudio.** Navigate to <http://localhost:8787/> in your
-browser and log in with username `rstudio` and password `spharm`. The
+browser and log in with username `rstudio` and password `rstudio`. The
 project opens automatically at `/project`.
 
 **Step 7 — Run the full pipeline.** In the R console:
@@ -204,12 +204,6 @@ pipeline. After `tar_make()` completes, render it to a Word document:
 
 ```
 quarto render analysis/paper/manuscript.qmd --to docx
-```
-
-Alternatively, open `analysis/paper/manuscript.qmd` in RStudio and run:
-
-```r
-quarto::quarto_render("analysis/paper/manuscript.qmd")
 ```
 
 **Step 9 — View the output:**

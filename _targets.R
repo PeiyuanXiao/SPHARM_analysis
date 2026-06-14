@@ -205,12 +205,14 @@ list(
   tar_target(
     align_svd_csvs,
     local({
+      cli::cli_alert_info("Stage 1 - Align scar vectors (SVD)")
       source(here::here("analysis/scripts/r_alignment/align_svd.R"),
              local = TRUE)
       c(here::here("analysis/data/derived_data/directions_raw.csv"),
         here::here("analysis/data/derived_data/directions_aligned_svd.csv"))
     }),
-    format = "file"
+    format = "file",
+    description = "Stage 1 - Align scar vectors (SVD)"
   ),
   
   # align_lin2024.R: Lin 2024 alignment (validation pipeline only)
@@ -218,11 +220,13 @@ list(
   tar_target(
     align_lin2024_csv,
     local({
+      cli::cli_alert_info("Stage 1 - Align scar vectors (Lin 2024, validation)")
       source(here::here("analysis/scripts/r_alignment/align_lin2024.R"),
              local = TRUE)
       here::here("analysis/data/derived_data/directions_aligned_lin2024.csv")
     }),
-    format = "file"
+    format = "file",
+    description = "Stage 1 - Align scar vectors (Lin 2024, validation)"
   ),
   
   # ============================================================================
@@ -232,37 +236,46 @@ list(
   # --- morphology SPHARM: STL -> power spectrum ---
   tar_target(
     spharm_morphology_csv,
-    run_spharm_morphology(
-      "/project/analysis/data/3D_models_cores",
-      "/project/analysis/data/derived_data"
-    ),
-    format = "file"
+    {
+      cli::cli_alert_info("Stage 2 - M-SPHARM: core meshes -> power spectra")
+      run_spharm_morphology(
+        "/project/analysis/data/3D_models_cores",
+        "/project/analysis/data/derived_data"
+      )
+    },
+    format = "file",
+    description = "Stage 2 - M-SPHARM: core meshes -> power spectra"
   ),
   
   # --- direction SPHARM (production): SVD-aligned vectors -> KDE -> power spectrum ---
   tar_target(
     spharm_direction_csv,
     {
+      cli::cli_alert_info("Stage 2 - SP-SPHARM: spherical KDE -> power spectra")
       force(align_svd_csvs)
       run_spharm_direction(source = "svd", validation = FALSE)
     },
-    format = "file"
+    format = "file",
+    description = "Stage 2 - SP-SPHARM: spherical KDE -> power spectra"
   ),
   
   # --- generate rotation-perturbed data (validation) ---
   tar_target(
     rotate_svd_csv,
     {
+      cli::cli_alert_info("Stage 2 - Rotation-perturbed vectors (invariance test)")
       force(align_svd_csvs)
       run_rotate_svd()
     },
-    format = "file"
+    format = "file",
+    description = "Stage 2 - Rotation-perturbed vectors (invariance test)"
   ),
   
   # --- direction SPHARM (validation): four alignments x KDE -> power spectrum ---
   tar_target(
     spharm_direction_validation_csvs,
     {
+      cli::cli_alert_info("Stage 2 - SP-SPHARM validation (4 alignments)")
       force(align_svd_csvs)
       force(align_lin2024_csv)
       force(rotate_svd_csv)
@@ -274,7 +287,8 @@ list(
       )
       unname(csvs)
     },
-    format = "file"
+    format = "file",
+    description = "Stage 2 - SP-SPHARM validation (4 alignments)"
   ),
   
   # ============================================================================
@@ -284,6 +298,7 @@ list(
   tar_target(
     spharm_analysis,
     {
+      cli::cli_alert_info("Stage 3 - Method comparison + PERMANOVA (EXP cores)")
       force(spharm_morphology_csv)
       force(spharm_direction_csv)
       force(align_svd_csvs)
@@ -304,12 +319,14 @@ list(
           p_exp_method_combined = exp_method_compare_combined
         )
       })
-    }
+    },
+    description = "Stage 3 - Method comparison + PERMANOVA (EXP cores)"
   ),
   
   tar_target(
     p_rotational_invariance_validity,
     {
+      cli::cli_alert_info("Stage 3 - Rotational-invariance test")
       force(spharm_direction_validation_csvs)
       force(align_svd_csvs)
       force(align_lin2024_csv)
@@ -319,7 +336,8 @@ list(
                local = TRUE)
         p_rotational_invariance_validity
       })
-    }
+    },
+    description = "Stage 3 - Rotational-invariance test"
   ),
   
   tar_target(
@@ -337,7 +355,8 @@ list(
           p_heatmap   = p_heatmap
         )
       })
-    }
+    },
+    description = "Stage 3 - SPI / fabric / SPHARM comparison (IM)"
   ),
   
   tar_target(
@@ -373,7 +392,8 @@ list(
           kw_arrow_p       = round(res_len_typology$kw$p.value, 3)
         )
       })
-    }
+    },
+    description = "Stage 3 - Experimental cores: CIA / Mantel / circular"
   ),
   
   tar_target(
@@ -471,7 +491,8 @@ list(
           fig_coia_composite = p_final
         )
       })
-    }
+    },
+    description = "Stage 3 - SDG cores: CIA / PERMANOVA / circular"
   ),
 
   # degree-selection diagnostic: per-degree across-specimen CV and cumulative
@@ -488,6 +509,7 @@ list(
                local = TRUE)
         p_degree_selection
       })
-    }
+    },
+    description = "Stage 3 - Degree-selection diagnostic (power-order truncation)"
   )
 )
