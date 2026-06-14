@@ -11,7 +11,7 @@
 #   - analysis/data/derived_data/SPHARM_direction.csv
 #   - analysis/data/derived_data/SPHARM_morphology.csv
 #   - analysis/data/raw_data/SDG_core_metric.xlsx
-#   - asset/Axis_trajectory.png (panel D of the composite figure)
+#   - analysis/figures/Axis_trajectory.png (panel D of the composite figure)
 #
 # Returns (objects): p_final, plus statistics consumed by the paper.
 
@@ -1318,7 +1318,7 @@ p_composite <- (
   plot_layout(heights = c(2.8, 1))
 
 # Step 3: tag the external image as D
-external_img <- png::readPNG(here("asset/Axis_trajectory.png"))
+external_img <- png::readPNG(here("analysis/figures/Axis_trajectory.png"))
 # Place the image so its frame spans the same left/right (43..996 px of a
 # 1027 px-wide render) as the panels above: width = 0.949 npc, centred at
 # x = 0.5055 npc of the full-width cell. Width-constrained, so the right edge

@@ -343,8 +343,9 @@ list(
   tar_target(
     im_comparison,
     {
+      cli::cli_alert_info("Stage 3 - SPI / fabric / SPHARM comparison (IM)")
       force(spharm_direction_csv)
-      
+
       local({
         source(here::here("analysis/scripts/r_validation/methods_comparison_IM.R"),
                local = TRUE)
@@ -362,6 +363,7 @@ list(
   tar_target(
     exp_cia_analysis,
     {
+      cli::cli_alert_info("Stage 3 - Experimental cores: CIA / Mantel / circular")
       force(spharm_morphology_csv)
       force(spharm_direction_csv)
       force(align_svd_csvs)
@@ -399,6 +401,7 @@ list(
   tar_target(
     sdg_cia_analysis,
     {
+      cli::cli_alert_info("Stage 3 - SDG cores: CIA / PERMANOVA / circular")
       force(spharm_morphology_csv)
       force(spharm_direction_csv)
       force(spharm_analysis)
@@ -501,6 +504,7 @@ list(
   tar_target(
     degree_selection_diagnostic,
     {
+      cli::cli_alert_info("Stage 3 - Degree-selection diagnostic (power-order truncation)")
       force(spharm_morphology_csv)
       force(spharm_direction_csv)
 

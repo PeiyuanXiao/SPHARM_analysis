@@ -1579,7 +1579,7 @@ p_composite <- (
   plot_layout(heights = c(2.8, 1))
 
 # 第三步：外部图片加 D 标签
-external_img <- png::readPNG(here("asset/Axis_trajectory.png"))
+external_img <- png::readPNG(here("analysis/figures/Axis_trajectory.png"))
 grob_img     <- grid::rasterGrob(external_img, interpolate = TRUE)
 p_external   <- wrap_elements(full = grob_img) +
   labs(tag = "D") +
