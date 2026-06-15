@@ -31,6 +31,7 @@ analysis/robustness/_targets_store/
 analysis/output/
 *.html
 *.docx
+*.pdf
 figure origin/
 # keep the Word reference template (formatting, not a rendered output)
 !analysis/templates/template.docx

@@ -205,7 +205,7 @@ list(
   tar_target(
     align_svd_csvs,
     local({
-      cli::cli_alert_info("Stage 1 - Align scar vectors (SVD)")
+      cli::cli_h1("Aligning scar-direction vectors (SVD)")
       source(here::here("analysis/scripts/r_alignment/align_svd.R"),
              local = TRUE)
       c(here::here("analysis/data/derived_data/directions_raw.csv"),
@@ -220,7 +220,7 @@ list(
   tar_target(
     align_lin2024_csv,
     local({
-      cli::cli_alert_info("Stage 1 - Align scar vectors (Lin 2024, validation)")
+      cli::cli_h1("Aligning scar vectors with the Lin (2024) method (validation)")
       source(here::here("analysis/scripts/r_alignment/align_lin2024.R"),
              local = TRUE)
       here::here("analysis/data/derived_data/directions_aligned_lin2024.csv")
@@ -237,7 +237,7 @@ list(
   tar_target(
     spharm_morphology_csv,
     {
-      cli::cli_alert_info("Stage 2 - M-SPHARM: core meshes -> power spectra")
+      cli::cli_h1("M-SPHARM: power spectra from 3D core meshes")
       run_spharm_morphology(
         "/project/analysis/data/3D_models_cores",
         "/project/analysis/data/derived_data"
@@ -251,7 +251,7 @@ list(
   tar_target(
     spharm_direction_csv,
     {
-      cli::cli_alert_info("Stage 2 - SP-SPHARM: spherical KDE -> power spectra")
+      cli::cli_h1("SP-SPHARM: spherical KDE -> power spectra of scar directions")
       force(align_svd_csvs)
       run_spharm_direction(source = "svd", validation = FALSE)
     },
@@ -263,7 +263,7 @@ list(
   tar_target(
     rotate_svd_csv,
     {
-      cli::cli_alert_info("Stage 2 - Rotation-perturbed vectors (invariance test)")
+      cli::cli_h1("Rotation-perturbing scar vectors (invariance test)")
       force(align_svd_csvs)
       run_rotate_svd()
     },
@@ -275,7 +275,7 @@ list(
   tar_target(
     spharm_direction_validation_csvs,
     {
-      cli::cli_alert_info("Stage 2 - SP-SPHARM validation (4 alignments)")
+      cli::cli_h1("SP-SPHARM under four alignments (rotation-invariance validation)")
       force(align_svd_csvs)
       force(align_lin2024_csv)
       force(rotate_svd_csv)
@@ -298,7 +298,7 @@ list(
   tar_target(
     spharm_analysis,
     {
-      cli::cli_alert_info("Stage 3 - Method comparison + PERMANOVA (EXP cores)")
+      cli::cli_h1("Method comparison + PERMANOVA (experimental cores)")
       force(spharm_morphology_csv)
       force(spharm_direction_csv)
       force(align_svd_csvs)
@@ -326,7 +326,7 @@ list(
   tar_target(
     p_rotational_invariance_validity,
     {
-      cli::cli_alert_info("Stage 3 - Rotational-invariance test")
+      cli::cli_h1("Testing rotational invariance of SP-SPHARM")
       force(spharm_direction_validation_csvs)
       force(align_svd_csvs)
       force(align_lin2024_csv)
@@ -343,7 +343,7 @@ list(
   tar_target(
     im_comparison,
     {
-      cli::cli_alert_info("Stage 3 - SPI / fabric / SPHARM comparison (IM)")
+      cli::cli_h1("Comparing SPI / fabric / SPHARM (idealized models)")
       force(spharm_direction_csv)
 
       local({
@@ -363,7 +363,7 @@ list(
   tar_target(
     exp_cia_analysis,
     {
-      cli::cli_alert_info("Stage 3 - Experimental cores: CIA / Mantel / circular")
+      cli::cli_h1("Experimental cores: co-inertia, Mantel & circular statistics")
       force(spharm_morphology_csv)
       force(spharm_direction_csv)
       force(align_svd_csvs)
@@ -401,7 +401,7 @@ list(
   tar_target(
     sdg_cia_analysis,
     {
-      cli::cli_alert_info("Stage 3 - SDG cores: CIA / PERMANOVA / circular")
+      cli::cli_h1("SDG cores: co-inertia, PERMANOVA & circular statistics")
       force(spharm_morphology_csv)
       force(spharm_direction_csv)
       force(spharm_analysis)
@@ -504,7 +504,7 @@ list(
   tar_target(
     degree_selection_diagnostic,
     {
-      cli::cli_alert_info("Stage 3 - Degree-selection diagnostic (power-order truncation)")
+      cli::cli_h1("Degree-selection diagnostic (harmonic power-order truncation)")
       force(spharm_morphology_csv)
       force(spharm_direction_csv)
 

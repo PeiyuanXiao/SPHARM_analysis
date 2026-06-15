@@ -1,0 +1,232 @@
+---
+title: "Reproduction Report"
+subtitle: "Every statistical result printed by `targets::tar_make()`. The manuscript reports only a subset for reasons of space; this is the complete record, for review and verification."
+date: now
+date-format: long
+format:
+  html:
+    theme: cosmo
+    toc: true
+    toc-depth: 2
+    toc-location: left
+    embed-resources: true
+    grid:
+      body-width: 1100px
+execute:
+  echo: false
+  warning: false
+  message: false
+---
+
+```{=html}
+<style>
+.module { border: 1px solid #e1e4e8; border-radius: 8px; margin: 1rem 0 1.5rem;
+          background: #fff; box-shadow: 0 1px 2px rgba(27,31,35,.04); }
+.module > summary { cursor: pointer; list-style: none; font-weight: 600;
+          padding: .5rem .9rem; color: #24467a; background: #f6f8fa;
+          border-radius: 8px; }
+.module[open] > summary { border-bottom: 1px solid #e1e4e8; border-radius: 8px 8px 0 0; }
+.module > summary::-webkit-details-marker { display: none; }
+.module > summary::before { content: "▸ "; }
+.module[open] > summary::before { content: "▾ "; }
+pre.results { margin: 0; max-height: 460px; overflow: auto;
+          background: #fbfcfd; border: none; border-radius: 0 0 8px 8px;
+          padding: .8rem 1rem; font-size: .80rem; line-height: 1.5;
+          white-space: pre; }
+p.what { color: #57606a; font-style: italic; margin: .25rem 0 .6rem; }
+h2 { margin-top: 2rem; padding-top: .4rem; }
+</style>
+```
+
+```{r}
+#| label: setup
+#| include: false
+
+# Reproduce the pipeline's package environment so the analysis scripts run
+# exactly as they do inside tar_make(). All package / conflict chatter is
+# suppressed here so it never reaches the report.
+suppressWarnings(suppressMessages(suppressPackageStartupMessages({
+  library(targets)
+  library(tidyverse)
+  library(patchwork)
+  library(here)
+  library(readxl)
+  library(vegan)
+  library(FSA)
+  library(RVAideMemoire)
+  library(ggrepel)
+  library(conflicted)
+  library(linkET)
+  library(compositions)
+  library(ade4)
+  library(circular)
+  library(rsvg)
+  library(png)
+  library(grid)
+  library(htmltools)
+  conflicts_prefer(dplyr::filter)
+  conflicts_prefer(dplyr::select)
+  conflicts_prefer(dplyr::lag)
+  conflicts_prefer(stats::sd)
+  conflicts_prefer(stats::var)
+  conflicts_prefer(stats::dist)
+  conflicts_prefer(stats::cor)
+  conflicts_prefer(stats::cov)
+  conflicts_prefer(stats::anova)
+  conflicts_prefer(graphics::segments)
+  conflicts_prefer(base::norm)
+  conflicts_prefer(base::scale)
+  conflicts_prefer(base::`%*%`)
+  conflicts_prefer(ggplot2::aes)
+  conflicts_prefer(ggplot2::theme_bw)
+  conflicts_prefer(ggplot2::ggsave)
+  conflicts_prefer(ggplot2::annotate)
+  conflicts_prefer(ggplot2::theme_classic)
+  conflicts_prefer(ggplot2::theme_minimal)
+  conflicts_prefer(ggplot2::theme_void)
+  conflicts_prefer(ggplot2::theme_grey)
+  conflicts_prefer(ggplot2::theme_gray)
+  conflicts_prefer(ggplot2::theme_light)
+  conflicts_prefer(ggplot2::theme_dark)
+  conflicts_prefer(ggplot2::theme_linedraw)
+})))
+
+# Print full tables (no "# i N more rows/variables" truncation) and no ANSI
+# colour codes (which would show as garbage inside <pre>).
+options(width = 110, max.print = 1e5,
+        crayon.enabled = FALSE, cli.num_colors = 1,
+        tibble.print_max = Inf, tibble.print_min = Inf,
+        pillar.advice = FALSE, pillar.max_footer_lines = 0,
+        dplyr.summarise.inform = FALSE)
+
+knitr::opts_chunk$set(comment = "", message = FALSE, warning = FALSE)
+
+SCRIPT <- "/project/_targets.R"
+STORE  <- "/project/analysis/paper/_targets"
+
+for (.d in c("analysis/data/derived_data", "analysis/output/figures", "analysis/output/html")) {
+  dir.create(here::here(.d), recursive = TRUE, showWarnings = FALSE)
+}
+
+# Run one analysis script (the same one tar_make() sources for that target),
+# reading the already-computed derived_data CSVs — no Python is re-run — and
+# capture its statistical console output as clean text. Plots go to a null
+# device; conflict/truncation chatter is stripped.
+run_capture <- function(rel) {
+  grDevices::pdf(base::nullfile())
+  on.exit(grDevices::dev.off(), add = TRUE)
+  out <- tryCatch(
+    capture.output(suppressWarnings(suppressMessages(
+      local(source(here::here(rel), local = TRUE))
+    ))),
+    error = function(e) paste("[Could not reproduce this module]", conditionMessage(e))
+  )
+  out <- out[!grepl("Will prefer|\\[conflicted\\]|ℹ", out)]   # conflicted + tibble "i" footers
+  # trim leading / trailing blank lines and collapse runs of >2 blanks
+  out <- out[cumsum(nzchar(trimws(out))) > 0]
+  out <- rev(rev(out)[cumsum(nzchar(trimws(rev(out)))) > 0])
+  paste(out, collapse = "\n")
+}
+
+# Emit a module as a heading (-> appears in the TOC) + one-line description +
+# a collapsible, scrollable panel of its statistical output.
+emit_module <- function(title, what, rel) {
+  body <- htmltools::htmlEscape(run_capture(rel))
+  cat(sprintf("\n\n## %s\n\n", title))
+  cat(sprintf("<p class=\"what\">%s</p>\n", htmltools::htmlEscape(what)))
+  cat(sprintf(
+    "<details class=\"module\" open>\n<summary>Statistical output</summary>\n<pre class=\"results\">%s</pre>\n</details>\n\n",
+    body))
+}
+```
+
+This report gathers the **complete statistical output** that scrolls past in the
+console during `targets::tar_make()`. The article presents only selected
+results; here every test, table, and summary is reproduced in full. Each module
+below re-runs the exact R script `tar_make()` uses for that analysis (reading the
+already-computed power-spectrum tables — no Python is re-run) and shows its
+output in a collapsible panel.
+
+# Pipeline map
+
+`tar_make()` executes in dependency order. The interactive graph and the table
+below show how the modules relate.
+
+```{r}
+#| label: visnetwork
+invisible(capture.output(suppressWarnings(suppressMessages(
+  vn <- targets::tar_visnetwork(targets_only = TRUE, label = "description",
+                                script = SCRIPT, store = STORE,
+                                callr_function = NULL)
+))))
+vn
+```
+
+```{r}
+#| label: tbl-steps
+invisible(capture.output(suppressWarnings(suppressMessages(
+  m <- tryCatch(
+    tar_manifest(fields = c("name", "description"), script = SCRIPT, store = STORE,
+                 callr_function = NULL),
+    error = function(e) NULL)
+))))
+if (!is.null(m)) {
+  knitr::kable(m, col.names = c("Target", "Description"))
+}
+```
+
+# Inputs (data preparation)
+
+Two preparatory steps produce the inputs to the statistics below; they write
+data files rather than printing statistical results, so their console output is
+not reproduced here:
+
+- **Scar-direction alignment** writes the aligned scar vectors to
+  `analysis/data/derived_data/directions_aligned_svd.csv` and
+  `directions_aligned_lin2024.csv`.
+- **Python SPHARM** writes the morphology and scar-direction power spectra to
+  `analysis/data/derived_data/SPHARM_morphology.csv` and
+  `SPHARM_direction.csv`.
+
+# Statistical analyses
+
+```{r}
+#| label: modules
+#| output: asis
+#| fig-show: hide
+
+emit_module(
+  "Method comparison and PERMANOVA (experimental cores)",
+  "Compares SPI, fabric and SPHARM descriptors and tests group differences with PERMANOVA.",
+  "analysis/scripts/r_spharm/spharm_analysis.R")
+
+emit_module(
+  "Comparing SPI / fabric / SPHARM on idealized models",
+  "Quantifies how completely each descriptor separates the idealized core types.",
+  "analysis/scripts/r_validation/methods_comparison_IM.R")
+
+emit_module(
+  "Rotational-invariance validation",
+  "Checks that SP-SPHARM power spectra are invariant to core orientation across alignments.",
+  "analysis/scripts/r_validation/validate_rotation_all.R")
+
+emit_module(
+  "Experimental cores: co-inertia, Mantel and circular statistics",
+  "Co-inertia of morphology versus scar pattern, Mantel tests, and directional (circular) statistics.",
+  "analysis/scripts/r_statistics/exp_cores_statistics.R")
+
+emit_module(
+  "Sandinggai (SDG) cores: co-inertia, PERMANOVA and circular statistics",
+  "The same battery applied to the archaeological assemblage, by core type, raw material and layer.",
+  "analysis/scripts/r_statistics/SDG_cores_statistics.R")
+
+emit_module(
+  "Degree-selection diagnostic",
+  "Per-degree across-specimen CV and cumulative power justifying the harmonic truncation order.",
+  "analysis/scripts/r_spharm/power_degree_selection.R")
+```
+
+---
+
+*Generated from the `targets` pipeline. To inspect the dependency graph
+interactively, run `targets::tar_visnetwork()` in the project.*

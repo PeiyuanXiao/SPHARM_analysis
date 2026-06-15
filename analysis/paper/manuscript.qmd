@@ -179,7 +179,7 @@ Spherical harmonic analysis represents the three-dimensional extension of ellipt
 knitr::include_graphics(here::here("analysis/figures/IM_SPSPHARM.png"))
 ```
 
-Our analytical workflow for scar pattern analysis proceeds as follows. Discrete scar vectors are first transformed into a continuous density distribution on the sphere using von Mises–Fisher spherical kernel density estimation (VMF-sKDE) [@baiKernelEstimatorsDensity; @alonso-penaNonparametricEstimationDensities2024]:
+Our analytical workflow for scar pattern analysis proceeds as follows. Discrete scar vectors are first transformed into a continuous density distribution on the sphere using von Mises–Fisher spherical kernel density estimation (VMF-sKDE) [@bai; @alonso-penaNonparametricEstimationDensities2024]:
 
 $$f(\mathbf{g}) = \frac{1}{n} \sum_{i=1}^{n} \exp\left(\kappa \, \mathbf{g} \cdot \mathbf{x}_i\right)$$
 

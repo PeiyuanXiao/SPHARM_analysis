@@ -145,6 +145,19 @@ jobs:
             quarto render analysis/paper/supplementary.qmd --to docx
           sudo chown -R "$USER":"$USER" "${{ github.workspace }}" || true
 
+      - name: Render the reproduction report (full statistical output, HTML)
+        # reproduction_report.qmd re-runs each analysis script and captures the
+        # complete statistical console output that tar_make() prints, organised by
+        # module, plus the pipeline graph — a single self-contained HTML for
+        # reviewers (the manuscript reports only a subset of these results).
+        continue-on-error: true
+        run: |
+          docker run --rm \
+            -v "${{ github.workspace }}":/project -w /project \
+            spharm_analysis:ci \
+            quarto render analysis/paper/reproduction_report.qmd
+          sudo chown -R "$USER":"$USER" "${{ github.workspace }}" || true
+
       - name: Upload reproduced outputs
         if: always()
         uses: actions/upload-artifact@v4
@@ -158,4 +171,5 @@ jobs:
           path: |
             analysis/paper/manuscript.docx
             analysis/paper/ESM_1.docx
+            analysis/paper/reproduction_report.html
             analysis/data/derived_data/**/*.csv

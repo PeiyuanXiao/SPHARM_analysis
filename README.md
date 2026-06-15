@@ -195,7 +195,8 @@ out-of-date targets:
   analyses of the experimental and SDG core assemblages.
 
 To build a single target and its dependencies, use e.g.
-`targets::tar_make(spharm_analysis)`. To inspect the dependency graph,
+`targets::tar_make(spharm_analysis)`. To see the whole pipeline as a
+labelled flow chart — each step annotated with the analysis it performs —
 run `targets::tar_visnetwork()`.
 
 **Step 8 — Render the manuscript.** The paper is a Quarto document whose
@@ -203,6 +204,14 @@ prose is interwoven with code that reads results directly from the
 pipeline. After `tar_make()` completes, render it to a Word document:
 
     quarto render analysis/paper/manuscript.qmd --to docx
+
+You can also generate a **reproduction report** — a single self-contained
+HTML that captures the *complete statistical output* `tar_make()` prints
+(organised by module) alongside the pipeline graph. The manuscript reports
+only a subset of these results for space; this is the full record for
+reviewers:
+
+    quarto render analysis/paper/reproduction_report.qmd
 
 **Step 9 — View the output:**
 
