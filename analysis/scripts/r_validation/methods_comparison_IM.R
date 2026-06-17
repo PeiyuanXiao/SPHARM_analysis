@@ -17,6 +17,7 @@ library(here)
 library(tidyverse)
 library(readxl)
 library(ggrepel)
+library(grid)
 library(patchwork)
 conflicted::conflicts_prefer(dplyr::select)
 conflicted::conflicts_prefer(dplyr::filter)
@@ -42,6 +43,41 @@ compute_EI <- function(ux, uy, uz) {
   list(
     E = ifelse(lambda[1] > 1e-10, 1 - lambda[2] / lambda[1], NA_real_),
     I = ifelse(lambda[1] > 1e-10,     lambda[3] / lambda[1], NA_real_)
+  )
+}
+
+GeomRoundTile <- ggplot2::ggproto(
+  "GeomRoundTile", ggplot2::GeomTile,
+  draw_panel = function(self, data, panel_params, coord,
+                        radius = grid::unit(2, "pt")) {
+    coords <- coord$transform(data, panel_params)
+    grobs <- lapply(seq_len(nrow(coords)), function(i) {
+      a <- coords$alpha[i];     if (is.null(a) || is.na(a)) a <- 1
+      lw <- coords$linewidth[i]; if (is.null(lw))           lw <- 0.1
+      grid::roundrectGrob(
+        x = coords$xmin[i], y = coords$ymin[i],
+        width  = coords$xmax[i] - coords$xmin[i],
+        height = coords$ymax[i] - coords$ymin[i],
+        just = c("left", "bottom"), r = radius,
+        gp = grid::gpar(
+          col  = coords$colour[i],
+          fill = scales::alpha(coords$fill[i], a),
+          lwd  = lw * ggplot2::.pt,
+          lty  = coords$linetype[i] %||% 1
+        )
+      )
+    })
+    grid::gTree(children = do.call(grid::gList, grobs))
+  }
+)
+
+geom_round_tile <- function(mapping = NULL, data = NULL, stat = "identity",
+                            position = "identity", ..., radius = grid::unit(2, "pt"),
+                            na.rm = FALSE, show.legend = NA, inherit.aes = TRUE) {
+  ggplot2::layer(
+    geom = GeomRoundTile, mapping = mapping, data = data, stat = stat,
+    position = position, show.legend = show.legend, inherit.aes = inherit.aes,
+    params = list(radius = radius, na.rm = na.rm, ...)
   )
 }
 
@@ -116,23 +152,6 @@ variance_IM <- SPHARM_IM %>%
 variance_IM %>%
   mutate(across(c(var_pct, var_cumsum), \(x) round(x, 2))) %>%
   print(n = Inf)
-
-p_variance_IM <- ggplot(variance_IM, aes(x = degree, y = variance)) +
-  geom_line(color = "#FFBAE0", linewidth = 1, alpha = 0.9) +
-  geom_point(color = "#FFBAE0", size = 3, alpha = 0.9) +
-  scale_x_continuous(breaks = seq(min(variance_IM$degree),
-                                  max(variance_IM$degree), by = 1)) +
-  scale_y_continuous(labels = scales::scientific) +
-  theme_bw() +
-  labs(
-    title = "Direction SPHARM Variance per Degree\n(Ideal Models only)",
-    x     = "Spherical Harmonic Degree (l)",
-    y     = "Variance"
-  ) +
-  theme(
-    plot.title         = element_text(face = "bold", size = 10, hjust = 0.5),
-    panel.grid.minor.x = element_blank()
-  )
 
 # --- B-2: per-type power spectra ---
 df_long <- SPHARM_IM %>%
@@ -272,7 +291,7 @@ dist_all_upper <- dist_all %>%
   dplyr::filter(as.numeric(From) < as.numeric(To))
 
 p_heatmap <- ggplot(dist_all_upper, aes(x = To, y = From, fill = distance)) +
-  geom_tile(color = "white", linewidth = 0.1) +
+  geom_round_tile(color = "white", linewidth = 0.1, radius = unit(3, "pt")) +
   geom_text(aes(label = sprintf("%.1f", distance)), size = 1.7) +
   facet_wrap(~ method, ncol = 3) +
   scale_fill_gradient2(

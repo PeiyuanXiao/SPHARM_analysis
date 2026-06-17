@@ -449,7 +449,7 @@ p_rot_spharm <- ggplot(ba_combined, aes(x = degree)) +
     plot.subtitle   = element_text(size = 7, hjust = 0.5, color = "grey40"),
     legend.key.size = unit(0.32, "cm"),
     legend.text     = element_text(size = 6),
-    legend.position      = c(0.72, 0.2),
+    legend.position      = c(0.82, 0.2),
     legend.justification = c(0.5, 0.5),
     legend.background    = element_rect(fill = "transparent", colour = NA),
     legend.box.background = element_rect(fill = "transparent", colour = NA)
