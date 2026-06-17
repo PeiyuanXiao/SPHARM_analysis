@@ -99,14 +99,16 @@ R statistics** — as a single reproducible
 
 ### 🗄️ Data
 
-The scar orientation and core metric data required to reproduce the
-statistical results are included in this repository under
-`analysis/data/raw_data/`.
+The complete research compendium — all code and data needed to reproduce
+the study — is archived in the project's public OSF repository
+(<https://doi.org/10.17605/OSF.IO/d82c5>), which provides a citable,
+versioned snapshot; this GitHub repository is the live development
+version. The scar orientation and core metric data are version-controlled
+here under `analysis/data/raw_data/`.
 
 The 3D core meshes (`.stl` files) are too large for version control and
-are archived separately in the project's public OSF repository
-(<https://doi.org/10.17605/OSF.IO/d82c5>). Download `3D_models_cores.zip`
-from OSF and unzip it into `analysis/data/` — the archive contains a
+are distributed through OSF as `3D_models_cores.zip`. Download it from the
+OSF archive and unzip it into `analysis/data/` — the archive contains a
 `3D_models_cores/` folder, so the meshes land at:
 
     analysis/data/3D_models_cores/
@@ -138,9 +140,9 @@ your computer.
 or download the ZIP from GitHub (green `< > Code` button →
 `Download ZIP`) and unzip it.
 
-**Step 3 — Add the 3D models.** Download `3D_models_cores` from the data
-archive (see [Data](#data)) and place the `.stl` files in
-`analysis/data/3D_models_cores/`.
+**Step 3 — Add the 3D models.** Download `3D_models_cores` from the
+[data archive](https://doi.org/10.17605/OSF.IO/d82c5) (see [Data](#data))
+and place the `.stl` files in `analysis/data/3D_models_cores/`.
 
 **Step 4 — Build the Docker image.** Run the following from the project
 root (note the trailing `.`). This step may take some time, as it

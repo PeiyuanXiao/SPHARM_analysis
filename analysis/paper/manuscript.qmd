@@ -435,7 +435,7 @@ Peiyuan Xiao: Conceptualization, Data curation, Formal analysis, Investigation, 
 
 ## Data Availability
 
-All core models, scar orientation data, and observational data for the Sandinggai cores analysed in this study are available at OSF (https://doi.org/10.17605/OSF.IO/D82C5). The R and Python code used in this study are likewise archived in the repository. The repository include README file that describe the repository structure in detail and provide step-by-step instructions for reproducing the analyses.
+All data and code required to reproduce this study, including the 3D core models, scar orientation and observational data, and the complete R and Python analysis code, are archived in the project's OSF repository (https://doi.org/10.17605/OSF.IO/D82C5). The repository includes a README file that describes its structure in detail and provides step-by-step instructions for reproducing the analyses.
 
 # Acknowledgements
 
