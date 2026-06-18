@@ -293,7 +293,12 @@ dist_all_upper <- dist_all %>%
 p_heatmap <- ggplot(dist_all_upper, aes(x = To, y = From, fill = distance)) +
   geom_round_tile(color = "white", linewidth = 0.1, radius = unit(3, "pt")) +
   geom_text(aes(label = sprintf("%.1f", distance)), size = 1.7) +
-  facet_wrap(~ method, ncol = 3) +
+  facet_wrap(~ method, ncol = 3,
+             labeller = as_labeller(c(
+               SPI    = "Scar Pattern Index",
+               Fabric = "Fabric metrics",
+               SPHARM = "SP-SPHARM"
+             ))) +
   scale_fill_gradient2(
     low      = "#5C7F71",
     mid      = "#F5EDDC",

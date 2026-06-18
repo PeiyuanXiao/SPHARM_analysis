@@ -652,6 +652,7 @@ make_coia_biplot <- function(group_col, group_label, palette,
       panel.grid.major.x   = element_blank(),
       panel.grid.major.y   = element_blank(),
       panel.grid.minor     = element_blank(),
+      axis.text = element_text(size = 5),
       legend.position      = c(0.01, 0.99),
       legend.justification = c(0, 1),
       legend.box           = "vertical",
@@ -1078,7 +1079,7 @@ run_arrow_length_analysis <- function(group_col, group_label, palette,
       panel.grid.minor   = element_blank(),
       axis.text.x        = element_blank(),
       axis.ticks.x       = element_blank(),
-      axis.text.y        = element_text(size = 7),
+      axis.text.y        = element_text(size = 5),
       legend.position    = "none"
     ) +
     labs(x = NULL, y = "CoIA line length")
@@ -1209,7 +1210,7 @@ plot_rose <- function(res, palette, show_color_legend = TRUE) {
       } else {
         element_blank()
       },
-      axis.text.x         = element_text(size = 6),
+      axis.text.x         = element_text(size = 5),
       axis.text.y         = element_blank(),
       axis.ticks.y        = element_blank(),
       legend.position     = legend_pos,
@@ -1424,9 +1425,9 @@ if (length(rows_valid) > 0) {
     p_rose <- make_rose_for_composite(res_circ)
     if (is.null(p_coia) || is.null(p_len) || is.null(p_rose)) return(NULL)
     
-    p1 <- strip_margin(p_coia)    + labs(tag = tags[1]) + theme(plot.tag = element_text(size = 9, face = "bold"))
-    p2 <- get_len_plot(p_len)     + labs(tag = tags[2]) + theme(plot.tag = element_text(size = 9, face = "bold"))
-    p3 <- p_rose                  + labs(tag = tags[3]) + theme(plot.tag = element_text(size = 9, face = "bold"))
+    p1 <- strip_margin(p_coia)    + labs(tag = tags[1]) + theme(plot.tag = element_text(size = 9, face = "plain"))
+    p2 <- get_len_plot(p_len)     + labs(tag = tags[2]) + theme(plot.tag = element_text(size = 9, face = "plain"))
+    p3 <- p_rose                  + labs(tag = tags[3]) + theme(plot.tag = element_text(size = 9, face = "plain"))
     
     (p1 | p2 | p3) + plot_layout(widths = c(5, 2, 2))
   }
@@ -1453,18 +1454,20 @@ if (length(rows_valid) > 0) {
   # ---- Step 3: external image, manual final tag ----
   next_tag    <- letters[n_subplots + 1]
   external_img <- png::readPNG(here("analysis/figures/Axis_trajectory_SDG.png"))
-  grob_img     <- grid::rasterGrob(external_img, interpolate = TRUE)
+  grob_img     <- grid::rasterGrob(external_img, interpolate = TRUE,
+                                   x     = grid::unit(0.5055, "npc"),
+                                   width = grid::unit(0.949,  "npc"))
   p_external   <- wrap_elements(full = grob_img) +
     labs(tag = next_tag) +
     theme(
-      plot.tag    = element_text(size = 9, face = "bold"),
+      plot.tag    = element_text(size = 9, face = "plain"),
       plot.margin = margin(0, 0, 0, 0)
     )
   
   # ---- Step 4: final assembly ----
   p_final <- wrap_elements(full = p_main) / p_external +
     plot_layout(heights = c(n_rows, 1))
-  
+
   cat(sprintf("Figure built: L_CoIA_composite.png (%d rows x 3 cols + external-image row)\n", n_rows))
   
 } else {

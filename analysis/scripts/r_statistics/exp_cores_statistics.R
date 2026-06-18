@@ -1097,7 +1097,7 @@ plot_rose <- function(res, palette, bw = 40) {
     geom_text(
       data = rayleigh_labels,
       aes(label = label),
-      x = 170, y = Inf,
+      x = 160, y = Inf,
       hjust = 0.8, vjust = 1.4,
       size = 2.2, color = "grey35",
       inherit.aes = FALSE
@@ -1123,7 +1123,7 @@ plot_rose <- function(res, palette, bw = 40) {
       panel.grid.major.y = element_blank(),
       strip.text       = element_text(face = "bold", size = 7),
       strip.background = element_rect(fill = "#EBEBEB", color = "#EBEBEB"),
-      axis.text.x      = element_text(size = 6),
+      axis.text.x      = element_text(size = 5),
       axis.text.y      = element_blank(),
       axis.ticks.y     = element_blank(),
       legend.position  = "none"
@@ -1300,15 +1300,15 @@ cat("\n[Sankey] EXP_L1_CIA_Sankey.png\n")
 # Step 1: tag each subplot
 p_cia_biplot_tagged <- p_cia_biplot +
   labs(tag = "a") +
-  theme(plot.tag = element_text(size = 9, face = "bold"))
+  theme(plot.tag = element_text(size = 9, face = "plain"))
 
 p_len_tagged <- res_len_typology$p +
   labs(tag = "b") +
-  theme(plot.tag = element_text(size = 9, face = "bold"))
+  theme(plot.tag = element_text(size = 9, face = "plain"))
 
 p_rose_tagged <- res_circ_typology$p_rose +
   labs(tag = "c") +
-  theme(plot.tag = element_text(size = 9, face = "bold"))
+  theme(plot.tag = element_text(size = 9, face = "plain"))
 
 # Step 2: recompose p_composite (no plot_annotation)
 p_composite <- (
@@ -1319,17 +1319,13 @@ p_composite <- (
 
 # Step 3: tag the external image as D
 external_img <- png::readPNG(here("analysis/figures/Axis_trajectory.png"))
-# Place the image so its frame spans the same left/right (43..996 px of a
-# 1027 px-wide render) as the panels above: width = 0.949 npc, centred at
-# x = 0.5055 npc of the full-width cell. Width-constrained, so the right edge
-# stays aligned regardless of the PNG's exact aspect ratio (target W:H ~= 2.95).
 grob_img     <- grid::rasterGrob(external_img, interpolate = TRUE,
                                  x     = grid::unit(0.5055, "npc"),
                                  width = grid::unit(0.949,  "npc"))
 p_external   <- wrap_elements(full = grob_img) +
   labs(tag = "d") +
   theme(
-    plot.tag    = element_text(size = 9, face = "bold"),
+    plot.tag    = element_text(size = 9, face = "plain"),
     plot.margin = margin(0, 0, 0, 0)
   )
 

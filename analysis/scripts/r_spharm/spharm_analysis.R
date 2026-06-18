@@ -505,7 +505,7 @@ benn_grob <- ggplotGrob(p_benn)
 # plot_annotation() does not reach it (it falls back to the ggtern-modified
 # default theme, making tag "b" oversized). Set the tag size explicitly here.
 p_benn_wrap <- wrap_elements(full = benn_grob) +
-  theme(plot.tag = element_text(size = 9, face = "bold"))
+  theme(plot.tag = element_text(size = 9, face = "bold", family = ""))
 
 hull_dir <- res_dir$scores %>%
   group_by(Typology) %>%
