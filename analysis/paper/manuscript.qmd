@@ -423,7 +423,7 @@ Future work should focus on expanding sample sizes and assemblage diversity, and
 
 ## Funding
 
-This work was financially supported through the National Natural Science Foundation of China (No. xx), and China Scholarship Council Programme for international students (CSC No. 202504910326).
+This work was financially supported by the Archaeological Talent Promotion Program of China (No. 2025-198, to H.L.), the National Natural Science Foundation of China (Nos. U2574202 and 42471180, to H.L.), and the China Scholarship Council Program for International Students (CSC No. 202504910326, to P.X.).
 
 ## Competing Interests
 

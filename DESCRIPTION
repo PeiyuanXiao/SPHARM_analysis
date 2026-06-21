@@ -1,5 +1,5 @@
 Package: SPHARM.analysis
-Title: Characterizing Core Scar Patterning and Morphology within a Unified
+Title: Characterizing Core Morphology and Scar Patterning within a Unified
     Spherical Harmonic Framework
 Version: 0.0.0.9000
 Authors@R: c(
@@ -10,8 +10,8 @@ Authors@R: c(
     person("Ben", "Marwick", role = "aut", email = "bmarwick@uw.edu",
            comment = c(ORCID = "0000-0001-7879-4531")))
 Description: Research compendium with the data and code to reproduce the
-    analyses and figures in the paper "Characterizing core scar patterning
-    and morphology within a unified spherical harmonic framework". The
+    analyses and figures in the paper "Characterizing core morphology and
+    scar patterning within a unified spherical harmonic framework". The
     workflow couples R preprocessing, Python spherical-harmonic (SPHARM)
     analysis of core meshes and scar-orientation kernel-density estimates,
     and R statistical analysis, orchestrated as a single reproducible
