@@ -156,9 +156,7 @@ bw$fig_im_heatmaps
 ```
 
 The scar pattern PERMANOVA by experimental core type stays significant
-across $h$ ($R^2$ = 0.259–0.374; $P$ \< 0.05 throughout). The pairwise
-resolution profile is consistent across the central range: 8 of 10
-typology pairs are resolved at $h$ = 0.30–0.45 (including the chosen $h$
+across $h$ ($R^2$ = 0.259–0.374; $P$ \< 0.05 throughout). The pairwise resolution profile is stable: 7 of 10 typology pairs are resolved at the three smallest bandwidths ($h$ = 0.20–0.30) and 8 of 10 from $h$ = 0.35 to 0.50, including the chosen $h$
 = 0.35), dropping to 6/10 at the two smallest bandwidths and 7/10 at the
 largest. The association between morphology and scar patterning is
 negligible in magnitude at every bandwidth: Mantel $r$ ≈ 0 throughout
@@ -238,13 +236,7 @@ scar$fig_orderselection
 ```
 
 The scar pattern PERMANOVA by core type is significant at every
-threshold ($R^2$ = 0.307–0.360; $P$ \< 0.05 throughout). The pairwise
-resolution profile is 8/10 typology pairs at the main analysis baseline,
-6/10 at \>5 mm, and 10/10 at \>10 mm. Restricting the analysis to
-larger, more reliably measured scars therefore does not weaken type
-discrimination and, at \>10 mm, sharpens it; the experimental core-type
-signal is carried by the larger scars and is not an artifact of small
-scars.
+threshold ($R^2$ = 0.307–0.360; $P$ \< 0.05 throughout). The pairwise resolution profile is 8/10 typology pairs at the main analysis baseline, 7/10 at \>5 mm, and 9/10 at \>10 mm. Restricting the analysis to larger, more reliably measured scars therefore does not weaken type discrimination; the experimental core-type signal is carried by the larger scars and is not an artifact of small scars.
 
 Morphology and scar patterning remain negligibly associated and
 non-significant at every threshold: Mantel $r$ ≈ 0 (EXP -0.061 to 0.004;
@@ -304,13 +296,8 @@ SDG). The $l$ = 1–8 truncation is robust to decimation and smoothing.
 mesh$fig_orderselection
 ```
 
-The experimental morphology PERMANOVA by core type is weak and its
-significance is not robust ($R^2$ = 0.107–0.154; non-significant at the
-production setting, $P$ = 0.082; 0 of 10 typology pairs resolved). In
-the experimental assemblage, type information therefore resides in the
-scar-pattern descriptor (which resolves 8/10 pairs; S2) rather than in
-morphology, evidence that the two descriptors are complementary rather
-than redundant. Core type is the dominant, significant morphology term
+The experimental morphology PERMANOVA by core type is weak but consistently significant  ($R^2$ = 0.107–0.154; non-significant at the
+production setting, $P$ = 0.082; 0 of 10 typology pairs resolved). In the experimental assemblage, type information is therefore carried far more strongly by the scar pattern descriptor (which resolves 8/10 pairs; S2) than by morphology, evidence that the two descriptors are complementary rather than redundant. Core type is the dominant, significant morphology term
 across all settings ($R^2$ = 0.178–0.216; $P$ \< 0.05 throughout), while
 raw material is small ($R^2$ = 0.013–0.051; significant only at the
 heaviest smoothing) and layer is negligible ($R^2$ = 0.007–0.030;
@@ -364,3 +351,12 @@ discrimination; the dominance of core type over raw material and layer
 in the archaeological (SDG) morphology and scar pattern signals; and the
 decoupling of morphology and scar patterning, which holds under
 perturbation of either descriptor.
+
+\newpage
+
+# References
+
+<!-- The following line ensures the references appear here for the MS Word or HTML output files, rather than right at the end of the document (this will not work for PDF files):  -->
+
+::: {#refs}
+:::
