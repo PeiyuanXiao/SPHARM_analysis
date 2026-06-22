@@ -121,6 +121,13 @@ replace_zeros <- function(X, delta = NULL) {            # exp/SDG_cores_statisti
   X
 }
 extract_subdist <- function(D_full, ids) as.dist(as.matrix(D_full)[ids, ids])
+# ILR / Aitchison helper (exp/SDG_cores_statistics.R convention): drop zero-variance
+# columns, multiplicative zero replacement, then ilr into Euclidean space.
+make_ilr <- function(power_df) {
+  X    <- as.matrix(power_df)
+  keep <- apply(X, 2, function(v) sd(v, na.rm = TRUE) > 0)
+  as.matrix(ilr(replace_zeros(X[, keep, drop = FALSE])))
+}
 safe_filter_groups <- function(meta_df, group_col, min_n = 3) {
   counts <- table(meta_df[[group_col]], useNA = "no")
   valid  <- names(counts[counts >= min_n])
@@ -203,13 +210,13 @@ maxcv_through <- function(os, l) max(os$cv_pct[os$order <= l], na.rm = TRUE)
 exp_permanova_block <- function(morph_df, power_cols = POWER_COLS_MORPH) {
   filt <- filter_spharm(morph_df, power_cols, metric_data)
   df_exp <- split_by_group(filt)$exp_im
-  z <- scale_features(df_exp, power_cols)
   df_exp_only <- df_exp %>%
     filter(!str_starts(ID, "IM_"), !Typology %in% EXCLUDE_TYPES) %>%
     mutate(Typology = case_when(Typology %in% LEVALLOIS_MERGE ~ "Levallois", TRUE ~ Typology),
            Typology = droplevels(as.factor(Typology)))
   non_im_idx <- !str_starts(df_exp$ID, "IM_") & !df_exp$Typology %in% EXCLUDE_TYPES
-  pm <- run_permanova_dir(z[non_im_idx, , drop = FALSE], df_exp_only$Typology)
+  ilr_morph <- make_ilr(df_exp[non_im_idx, power_cols])   # ILR / Aitchison (was z-score)
+  pm <- run_permanova_dir(ilr_morph, df_exp_only$Typology)
   pv  <- pm$pairwise; sig <- which(pv < 0.05, arr.ind = TRUE)
   sig_pairs <- if (nrow(sig) == 0) character(0) else
     apply(sig, 1, function(rc) paste(rownames(pv)[rc[1]], colnames(pv)[rc[2]], sep = "-"))

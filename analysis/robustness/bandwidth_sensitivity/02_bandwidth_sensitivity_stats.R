@@ -119,6 +119,14 @@ replace_zeros <- function(X, delta = NULL) {
   X
 }
 
+# ILR / Aitchison helper (exp/SDG_cores_statistics.R convention): drop zero-variance
+# columns, multiplicative zero replacement, then ilr into Euclidean space.
+make_ilr <- function(power_df) {
+  X    <- as.matrix(power_df)
+  keep <- apply(X, 2, function(v) sd(v, na.rm = TRUE) > 0)
+  as.matrix(ilr(replace_zeros(X[, keep, drop = FALSE])))
+}
+
 # exp_cores_statistics.R:81-83
 extract_subdist <- function(D_full, ids) as.dist(as.matrix(D_full)[ids, ids])
 
@@ -233,7 +241,6 @@ im_distance_matrix <- function(dir_df) {
 exp_permanova_block <- function(dir_df) {
   SPHARM_direction_filter <- filter_spharm(dir_df, POWER_COLS_DIR, metric_data)
   df_exp_dir <- split_by_group(SPHARM_direction_filter)$exp_im            # :99-107
-  z_dir      <- scale_features(df_exp_dir, POWER_COLS_DIR)                # :120
   df_exp_only <- df_exp_dir %>%
     filter(!str_starts(ID, "IM_"), !Typology %in% EXCLUDE_TYPES) %>%      # :125-133
     mutate(Typology = case_when(Typology %in% LEVALLOIS_MERGE ~ "Levallois",
@@ -242,7 +249,8 @@ exp_permanova_block <- function(dir_df) {
   non_im_idx <- !str_starts(df_exp_dir$ID, "IM_") &
     !df_exp_dir$Typology %in% EXCLUDE_TYPES                               # :135-136
   y_typology <- df_exp_only$Typology
-  pm <- run_permanova_dir(z_dir[non_im_idx, , drop = FALSE], y_typology)
+  ilr_dir <- make_ilr(df_exp_dir[non_im_idx, POWER_COLS_DIR])   # ILR / Aitchison (was z-score)
+  pm <- run_permanova_dir(ilr_dir, y_typology)
 
   # Resolution profile: which typology pairs are significant (Holm, p < 0.05).
   pv  <- pm$pairwise

@@ -19,9 +19,14 @@ library(readxl)
 library(ggrepel)
 library(grid)
 library(patchwork)
+library(compositions)   # ilr (Aitchison distance for the compositional SP-SPHARM panel)
 conflicted::conflicts_prefer(dplyr::select)
 conflicted::conflicts_prefer(dplyr::filter)
-conflicted::conflicts_prefer(base::`%*%`)
+conflicted::conflicts_prefer(compositions::`%*%`)  # S4 matmul: plain matrices + ilr internals
+conflicted::conflicts_prefer(stats::dist)          # compositions masks dist
+conflicted::conflicts_prefer(base::scale)          # compositions masks scale
+conflicted::conflicts_prefer(stats::var)           # compositions masks var
+conflicted::conflicts_prefer(stats::sd)            # compositions masks sd
 
 # ==============================================================================
 # Helpers
@@ -44,6 +49,29 @@ compute_EI <- function(ux, uy, uz) {
     E = ifelse(lambda[1] > 1e-10, 1 - lambda[2] / lambda[1], NA_real_),
     I = ifelse(lambda[1] > 1e-10,     lambda[3] / lambda[1], NA_real_)
   )
+}
+
+# Power spectra are compositional; the SP-SPHARM panel below therefore uses
+# Aitchison distance (ilr -> standardised Euclidean) rather than raw standardised
+# Euclidean. Zero-variance columns are dropped, then zeros replaced for the log-ratio.
+replace_zeros <- function(X, delta = NULL) {
+  X <- as.matrix(X)
+  for (i in seq_len(nrow(X))) {
+    row_i <- X[i, ]; zero_idx <- row_i == 0
+    if (!any(zero_idx)) next
+    nonzero_min <- min(row_i[!zero_idx])
+    d <- ifelse(is.null(delta), nonzero_min * 0.65, delta)
+    n_zero <- sum(zero_idx)
+    row_i[zero_idx]  <- d
+    row_i[!zero_idx] <- row_i[!zero_idx] * (1 - n_zero * d)
+    X[i, ] <- row_i
+  }
+  X
+}
+make_ilr <- function(power_df) {
+  X    <- as.matrix(power_df)
+  keep <- apply(X, 2, function(v) sd(v, na.rm = TRUE) > 0)
+  as.matrix(ilr(replace_zeros(X[, keep, drop = FALSE])))
 }
 
 GeomRoundTile <- ggplot2::ggproto(
@@ -270,7 +298,9 @@ labs <- df_im$label
 dist_all <- bind_rows(
   make_dist_df(df_im %>% select(R)                 %>% as.matrix(), labs, "SPI"),
   make_dist_df(df_im %>% select(E, I)              %>% as.matrix(), labs, "Fabric"),
-  make_dist_df(df_im %>% select(power_l1:power_l4) %>% as.matrix(), labs, "SPHARM")
+  # SP-SPHARM: Aitchison distance — ilr coordinates fed through the same
+  # standardise-then-Euclidean path as the other (non-compositional) panels.
+  make_dist_df(make_ilr(df_im %>% select(power_l1:power_l4)),       labs, "SPHARM")
 ) %>%
   mutate(
     From   = factor(From,   levels = id_order),

@@ -29,6 +29,7 @@ library(vegan)
 library(FSA)
 library(RVAideMemoire)
 library(ggtern)
+library(compositions)   # ilr (Aitchison geometry for the compositional power spectra)
 
 conflicted::conflicts_prefer(ggplot2::aes)
 conflicted::conflicts_prefer(ggplot2::theme_bw)
@@ -37,6 +38,10 @@ conflicted::conflicts_prefer(ggplot2::annotate)
 conflicted::conflicts_prefer(dplyr::select)
 conflicted::conflicts_prefer(dplyr::filter)
 conflicted::conflicts_prefer(stats::sd)
+conflicted::conflicts_prefer(stats::dist)    # compositions masks dist
+conflicted::conflicts_prefer(base::scale)    # compositions masks scale
+conflicted::conflicts_prefer(stats::var)
+conflicted::conflicts_prefer(compositions::`%*%`)  # S4 matmul: plain matrices + ilr internals
 set.seed(42)
 
 # ==============================================================================
@@ -100,27 +105,36 @@ dir_splits   <- split_by_group(SPHARM_direction_filter)
 morph_splits <- split_by_group(SPHARM_morphology_filter)
 
 # ==============================================================================
-# 3. EXP specimens: z-score standardisation + LDA visualisation
+# 3. EXP specimens: ILR transform + LDA visualisation
 # ==============================================================================
 
 df_exp_dir   <- dir_splits$exp_im
 df_exp_morph <- morph_splits$exp_im
 
-scale_features <- function(df_target, cols) {
-  ref_mat  <- df_target %>%
-    filter(!str_starts(ID, "IM_")) %>%
-    select(all_of(cols)) %>%
-    as.matrix()
-  col_mean <- colMeans(ref_mat)
-  col_sd   <- apply(ref_mat, 2, sd)
-  mat      <- df_target %>% select(all_of(cols)) %>% as.matrix()
-  scale(mat, center = col_mean, scale = col_sd)
+# Power spectra are compositional (closure to a fixed sum), so both the LDA
+# visualisation and the PERMANOVA below use Aitchison geometry: ilr() projects each
+# spectrum out of the simplex into Euclidean space (exp/SDG_cores_statistics.R
+# convention). Zero-variance columns are dropped first, then a multiplicative zero
+# replacement makes ilr well-defined.
+replace_zeros <- function(X, delta = NULL) {
+  X <- as.matrix(X)
+  for (i in seq_len(nrow(X))) {
+    row_i <- X[i, ]; zero_idx <- row_i == 0
+    if (!any(zero_idx)) next
+    nonzero_min <- min(row_i[!zero_idx])
+    d <- ifelse(is.null(delta), nonzero_min * 0.65, delta)
+    n_zero <- sum(zero_idx)
+    row_i[zero_idx]  <- d
+    row_i[!zero_idx] <- row_i[!zero_idx] * (1 - n_zero * d)
+    X[i, ] <- row_i
+  }
+  X
 }
-
-z_dir   <- scale_features(df_exp_dir,   POWER_COLS_DIR)
-z_morph <- scale_features(df_exp_morph, POWER_COLS_MORPH)
-colnames(z_dir)   <- paste0("dir_",   POWER_COLS_DIR)
-colnames(z_morph) <- paste0("morph_", POWER_COLS_MORPH)
+make_ilr <- function(power_df) {
+  X    <- as.matrix(power_df)
+  keep <- apply(X, 2, function(v) sd(v, na.rm = TRUE) > 0)
+  as.matrix(ilr(replace_zeros(X[, keep, drop = FALSE])))
+}
 
 df_exp_only <- df_exp_dir %>%
   filter(!str_starts(ID, "IM_"), !Typology %in% EXCLUDE_TYPES) %>%
@@ -136,6 +150,11 @@ non_im_idx <- !str_starts(df_exp_dir$ID, "IM_") &
   !df_exp_dir$Typology %in% EXCLUDE_TYPES
 
 y_typology <- df_exp_only$Typology
+
+# ILR / Aitchison coordinates for the EXP non-IM set — power spectra are compositional,
+# so these feed BOTH the LDA visualisation and the PERMANOVA (no z-scoring).
+ilr_dir   <- make_ilr(df_exp_dir[non_im_idx,  POWER_COLS_DIR])
+ilr_morph <- make_ilr(df_exp_morph[non_im_idx, POWER_COLS_MORPH])
 
 cat(sprintf("EXP specimens retained: %d, classes: %d\n", nrow(df_exp_only), nlevels(y_typology)))
 print(table(y_typology))
@@ -183,9 +202,9 @@ run_lda_plot <- function(X, y, ids, filename) {
   invisible(list(fit = fit, scores = scores, prop_var = prop_var))
 }
 
-res_morph <- run_lda_plot(z_morph[non_im_idx, ], y_typology, df_exp_only$ID,
+res_morph <- run_lda_plot(ilr_morph, y_typology, df_exp_only$ID,
                           "LDA_morph_by_Typology.png")
-res_dir   <- run_lda_plot(z_dir[non_im_idx, ],   y_typology, df_exp_only$ID,
+res_dir   <- run_lda_plot(ilr_dir,   y_typology, df_exp_only$ID,
                           "LDA_dir_by_Typology.png")
 
 # ==============================================================================
@@ -383,9 +402,9 @@ p_benn <- ggtern(
     plot.margin           = ggplot2::margin(2, 2, 2, 2)
   )
 
-# --- SPHARM PERMANOVA ---
-perm_morph <- run_permanova(z_morph[non_im_idx, ], y_typology, "SPHARM morphology spectrum")
-perm_dir   <- run_permanova(z_dir[non_im_idx, ],   y_typology, "SPHARM direction spectrum")
+# --- SPHARM PERMANOVA (ILR / Aitchison; ilr_dir / ilr_morph computed above) ---
+perm_morph <- run_permanova(ilr_morph, y_typology, "SPHARM morphology spectrum (ILR)")
+perm_dir   <- run_permanova(ilr_dir,   y_typology, "SPHARM direction spectrum (ILR)")
 
 cat("\n========== PERMANOVA + PERMDISP summary ==========\n")
 cat(sprintf("SPHARM morphology : R2 = %.3f, p = %.3f | PERMDISP p = %.3f\n",
@@ -426,10 +445,10 @@ p_adj_vec <- c(
   0.010, 0.010, 0.357, 0.072,
   0.055, 0.357, 0.010,
   0.804, 0.010, 0.012,
-  # Direction SPHARM（Holm）
-  0.458, 0.010, 0.045, 0.010,
-  0.012, 0.458, 0.010,
-  0.012, 0.028, 0.010
+  # Direction SP-SPHARM (Holm, ILR/Aitchison; from perm_dir$pairwise, seed 42)
+  0.392, 0.010, 0.024, 0.010,
+  0.012, 0.382, 0.010,
+  0.012, 0.042, 0.010
 )
 
 plot_data <- tibble(
@@ -526,10 +545,10 @@ p_dir_plot <- ggplot(res_dir$scores,
   geom_point(size = 1.4, alpha = 0.88, stroke = 0.25, shape = 16) +
   scale_color_manual(values = TYPOLOGY_COLORS) +
   scale_fill_manual(values  = TYPOLOGY_COLORS) +
-  scale_x_continuous(limits = c(-2.5, 4.5), expand = expansion(mult = 0.08),
-                     breaks = seq(-2.5, 4.5, by = 1)) +
-  scale_y_continuous(limits = c(-5, 3), expand = expansion(mult = 0.08),
-                     breaks = seq(-5, 3, by = 1)) +
+  scale_x_continuous(limits = c(-4.5, 3), expand = expansion(mult = 0.08),
+                     breaks = seq(-4, 3, by = 1)) +
+  scale_y_continuous(limits = c(-4.5, 3), expand = expansion(mult = 0.08),
+                     breaks = seq(-4, 3, by = 1)) +
   labs(x = sprintf("LD1 (%.1f%%)", res_dir$prop_var[1] * 100),
        y = sprintf("LD2 (%.1f%%)", res_dir$prop_var[2] * 100)) +
   theme_bw(base_size = 8) +

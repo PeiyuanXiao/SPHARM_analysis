@@ -1,0 +1,184 @@
+=============================================================
+ ILR / Aitchison recompute of the z-score discrimination track
+ generated: 2026-06-21 20:42:44 
+=============================================================
+
+
+##### PART 1 : Idealized-core (IM) discriminability heatmap #####
+SP-SPHARM panel -> Aitchison distance (ilr l1-4 -> Euclidean). SPI & Fabric unchanged (standardised Euclidean).
+
+indexing SPHARM_direction.csv [] 431.12MB/s, eta:  0s                                                    Mean inter-class distance per method (SP-SPHARM = standardised ilr):
+  method mean_dist
+1    SPI     1.119
+2 Fabric     1.664
+3 SPHARM     1.935
+
+[reference] pure Aitchison (unscaled ilr) SP-SPHARM mean = 5.313
+
+Key SP-SPHARM cells (standardised ilr):
+  Discoid vs Levallois preferential      = 2.51  (claim: SP-SPHARM separates these)
+  Biface vs Discoid unifacial            = 1.52  (claim: bipolar-symmetry pair stays modest)
+  Discoid unifacial vs Cylindrical bipolar = 5.49  (bipolar-symmetry limitation)
+
+saved: fig_IM_heatmap_aitchison.png
+
+
+##### PART 2 : EXP SP-SPHARM & M-SPHARM in ILR space #####
+indexing SPHARM_morphology.csv [] 2.15GB/s, eta:  0s                                                    EXP direction specimens: 58  | morphology: 58 
+Group sizes (direction):
+
+Unidirectional  Bidirectional      Levallois 
+            16              6             21 
+       Discoid  Multiplatform 
+             5             10 
+
+--- SP-SPHARM (scar direction) (ILR, 5 ilr coords from 6 power cols) ---
+PERMANOVA : R2 = 0.302,  pseudo-F = 5.726,  p = 0.001
+PERMDISP  : F = 4.841,  p = 0.002
+PERMDISP TukeyHSD (group):
+                               diff    lwr   upr
+Bidirectional-Unidirectional  0.371 -0.159 0.901
+Levallois-Unidirectional      0.388  0.021 0.756
+Discoid-Unidirectional        0.809  0.242 1.376
+Multiplatform-Unidirectional  0.376 -0.071 0.822
+Levallois-Bidirectional       0.017 -0.496 0.529
+Discoid-Bidirectional         0.438 -0.233 1.108
+Multiplatform-Bidirectional   0.004 -0.567 0.576
+Discoid-Levallois             0.421 -0.130 0.972
+Multiplatform-Levallois      -0.013 -0.438 0.413
+Multiplatform-Discoid        -0.433 -1.040 0.173
+                             p adj
+Bidirectional-Unidirectional 0.290
+Levallois-Unidirectional     0.033
+Discoid-Unidirectional       0.002
+Multiplatform-Unidirectional 0.138
+Levallois-Bidirectional      1.000
+Discoid-Bidirectional        0.360
+Multiplatform-Bidirectional  1.000
+Discoid-Levallois            0.212
+Multiplatform-Levallois      1.000
+Multiplatform-Discoid        0.272
+Holm pairwise p_adj:
+              Unidirectional Bidirectional
+Bidirectional          0.010            NA
+Levallois              0.048         0.010
+Discoid                0.012         0.387
+Multiplatform          0.010         0.015
+              Levallois Discoid
+Bidirectional        NA      NA
+Levallois            NA      NA
+Discoid           0.010      NA
+Multiplatform     0.016    0.36
+Significant pairs (p_adj<0.05): 8 / 10
+   Bidirectional-Levallois; Bidirectional-Multiplatform; Bidirectional-Unidirectional; Discoid-Levallois; Discoid-Unidirectional; Levallois-Multiplatform; Levallois-Unidirectional; Multiplatform-Unidirectional 
+
+--- M-SPHARM (morphology) (ILR, 7 ilr coords from 8 power cols) ---
+PERMANOVA : R2 = 0.123,  pseudo-F = 1.864,  p = 0.025
+PERMDISP  : F = 1.046,  p = 0.362
+PERMDISP TukeyHSD (group):
+                               diff    lwr   upr p adj
+Bidirectional-Unidirectional -0.566 -1.456 0.324 0.387
+Levallois-Unidirectional     -0.151 -0.768 0.466 0.957
+Discoid-Unidirectional       -0.291 -1.244 0.661 0.909
+Multiplatform-Unidirectional -0.367 -1.117 0.382 0.641
+Levallois-Bidirectional       0.415 -0.446 1.275 0.655
+Discoid-Bidirectional         0.274 -0.852 1.400 0.958
+Multiplatform-Bidirectional   0.198 -0.762 1.159 0.977
+Discoid-Levallois            -0.140 -1.065 0.785 0.993
+Multiplatform-Levallois      -0.216 -0.930 0.498 0.912
+Multiplatform-Discoid        -0.076 -1.094 0.943 1.000
+Holm pairwise p_adj:
+              Unidirectional Bidirectional Levallois Discoid
+Bidirectional          0.786            NA        NA      NA
+Levallois              0.070         1.000        NA      NA
+Discoid                1.000         0.686     1.000      NA
+Multiplatform          1.000         0.472     0.126       1
+Significant pairs (p_adj<0.05): 0 / 10
+    
+
+--- SP-SPHARM direction: z-score vs ILR (Holm p_adj) ---
+                         pair zscore_padj ilr_padj zscore ilr
+        Bidirectional-Discoid       0.458    0.387     ns  ns
+      Bidirectional-Levallois       0.010    0.010    sig sig
+  Bidirectional-Multiplatform       0.045    0.015    sig sig
+ Bidirectional-Unidirectional       0.010    0.010    sig sig
+            Discoid-Levallois       0.012    0.010    sig sig
+        Discoid-Multiplatform       0.458    0.360     ns  ns
+       Discoid-Unidirectional       0.010    0.012    sig sig
+      Levallois-Multiplatform       0.012    0.016    sig sig
+     Levallois-Unidirectional       0.028    0.048    sig sig
+ Multiplatform-Unidirectional       0.010    0.010    sig sig
+ flip
+     
+     
+     
+     
+     
+     
+     
+     
+     
+     
+
+z-score: 8/10 sig   |   ILR: 8/10 sig
+wrote 682.00B in  0s, 52.97MB/s                                                            wrote 2.15GB in  0s, 2.15GB/s                                                            
+*** Morphology check (load-bearing for the decoupling claim) ***
+M-SPHARM core-type PERMANOVA in ILR: R2=0.123, p=0.025  -> SIGNIFICANT (was non-sig under z-score — REVIEW decoupling text!)
+
+
+##### PART 3 : sensitivity grids in ILR space #####
+
+--- Scar-size thresholds (Table S2): ILR vs z-score ---
+indexing threshold_sensitivity_metrics.csv [] 175.06MB/s, eta:  0s                                                              indexing SPHARM_direction_t00.0.csv [=====] 2.15GB/s, eta:  0s                                                              indexing SPHARM_direction_t05.0.csv [=====] 2.15GB/s, eta:  0s                                                              indexing SPHARM_direction_t10.0.csv [=====] 2.15GB/s, eta:  0s                                                               threshold_mm    R2     F     p n_sig n_pairs
+            0 0.302 5.726 0.001     8      10
+            5 0.282 5.193 0.001     7      10
+           10 0.322 6.286 0.001     8      10
+                                                                                                                                                                                                      sig_pairs
+ Bidirectional-Levallois; Bidirectional-Multiplatform; Bidirectional-Unidirectional; Discoid-Levallois; Discoid-Unidirectional; Levallois-Multiplatform; Levallois-Unidirectional; Multiplatform-Unidirectional
+                           Bidirectional-Levallois; Bidirectional-Multiplatform; Bidirectional-Unidirectional; Discoid-Levallois; Discoid-Unidirectional; Levallois-Multiplatform; Multiplatform-Unidirectional
+   Bidirectional-Levallois; Bidirectional-Multiplatform; Bidirectional-Unidirectional; Discoid-Levallois; Discoid-Multiplatform; Discoid-Unidirectional; Levallois-Unidirectional; Multiplatform-Unidirectional
+ z_nsig z_npairs
+      8       10
+      6       10
+     10       10
+
+--- vMF bandwidth h grid: ILR vs z-score ---
+indexing bandwidth_sensitivity_metrics.csv [] 383.32MB/s, eta:  0s                                                              indexing SPHARM_direction_h0.20.csv [=====] 2.15GB/s, eta:  0s                                                              indexing SPHARM_direction_h0.25.csv [=====] 2.15GB/s, eta:  0s                                                              indexing SPHARM_direction_h0.30.csv [=====] 2.15GB/s, eta:  0s                                                              indexing SPHARM_direction_h0.35.csv [=====] 2.01GB/s, eta:  0s                                                              indexing SPHARM_direction_h0.40.csv [=====] 2.15GB/s, eta:  0s                                                              indexing SPHARM_direction_h0.45.csv [=====] 2.15GB/s, eta:  0s                                                              indexing SPHARM_direction_h0.50.csv [=====] 2.15GB/s, eta:  0s                                                                  h    R2     F     p n_sig n_pairs
+ 0.20 0.298 5.614 0.001     7      10
+ 0.25 0.299 5.639 0.001     7      10
+ 0.30 0.300 5.673 0.001     7      10
+ 0.35 0.302 5.726 0.001     8      10
+ 0.40 0.305 5.823 0.001     8      10
+ 0.45 0.313 6.031 0.001     8      10
+ 0.50 0.329 6.490 0.001     8      10
+                                                                                                                                                                                                      sig_pairs
+                           Bidirectional-Levallois; Bidirectional-Multiplatform; Bidirectional-Unidirectional; Discoid-Levallois; Discoid-Unidirectional; Levallois-Multiplatform; Multiplatform-Unidirectional
+                           Bidirectional-Levallois; Bidirectional-Multiplatform; Bidirectional-Unidirectional; Discoid-Levallois; Discoid-Unidirectional; Levallois-Multiplatform; Multiplatform-Unidirectional
+                           Bidirectional-Levallois; Bidirectional-Multiplatform; Bidirectional-Unidirectional; Discoid-Levallois; Discoid-Unidirectional; Levallois-Multiplatform; Multiplatform-Unidirectional
+ Bidirectional-Levallois; Bidirectional-Multiplatform; Bidirectional-Unidirectional; Discoid-Levallois; Discoid-Unidirectional; Levallois-Multiplatform; Levallois-Unidirectional; Multiplatform-Unidirectional
+ Bidirectional-Levallois; Bidirectional-Multiplatform; Bidirectional-Unidirectional; Discoid-Levallois; Discoid-Unidirectional; Levallois-Multiplatform; Levallois-Unidirectional; Multiplatform-Unidirectional
+ Bidirectional-Levallois; Bidirectional-Multiplatform; Bidirectional-Unidirectional; Discoid-Levallois; Discoid-Unidirectional; Levallois-Multiplatform; Levallois-Unidirectional; Multiplatform-Unidirectional
+ Bidirectional-Levallois; Bidirectional-Multiplatform; Bidirectional-Unidirectional; Discoid-Levallois; Discoid-Unidirectional; Levallois-Multiplatform; Levallois-Unidirectional; Multiplatform-Unidirectional
+ z_nsig z_npairs
+      6       10
+      6       10
+      8       10
+      8       10
+      8       10
+      8       10
+      7       10
+wrote 2.15GB in  0s, 2.15GB/s                                                            
+
+##### Manuscript-ready numbers (ILR) #####
+ILR resolution profile: baseline(2mm)=8/10, >5mm=7/10, >10mm=8/10
+ILR EXP R2 range across thresholds: 0.282-0.322
+
+manuscript.qmd line ~390  — replace '...eight at the 2 mm baseline...' with:
+  NOTE: >10mm now resolves 8/10 (NOT all ten) under ILR — the 'sharpest at
+   strictest threshold' framing needs rewording. Baseline = eight pairs;
+   profile 8/7/8 for 2/5/10 mm.
+
+supplementary.qmd ~242-243 — resolution profile becomes 8/10, 7/10, 8/10 (2/5/10 mm)
+supplementary.qmd ~311 — 'resolves 8/10 pairs' becomes '8/10 pairs'
+
+DONE. Outputs in analysis/robustness/ilr_recompute/
