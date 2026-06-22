@@ -324,19 +324,19 @@ run_permanova <- function(X, group_vec, label) {
   
   set.seed(42)
   perm_global <- adonis2(X ~ Typology, data = df_grp,
-                         method = "euclidean", permutations = 999)
+                         method = "euclidean", permutations = 9999)
   cat(sprintf("\n--- PERMANOVA : %s ---\n", label)); print(perm_global)
   
   set.seed(42)
   disp      <- betadisper(d, group_vec)
-  disp_test <- permutest(disp, permutations = 999)
+  disp_test <- permutest(disp, permutations = 9999)
   cat(sprintf("\n--- PERMDISP : %s ---\n", label)); print(disp_test)
   
   disp_tukey <- TukeyHSD(disp)
   cat(sprintf("\n--- PERMDISP TukeyHSD : %s ---\n", label)); print(disp_tukey)
   
   set.seed(42)
-  pairwise_res <- pairwise.perm.manova(d, group_vec, nperm = 999, p.method = "holm")
+  pairwise_res <- pairwise.perm.manova(d, group_vec, nperm = 9999, p.method = "holm")
   cat(sprintf("\n--- Pairwise PERMANOVA (Holm) : %s ---\n", label))
   print(pairwise_res$p.value)
   
