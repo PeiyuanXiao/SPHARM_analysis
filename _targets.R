@@ -311,7 +311,8 @@ list(
             p_dir_disc_bi  = perm_dir$pairwise$p.value["Discoid",       "Bidirectional"],
             p_fab_uni_bi   = perm_EI$pairwise$p.value["Unidirectional", "Bidirectional"],
             p_fab_lev_disc = perm_EI$pairwise$p.value["Levallois",      "Discoid"],
-            p_fab_disc_bi  = perm_EI$pairwise$p.value["Discoid",        "Bidirectional"]
+            p_fab_disc_bi  = perm_EI$pairwise$p.value["Discoid",        "Bidirectional"],
+            p_dir_disp     = round(perm_dir$disp_test$tab$`Pr(>F)`[1], 3)
           ),
           perm_morph_r2         = round(perm_morph$global$R2[1], 3),
           perm_morph_f          = round(perm_morph$global$`F`[1], 3),
