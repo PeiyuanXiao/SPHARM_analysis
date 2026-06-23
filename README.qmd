@@ -145,6 +145,12 @@ restores all R packages and resolves the conda environment:
 docker build -t spharm_analysis .
 ```
 
+On OSX you may need to run:
+
+```
+docker build --platform=linux/amd64 -t spharm_analysis .
+```
+
 **Step 5 — Start the container.** The simplest approach is via Docker
 Compose, which maps port 8787 and mounts the project at `/project`:
 

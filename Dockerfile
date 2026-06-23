@@ -1,20 +1,31 @@
 # 1. Use the pre-built geospatial image
-FROM rocker/geospatial:4.4.2
+FROM rocker/rstudio:4.4.2
 
 # 2. Install Python and Conda dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
     wget \
     libgl1 \
     libglu1-mesa \
+    librsvg2-dev \
+    libglpk-dev \
+    libgit2-dev \
+    curl \
     xvfb \
     && rm -rf /var/lib/apt/lists/*
 
 # 3. Install Miniconda
 #    conda 26.3.2 is required for `conda tos accept`.
-RUN wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh && \
+#    conda goes at the end of the path, not the beginning
+#.   coda for both amd64 and arm64 architectures
+ARG TARGETARCH
+RUN case "$TARGETARCH" in \
+      "amd64")  url="https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh" ;; \
+      "arm64")  url="https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-aarch64.sh" ;; \
+    esac && \
+    wget "$url" -O miniconda.sh && \
     bash miniconda.sh -b -p /opt/conda && \
     rm miniconda.sh
-ENV PATH=/opt/conda/bin:$PATH
+ENV PATH=$PATH:/opt/conda/bin
 
 # --- RSTUDIO PROJECT AUTO-LOAD CONFIG ---
 RUN mkdir -p /home/rstudio/.local/share/rstudio/projects_settings

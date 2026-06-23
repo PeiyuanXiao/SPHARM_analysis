@@ -5,7 +5,7 @@ services:
     ports:
       - "8787:8787"
     environment:
-      - DISABLE_AUTH=${DISABLE_AUTH:-false}
+      - DISABLE_AUTH=${DISABLE_AUTH:-true}
       - PASSWORD=${RSTUDIO_PASSWORD:-spharm}
       - RENV_PATHS_LIBRARY=/opt/renv/library
       - RENV_PATHS_CACHE=/opt/renv/cache
