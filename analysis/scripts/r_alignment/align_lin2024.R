@@ -216,9 +216,42 @@ grid <- browsable(
     tags$div(
       style = "display:grid; grid-template-columns:1fr 1fr 1fr;
                gap:8px; padding:0 12px 12px;",
-      tags$div(id = "plot0", style = "height:500px;"),
-      tags$div(id = "plot1", style = "height:500px;"),
-      tags$div(id = "plot2", style = "height:500px;")
+
+      tags$div(
+        tags$div(id = "plot0", style = "height:500px;"),
+        tags$p(
+          style = "font-family:sans-serif; font-size:12px; color:#444;
+                   text-align:center; margin:4px 8px 12px;",
+          HTML(
+            "Compute unit direction vectors from scar endpoints.<br>
+             The morphological plane normal (Norm_X/Y/Z) is measured<br>
+             externally via Geomagic as the <b>reference orientation</b>.")
+        )
+      ),
+
+      tags$div(
+        tags$div(id = "plot1", style = "height:500px;"),
+        tags$p(
+          style = "font-family:sans-serif; font-size:12px; color:#444;
+                   text-align:center; margin:4px 8px 12px;",
+          HTML(
+            "Construct rotation matrix R&#8321; via Rodrigues' formula.<br>
+             Rotate all coordinates so the morphological normal aligns with <b>Z-axis</b>.<br>
+             The best-fit plane now lies on the XY plane.")
+        )
+      ),
+
+      tags$div(
+        tags$div(id = "plot2", style = "height:500px;"),
+        tags$p(
+          style = "font-family:sans-serif; font-size:12px; color:#444;
+                   text-align:center; margin:4px 8px 12px;",
+          HTML(
+            "Identify the longest scar and extract its rotated start-point.<br>
+             Subtract its XY coordinates from all points to <b>anchor the origin</b>.<br>
+             Preserves absolute spatial relationships between scars.")
+        )
+      )
     ),
     
     tags$script(HTML(paste0(

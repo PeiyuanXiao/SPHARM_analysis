@@ -1,5 +1,16 @@
 # 1. Use the pre-built geospatial image
+<<<<<<< HEAD
 FROM rocker/rstudio:4.4.2
+=======
+#    Pin the platform to linux/amd64. The conda env (analysis/scripts/
+#    environment.yml) locks linux-64 package build hashes for numerical
+#    reproducibility, so the image MUST be amd64. Without this flag, building
+#    on an Apple Silicon Mac would target linux/arm64 and the conda solve
+#    would fail (those build hashes do not exist for arm64). On amd64 hosts
+#    (Linux, Windows/Intel, CI) this flag is the native default and is a no-op;
+#    on Apple Silicon it forces emulation, giving bit-identical results.
+FROM --platform=linux/amd64 rocker/geospatial:4.4.2
+>>>>>>> d8a2ba1959da5283cab81b76aeab906cb8e2f830
 
 # 2. Install Python and Conda dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -55,9 +66,17 @@ RUN mkdir -p /opt/renv && chown -R rstudio:rstudio /opt/renv
 #    collide with renv's project library during restore.
 RUN rm -rf /usr/local/lib/R/site-library/*
 
-# D. Install renv and restore
-RUN R -e "install.packages('renv', repos='https://cloud.r-project.org')" && \
-    R -e "options(renv.config.cache.symlinks = FALSE); renv::restore(prompt = FALSE)"
+# D. Restore the renv project library.
+#    Do NOT `install.packages('renv')` here: that pulls the LATEST renv from
+#    CRAN (e.g. 1.2.3), newer than the version the lockfile pins (1.1.8). With
+#    this lockfile a newer renv aborts the restore -- it installs 154 packages
+#    then reports ~79 as "dependency failed" -- because Posit PPM (the lock's
+#    moving "latest" repo) has rebuilt a pinned binary under a suffixed version
+#    (lock pins Rcpp 1.1.1, PPM now serves 1.1.1-1; renv's "dependency tree was
+#    repaired" message). The renv/activate.R sourced at R startup already
+#    bootstraps the lockfile-pinned renv (1.1.8), which restores all 232
+#    packages cleanly.
+RUN R -e "options(renv.config.cache.symlinks = FALSE); renv::restore(prompt = FALSE)"
 
 # --- 6. Build Python Env ---
 #    environment.yml pins every package including BLAS/LAPACK build hashes.

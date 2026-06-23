@@ -12,7 +12,7 @@
 # functions the main pipeline calls — vegan::adonis2 / mantel, ade4::coinertia /
 # randtest, compositions::ilr) and replicates, verbatim, the data-prep steps from
 # the main scripts (same source-line attributions as 02_bandwidth_sensitivity_stats.R):
-#   - r_spharm/power_order_selection.R     (order selection)
+#   - r_spharm/power_degree_selection.R     (degree selection)
 #   - r_spharm/spharm_analysis.R           (EXP PERMANOVA `perm_dir`)
 #   - r_statistics/exp_cores_statistics.R  (EXP Mantel + RV)
 #   - r_statistics/SDG_cores_statistics.R  (SDG Mantel + RV + scar~core-type PERMANOVA)
@@ -99,7 +99,7 @@ EXCLUDE_CORE_TYPES <- c("Handaxe", "Pick")
 # / the cached derived_data CSVs.
 REF <- list(
   exp_cumpower_l6 = 99.92, exp_cv_cross_l = 9,
-  exp_perm_R2 = 0.32624, exp_perm_F = 6.41589,
+  exp_perm_R2 = 0.30174, exp_perm_F = 5.72570,  # ILR / Aitchison anchor (was z-score 0.32624 / 6.41589)
   exp_mantel_r = -0.06126, exp_RV = 0.10095,
   sdg_mantel_r = 0.01189,  sdg_RV = 0.09066,
   sdg_perm_scar_coretype_R2 = 0.16785, sdg_perm_scar_coretype_F = 1.77504
@@ -124,6 +124,14 @@ replace_zeros <- function(X, delta = NULL) {
     X[i, ] <- row_i
   }
   X
+}
+
+# ILR / Aitchison helper (exp/SDG_cores_statistics.R convention): drop zero-variance
+# columns, multiplicative zero replacement, then ilr into Euclidean space.
+make_ilr <- function(power_df) {
+  X    <- as.matrix(power_df)
+  keep <- apply(X, 2, function(v) sd(v, na.rm = TRUE) > 0)
+  as.matrix(ilr(replace_zeros(X[, keep, drop = FALSE])))
 }
 
 # exp_cores_statistics.R:81-83
@@ -160,7 +168,7 @@ scale_features <- function(df_target, cols) {
   base::scale(mat, center = col_mean, scale = col_sd)
 }
 
-# power_order_selection.R:74-124 (trimmed to the quantities used here)
+# power_degree_selection.R:74-124 (trimmed to the quantities used here)
 compute_order_stats <- function(df, cols) {
   mat       <- df %>% select(all_of(cols)) %>% as.matrix()
   n_orders  <- length(cols)
@@ -237,7 +245,6 @@ im_distance_matrix <- function(dir_df) {
 exp_permanova_block <- function(dir_df) {
   SPHARM_direction_filter <- filter_spharm(dir_df, POWER_COLS_DIR, metric_data)
   df_exp_dir <- split_by_group(SPHARM_direction_filter)$exp_im
-  z_dir      <- scale_features(df_exp_dir, POWER_COLS_DIR)
   df_exp_only <- df_exp_dir %>%
     filter(!str_starts(ID, "IM_"), !Typology %in% EXCLUDE_TYPES) %>%
     mutate(Typology = case_when(Typology %in% LEVALLOIS_MERGE ~ "Levallois",
@@ -246,7 +253,8 @@ exp_permanova_block <- function(dir_df) {
   non_im_idx <- !str_starts(df_exp_dir$ID, "IM_") &
     !df_exp_dir$Typology %in% EXCLUDE_TYPES
   y_typology <- df_exp_only$Typology
-  pm <- run_permanova_dir(z_dir[non_im_idx, , drop = FALSE], y_typology)
+  ilr_dir <- make_ilr(df_exp_dir[non_im_idx, POWER_COLS_DIR])   # ILR / Aitchison (was z-score)
+  pm <- run_permanova_dir(ilr_dir, y_typology)
 
   pv  <- pm$pairwise
   sig <- which(pv < 0.05, arr.ind = TRUE)

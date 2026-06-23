@@ -11,7 +11,7 @@
 #   - analysis/data/derived_data/SPHARM_direction.csv
 #   - analysis/data/derived_data/SPHARM_morphology.csv
 #   - analysis/data/raw_data/SDG_core_metric.xlsx
-#   - asset/Axis_trajectory.png (panel D of the composite figure)
+#   - analysis/figures/Axis_trajectory.png (panel D of the composite figure)
 #
 # Returns (objects): p_final, plus statistics consumed by the paper.
 
@@ -106,26 +106,6 @@ circ_stats_one <- function(angles_rad) {
     mean_rad = mean_rad,
     mean_deg = mean_rad * 180 / pi,
     rho      = as.numeric(rho.circular(circ_obj))
-  )
-}
-
-watson_perm_test <- function(x1, x2, B = 9999) {
-  a1      <- circular(x1, type = "angles", units = "radians", modulo = "2pi")
-  a2      <- circular(x2, type = "angles", units = "radians", modulo = "2pi")
-  obs_u2  <- as.numeric(watson.two.test(a1, a2)$statistic)
-  x_all   <- c(x1, x2)
-  n1      <- length(x1)
-  n_all   <- length(x_all)
-  perm_u2 <- replicate(B, {
-    idx <- sample.int(n_all)
-    as.numeric(watson.two.test(
-      circular(x_all[idx[1:n1]],            type = "angles", units = "radians", modulo = "2pi"),
-      circular(x_all[idx[(n1 + 1):n_all]], type = "angles", units = "radians", modulo = "2pi")
-    )$statistic)
-  })
-  list(
-    statistic = obs_u2,
-    p.value   = (sum(perm_u2 >= obs_u2) + 1) / (B + 1)
   )
 }
 
@@ -595,25 +575,25 @@ scores_long_plot <- bind_rows(
   )
 
 endpoint_shapes <- c("Morphology" = 21, "Scar direction" = 24)
-endpoint_sizes  <- c("Morphology" = 3.0, "Scar direction" = 2.6)
+endpoint_sizes  <- c("Morphology" = 2, "Scar direction" = 1.7)
 
 p_cia_biplot <-
   ggplot() +
-  geom_hline(yintercept = 0, linetype = "dashed", color = "grey70", linewidth = 0.3) +
-  geom_vline(xintercept = 0, linetype = "dashed", color = "grey70", linewidth = 0.3) +
+  geom_hline(yintercept = 0, linetype = "dashed", color = "grey70", linewidth = 0.25) +
+  geom_vline(xintercept = 0, linetype = "dashed", color = "grey70", linewidth = 0.25) +
   geom_segment(
     data = scores_combined %>%
       filter(!is.na(Typology), ID %in% plot_ids_no_biface) %>%
       mutate(Typology = factor(Typology, levels = typology_levels)),
     aes(x = Axis1_M, y = Axis2_M, xend = Axis1_S, yend = Axis2_S,
         color = Typology),
-    linewidth = 0.45, alpha = 0.45, lineend = "round"
+    linewidth = 0.32, alpha = 0.45, lineend = "round"
   ) +
   geom_point(
     data = scores_long_plot,
     aes(x = x, y = y, fill = Typology, color = Typology,
         shape = endpoint, size = endpoint),
-    stroke = 0.5, alpha = 0.90
+    stroke = 0.4, alpha = 0.90
   ) +
   scale_color_manual(values = typology_pal, name = "Typology",
                      breaks = typology_levels) +
@@ -621,18 +601,18 @@ p_cia_biplot <-
                     breaks = typology_levels) +
   scale_shape_manual(values = endpoint_shapes, name = "Endpoint") +
   scale_size_manual(values  = endpoint_sizes,  name = "Endpoint") +
-  theme_bw() +
+  theme_bw(base_size = 8) +
   labs(
-    x = sprintf("Axis1(%.1f%%)", cia_inertia[1]),
-    y = sprintf("Axis2(%.1f%%)", cia_inertia[2])
+    x = sprintf("CoIA Axis1 (%.1f%%)", cia_inertia[1]),
+    y = sprintf("CoIA Axis2 (%.1f%%)", cia_inertia[2])
   ) +
   guides(
-    color = guide_legend(order = 1, override.aes = list(shape = 21, size = 3),
+    color = guide_legend(order = 1, override.aes = list(shape = 21, size = 2),
                          title = NULL),
     fill  = "none",
     shape = guide_legend(order = 2,
                          override.aes = list(fill = "grey60", color = "grey30",
-                                             size = c(3.0, 2.6)),
+                                             size = c(2, 1.7)),
                          title = "Endpoint"),
     size  = "none"
   ) +
@@ -640,13 +620,13 @@ p_cia_biplot <-
     panel.grid.major.x = element_blank(),
     panel.grid.major.y = element_blank(),
     panel.grid.minor   = element_blank(),
-    legend.position   = c(0.01, 0.01),  
-    legend.justification = c(0, 0),
+    legend.position   = c(0.01, 0.99),
+    legend.justification = c(0, 1),
     legend.background = element_rect(fill = alpha("white", 0.75),
                                      color = "grey80", linewidth = 0.3),
-    legend.key.size   = unit(0.45, "cm"),
-    legend.text       = element_text(size = 8),
-    legend.margin     = margin(4, 6, 4, 6)
+    legend.key.size   = unit(0.32, "cm"),
+    legend.text       = element_text(size = 6.5),
+    legend.margin     = margin(2, 4, 2, 4)
   )
 
 cat("Figure built: EXP_L1_CIA_Biplot.png\n")
@@ -1005,15 +985,15 @@ run_arrow_length_analysis <- function(group_col, group_label, palette) {
   p <- ggplot(sub_df,
               aes(x = .data[[group_col]], y = arrow_length,
                   fill = .data[[group_col]], color = .data[[group_col]])) +
-    geom_boxplot(outlier.shape = 21, outlier.size = 2.5,
-                 alpha = 0.25, linewidth = 0.5) +
-    geom_jitter(width = 0.15, size = 2.5, alpha = 0.7, shape = 16) +
+    geom_boxplot(outlier.shape = 21, outlier.size = 1.6,
+                 alpha = 0.25, linewidth = 0.35) +
+    geom_jitter(width = 0.15, size = 1.6, alpha = 0.7, shape = 16) +
     stat_summary(fun = mean, geom = "point",
-                 shape = 16, size = 4, color = "white") +
+                 shape = 16, size = 2.4, color = "white") +
     annotate("text", x = Inf, y = Inf,
              label = sprintf("Kruskal-Wallis\nchi² = %.2f, P = %.3f",
                              kw$statistic, kw$p.value),
-             hjust = 1.05, vjust = 1.2, size = 4, color = "grey40") +
+             hjust = 1.05, vjust = 1.2, size = 2.6, color = "grey40") +
     scale_fill_manual(values  = palette) +
     scale_color_manual(values = palette) +
     scale_x_discrete(
@@ -1025,13 +1005,13 @@ run_arrow_length_analysis <- function(group_col, group_label, palette) {
         "Discoid"        = "Dis.",
         "Multiplatform"  = "Multi."
       )) +
-    theme_bw() +
+    theme_bw(base_size = 8) +
     theme(
       panel.grid.major.x = element_blank(),
       panel.grid.major.y = element_blank(),
       panel.grid.minor   = element_blank(),
-      axis.text.x        = element_text(size = 9.5),
-      axis.text.y        = element_text(size = 9.5),
+      axis.text.x        = element_text(size = 7),
+      axis.text.y        = element_text(size = 7),
       legend.position    = "none"
     ) +
     labs(
@@ -1111,15 +1091,15 @@ plot_rose <- function(res, palette, bw = 40) {
       data     = mean_linear,
       aes(xintercept = angle_centered,
           color      = .data[[group_col]]),
-      linewidth = 0.5, linetype = "dashed", alpha = 0.75
+      linewidth = 0.4, linetype = "dashed", alpha = 0.75
     ) +
     # Rayleigh significance label
     geom_text(
       data = rayleigh_labels,
       aes(label = label),
-      x = 170, y = Inf,
+      x = 160, y = Inf,
       hjust = 0.8, vjust = 1.4,
-      size = 3, color = "grey35",
+      size = 2.2, color = "grey35",
       inherit.aes = FALSE
     ) +
     scale_x_continuous(
@@ -1136,14 +1116,14 @@ plot_rose <- function(res, palette, bw = 40) {
     labs(x = "CoIA line direction (°)",
          y = "von Mises KDE",
          fill = group_col) +
-    theme_bw(base_size = 10) +
+    theme_bw(base_size = 8) +
     theme(
       panel.grid.minor = element_blank(),
       panel.grid.major.x = element_blank(),
       panel.grid.major.y = element_blank(),
-      strip.text       = element_text(face = "bold", size = 9),
+      strip.text       = element_text(face = "bold", size = 7),
       strip.background = element_rect(fill = "#EBEBEB", color = "#EBEBEB"),
-      axis.text.x      = element_text(size = 7.5),
+      axis.text.x      = element_text(size = 5),
       axis.text.y      = element_blank(),
       axis.ticks.y     = element_blank(),
       legend.position  = "none"
@@ -1189,25 +1169,6 @@ run_circular_analysis <- function(group_col, group_label, palette) {
            rayleigh_p = round(rt$p.value,   4),
            conclusion = ifelse(rt$p.value < 0.05, "concentrated", "uniform"))
   })
-  
-  watson_res <- NULL
-  if (length(valid_groups) >= 2) {
-    cat(sprintf("\n----- %s Watson two-sample test -----\n", group_label))
-    pairs <- combn(valid_groups, 2, simplify = FALSE)
-    watson_res <- map_dfr(pairs, function(pair) {
-      x1 <- sub_df %>% filter(.data[[group_col]] == pair[1]) %>% pull(arrow_angle)
-      x2 <- sub_df %>% filter(.data[[group_col]] == pair[2]) %>% pull(arrow_angle)
-      wt <- watson_perm_test(x1, x2, B = 9999)
-      cat(sprintf("  %s vs %s: U2 = %.4f, p = %.4f -> %s\n",
-                  pair[1], pair[2], wt$statistic, wt$p.value,
-                  ifelse(wt$p.value < 0.05, "different", "n.s.")))
-      tibble(group_var    = group_col,
-             group1       = pair[1], group2 = pair[2],
-             U2_statistic = round(wt$statistic, 4),
-             p_value      = round(wt$p.value,   4),
-             conclusion   = ifelse(wt$p.value < 0.05, "different", "ns"))
-    })
-  }
   
   # Prepare plotting data
   sub_df_plot <- scores_combined %>%
@@ -1258,7 +1219,6 @@ run_circular_analysis <- function(group_col, group_label, palette) {
   list(
     desc      = circ_desc,
     rayleigh  = rayleigh_res,
-    watson    = watson_res,
     kde_df    = kde_df,
     mean_dirs = mean_dirs,
     group_col = group_col,
@@ -1339,16 +1299,16 @@ cat("\n[Sankey] EXP_L1_CIA_Sankey.png\n")
 
 # Step 1: tag each subplot
 p_cia_biplot_tagged <- p_cia_biplot +
-  labs(tag = "A") +
-  theme(plot.tag = element_text(size = 13, face = "bold"))
+  labs(tag = "a") +
+  theme(plot.tag = element_text(size = 9, face = "plain"))
 
 p_len_tagged <- res_len_typology$p +
-  labs(tag = "B") +
-  theme(plot.tag = element_text(size = 13, face = "bold"))
+  labs(tag = "b") +
+  theme(plot.tag = element_text(size = 9, face = "plain"))
 
 p_rose_tagged <- res_circ_typology$p_rose +
-  labs(tag = "C") +
-  theme(plot.tag = element_text(size = 13, face = "bold"))
+  labs(tag = "c") +
+  theme(plot.tag = element_text(size = 9, face = "plain"))
 
 # Step 2: recompose p_composite (no plot_annotation)
 p_composite <- (
@@ -1358,12 +1318,14 @@ p_composite <- (
   plot_layout(heights = c(2.8, 1))
 
 # Step 3: tag the external image as D
-external_img <- png::readPNG(here("asset/Axis_trajectory.png"))
-grob_img     <- grid::rasterGrob(external_img, interpolate = TRUE)
+external_img <- png::readPNG(here("analysis/figures/Axis_trajectory.png"))
+grob_img     <- grid::rasterGrob(external_img, interpolate = TRUE,
+                                 x     = grid::unit(0.5055, "npc"),
+                                 width = grid::unit(0.949,  "npc"))
 p_external   <- wrap_elements(full = grob_img) +
-  labs(tag = "D") +
+  labs(tag = "d") +
   theme(
-    plot.tag    = element_text(size = 13, face = "bold"),
+    plot.tag    = element_text(size = 9, face = "plain"),
     plot.margin = margin(0, 0, 0, 0)
   )
 

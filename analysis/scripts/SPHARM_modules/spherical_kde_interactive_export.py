@@ -25,7 +25,7 @@ import pandas as pd
 
 # ── Config ────────────────────────────────────────────────────────────────────
 DIR_CSV = "analysis/data/derived_data/directions_aligned_svd.csv"
-OUT_DIR = "analysis/output/figures/kde_sphere_interactive"
+OUT_DIR = "analysis/output/html/kde_sphere_interactive"
 
 BANDWIDTH = 0.35  # default vMF bandwidth (matches kde_to_spharm_main.py)
 
@@ -227,6 +227,12 @@ def generate_html(records, group_name, bandwidth):
     <option value="glossy">Glossy</option>
     <option value="metal">Metal</option>
   </select>
+  <select id="cmapSel" title="Colormap scheme">
+    <option value="viridis" selected>Viridis</option>
+    <option value="magma">Magma</option>
+    <option value="plasma">Plasma</option>
+    <option value="inferno">Inferno</option>
+  </select>
  </div>
  <div class="hdr-row">
   <button class="btn active" data-view="iso">Iso</button>
@@ -281,13 +287,30 @@ const PALETTE=[
   [0.369,0.789,0.383],
   [0.993,0.906,0.144],
 ];
+// extra sequential maps (6th-degree polynomial approximations of matplotlib
+// colormaps, coefficients after Matt Zucker, shadertoy WlfXRN)
+const CMAP_POLY={{
+  magma:[[-0.00214,-0.00075,-0.00539],[0.25166,0.67752,2.49403],[8.35372,-3.57772,0.31447],[-27.66873,14.26473,-13.64921],[52.17614,-27.94361,12.94417],[-50.76853,29.04658,4.23415],[18.65571,-11.48977,-5.60196]],
+  plasma:[[0.05873,0.02334,0.54334],[2.17651,0.23838,0.75396],[-2.68946,-7.45585,3.11080],[6.13035,42.34619,-28.51885],[-11.10744,-82.66631,60.13985],[10.02307,71.41362,-54.07219],[-3.65871,-22.93153,18.19191]],
+  inferno:[[0.00022,0.00165,-0.01948],[0.10651,0.56396,3.93271],[11.60249,-3.97285,-15.94239],[-41.70400,17.43640,44.35415],[77.16294,-33.40236,-81.80731],[-71.31943,32.62606,73.20952],[25.13113,-12.24267,-23.07033]]
+}};
 function cmap(t){{
   t=Math.max(0,Math.min(1,t));
-  const s=t*(PALETTE.length-1);
-  const i=Math.min(PALETTE.length-2,Math.floor(s));
-  const f=s-i;
-  const a=PALETTE[i],b=PALETTE[i+1];
-  return [a[0]+(b[0]-a[0])*f,a[1]+(b[1]-a[1])*f,a[2]+(b[2]-a[2])*f];
+  if(curCmap==='viridis'){{ // original 5-anchor viridis (default, unchanged)
+    const s=t*(PALETTE.length-1);
+    const i=Math.min(PALETTE.length-2,Math.floor(s));
+    const f=s-i;
+    const a=PALETTE[i],b=PALETTE[i+1];
+    return [a[0]+(b[0]-a[0])*f,a[1]+(b[1]-a[1])*f,a[2]+(b[2]-a[2])*f];
+  }}
+  const c=CMAP_POLY[curCmap]||CMAP_POLY.magma;
+  const out=[0,0,0];
+  for(let j=0;j<3;j++){{
+    let v=c[6][j];
+    for(let p=5;p>=0;p--)v=v*t+c[p][j];
+    out[j]=v<0?0:(v>1?1:v);
+  }}
+  return out;
 }}
 
 const MOSAIC_LEVELS=7;                   // discrete colour bands for Mosaic mode
@@ -388,7 +411,7 @@ class OC{{
    Data & State
    ================================================================ */
 const DATA={data_json};
-let curIdx=0,curBW={bandwidth},curMat='flat';
+let curIdx=0,curBW={bandwidth},curMat='flat',curCmap='viridis';
 let showPts=true,showGrid=false,showInfo=false,showMean=false,showContours=false,showMap=false;
 
 const SPHERE=buildSphereGrid(NLAT,NLON);
@@ -686,6 +709,14 @@ document.getElementById('matSel').addEventListener('change',e=>{{
   sphereMesh.material=makeSphereMat(curMat);
   old.dispose();
   recolor(currentDirs());drawColorbar();   // Mosaic changes the colour banding
+}});
+
+/* ================================================================
+   Colormap scheme selector
+   ================================================================ */
+document.getElementById('cmapSel').addEventListener('change',e=>{{
+  curCmap=e.target.value;
+  recolor(currentDirs());drawColorbar();
 }});
 
 /* ================================================================

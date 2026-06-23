@@ -45,7 +45,7 @@ OUT_DIR         = "analysis/output/figures/reconstruction"
 OUT_ILR_DIR     = os.path.join(OUT_DIR, "ILR_trajectory")
 OUT_SDG_DIR     = "analysis/output/figures/reconstruction_sdg"
 OUT_SDG_ILR_DIR = os.path.join(OUT_SDG_DIR, "ILR_trajectory")
-OUT_HTML_DIR    = "analysis/output/figures/reconstruction_interactive"
+OUT_HTML_DIR    = "analysis/output/html/reconstruction_interactive"
 
 os.makedirs(OUT_DIR, exist_ok=True)
 os.makedirs(OUT_ILR_DIR, exist_ok=True)

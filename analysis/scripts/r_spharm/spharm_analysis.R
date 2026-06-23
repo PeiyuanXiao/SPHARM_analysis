@@ -29,6 +29,7 @@ library(vegan)
 library(FSA)
 library(RVAideMemoire)
 library(ggtern)
+library(compositions)   # ilr (Aitchison geometry for the compositional power spectra)
 
 conflicted::conflicts_prefer(ggplot2::aes)
 conflicted::conflicts_prefer(ggplot2::theme_bw)
@@ -37,6 +38,10 @@ conflicted::conflicts_prefer(ggplot2::annotate)
 conflicted::conflicts_prefer(dplyr::select)
 conflicted::conflicts_prefer(dplyr::filter)
 conflicted::conflicts_prefer(stats::sd)
+conflicted::conflicts_prefer(stats::dist)    # compositions masks dist
+conflicted::conflicts_prefer(base::scale)    # compositions masks scale
+conflicted::conflicts_prefer(stats::var)
+conflicted::conflicts_prefer(compositions::`%*%`)  # S4 matmul: plain matrices + ilr internals
 set.seed(42)
 
 # ==============================================================================
@@ -100,27 +105,36 @@ dir_splits   <- split_by_group(SPHARM_direction_filter)
 morph_splits <- split_by_group(SPHARM_morphology_filter)
 
 # ==============================================================================
-# 3. EXP specimens: z-score standardisation + LDA visualisation
+# 3. EXP specimens: ILR transform + LDA visualisation
 # ==============================================================================
 
 df_exp_dir   <- dir_splits$exp_im
 df_exp_morph <- morph_splits$exp_im
 
-scale_features <- function(df_target, cols) {
-  ref_mat  <- df_target %>%
-    filter(!str_starts(ID, "IM_")) %>%
-    select(all_of(cols)) %>%
-    as.matrix()
-  col_mean <- colMeans(ref_mat)
-  col_sd   <- apply(ref_mat, 2, sd)
-  mat      <- df_target %>% select(all_of(cols)) %>% as.matrix()
-  scale(mat, center = col_mean, scale = col_sd)
+# Power spectra are compositional (closure to a fixed sum), so both the LDA
+# visualisation and the PERMANOVA below use Aitchison geometry: ilr() projects each
+# spectrum out of the simplex into Euclidean space (exp/SDG_cores_statistics.R
+# convention). Zero-variance columns are dropped first, then a multiplicative zero
+# replacement makes ilr well-defined.
+replace_zeros <- function(X, delta = NULL) {
+  X <- as.matrix(X)
+  for (i in seq_len(nrow(X))) {
+    row_i <- X[i, ]; zero_idx <- row_i == 0
+    if (!any(zero_idx)) next
+    nonzero_min <- min(row_i[!zero_idx])
+    d <- ifelse(is.null(delta), nonzero_min * 0.65, delta)
+    n_zero <- sum(zero_idx)
+    row_i[zero_idx]  <- d
+    row_i[!zero_idx] <- row_i[!zero_idx] * (1 - n_zero * d)
+    X[i, ] <- row_i
+  }
+  X
 }
-
-z_dir   <- scale_features(df_exp_dir,   POWER_COLS_DIR)
-z_morph <- scale_features(df_exp_morph, POWER_COLS_MORPH)
-colnames(z_dir)   <- paste0("dir_",   POWER_COLS_DIR)
-colnames(z_morph) <- paste0("morph_", POWER_COLS_MORPH)
+make_ilr <- function(power_df) {
+  X    <- as.matrix(power_df)
+  keep <- apply(X, 2, function(v) sd(v, na.rm = TRUE) > 0)
+  as.matrix(ilr(replace_zeros(X[, keep, drop = FALSE])))
+}
 
 df_exp_only <- df_exp_dir %>%
   filter(!str_starts(ID, "IM_"), !Typology %in% EXCLUDE_TYPES) %>%
@@ -136,6 +150,11 @@ non_im_idx <- !str_starts(df_exp_dir$ID, "IM_") &
   !df_exp_dir$Typology %in% EXCLUDE_TYPES
 
 y_typology <- df_exp_only$Typology
+
+# ILR / Aitchison coordinates for the EXP non-IM set — power spectra are compositional,
+# so these feed BOTH the LDA visualisation and the PERMANOVA (no z-scoring).
+ilr_dir   <- make_ilr(df_exp_dir[non_im_idx,  POWER_COLS_DIR])
+ilr_morph <- make_ilr(df_exp_morph[non_im_idx, POWER_COLS_MORPH])
 
 cat(sprintf("EXP specimens retained: %d, classes: %d\n", nrow(df_exp_only), nlevels(y_typology)))
 print(table(y_typology))
@@ -183,9 +202,9 @@ run_lda_plot <- function(X, y, ids, filename) {
   invisible(list(fit = fit, scores = scores, prop_var = prop_var))
 }
 
-res_morph <- run_lda_plot(z_morph[non_im_idx, ], y_typology, df_exp_only$ID,
+res_morph <- run_lda_plot(ilr_morph, y_typology, df_exp_only$ID,
                           "LDA_morph_by_Typology.png")
-res_dir   <- run_lda_plot(z_dir[non_im_idx, ],   y_typology, df_exp_only$ID,
+res_dir   <- run_lda_plot(ilr_dir,   y_typology, df_exp_only$ID,
                           "LDA_dir_by_Typology.png")
 
 # ==============================================================================
@@ -267,14 +286,14 @@ print(dunn_SPI)
 p_SPI_box <- ggplot(results_typed,
                     aes(x = factor(Typology, levels = TYPOLOGY_ORDER),
                         y = SPI, fill = Typology, color = Typology)) +
-  geom_boxplot(outlier.shape = 21, outlier.size = 2.5,
-               alpha = 0.25, linewidth = 0.5) +
-  geom_jitter(width = 0.15, size = 2.5, alpha = 0.7, shape = 16) +
+  geom_boxplot(outlier.shape = 21, outlier.size = 1.6,
+               alpha = 0.25, linewidth = 0.35) +
+  geom_jitter(width = 0.15, size = 1.6, alpha = 0.7, shape = 16) +
   stat_summary(fun = mean, geom = "point",
-               shape = 16, size = 4, color = "white") +
+               shape = 16, size = 2.4, color = "white") +
   annotate("text", x = Inf, y = Inf,
            label = "SPI: Kruskal-Wallis\nP < 0.001",
-           hjust = 1.05, vjust = 1.2, size = 4, color = "grey40") +
+           hjust = 1.05, vjust = 1.2, size = 2.6, color = "grey40") +
   scale_fill_manual(values  = TYPOLOGY_COLORS) +
   scale_color_manual(values = TYPOLOGY_COLORS) +
   scale_x_discrete(
@@ -289,11 +308,11 @@ p_SPI_box <- ggplot(results_typed,
     expand = expansion(add = 0.6)
   ) +
   scale_y_continuous(limits = c(0.08, 1.0), breaks = seq(0.0, 1.0, by = 0.1)) +
-  theme_bw() +
+  theme_bw(base_size = 8) +
   theme(
     panel.grid     = element_blank(),
-    axis.text.x    = element_text(size = 9.5),
-    axis.text.y    = element_text(size = 9.5),
+    axis.text.x    = element_text(size = 7),
+    axis.text.y    = element_text(size = 7),
     legend.position = "none"
   ) +
   labs(x = NULL, y = "SPI")
@@ -305,19 +324,19 @@ run_permanova <- function(X, group_vec, label) {
   
   set.seed(42)
   perm_global <- adonis2(X ~ Typology, data = df_grp,
-                         method = "euclidean", permutations = 999)
+                         method = "euclidean", permutations = 9999)
   cat(sprintf("\n--- PERMANOVA : %s ---\n", label)); print(perm_global)
   
   set.seed(42)
   disp      <- betadisper(d, group_vec)
-  disp_test <- permutest(disp, permutations = 999)
+  disp_test <- permutest(disp, permutations = 9999)
   cat(sprintf("\n--- PERMDISP : %s ---\n", label)); print(disp_test)
   
   disp_tukey <- TukeyHSD(disp)
   cat(sprintf("\n--- PERMDISP TukeyHSD : %s ---\n", label)); print(disp_tukey)
   
   set.seed(42)
-  pairwise_res <- pairwise.perm.manova(d, group_vec, nperm = 999, p.method = "holm")
+  pairwise_res <- pairwise.perm.manova(d, group_vec, nperm = 9999, p.method = "holm")
   cat(sprintf("\n--- Pairwise PERMANOVA (Holm) : %s ---\n", label))
   print(pairwise_res$p.value)
   
@@ -353,7 +372,7 @@ p_benn <- ggtern(
     aes(group = Typology),
     alpha = 0.25, color = NA
   ) +
-  geom_point(size = 1.8, alpha = 0.85, shape = 16) +
+  geom_point(size = 1.3, alpha = 0.85, shape = 16) +
   scale_color_manual(values = TYPOLOGY_COLORS) +
   scale_fill_manual(values  = TYPOLOGY_COLORS) +
   labs(
@@ -367,25 +386,25 @@ p_benn <- ggtern(
   theme(
     tern.panel.grid.major = element_line(color = "grey85", linewidth = 0.15, linetype = "dashed"),
     tern.panel.grid.minor = element_line(color = "grey85", linewidth = 0.15, linetype = "dashed"),
-    tern.axis.title.T     = element_text(size = 10, color = "grey20"),
-    tern.axis.title.L     = element_text(size = 10, color = "grey20"),
-    tern.axis.title.R     = element_text(size = 10, color = "grey20"),
-    tern.axis.text.T = element_text(size = 9),
-    tern.axis.text.L = element_text(size = 9),
-    tern.axis.text.R = element_text(size = 9),
+    tern.axis.title.T     = element_text(size = 7, color = "grey20"),
+    tern.axis.title.L     = element_text(size = 7, color = "grey20"),
+    tern.axis.title.R     = element_text(size = 7, color = "grey20"),
+    tern.axis.text.T = element_text(size = 6),
+    tern.axis.text.L = element_text(size = 6),
+    tern.axis.text.R = element_text(size = 6),
     legend.position       = "right",
-    legend.title          = element_text(size = 11, color = "grey40", 
-                                         margin = margin(b = 10)),
-    legend.text           = element_text(size = 10, color = "grey40"),
-    legend.key.size       = unit(1, "lines"),
+    legend.title          = element_text(size = 7, color = "grey40",
+                                         margin = margin(b = 6)),
+    legend.text           = element_text(size = 6.5, color = "grey40"),
+    legend.key.size       = unit(0.7, "lines"),
     legend.background     = element_rect(fill = "transparent", colour = NA),
     legend.box.background = element_rect(fill = "transparent", colour = NA),
     plot.margin           = ggplot2::margin(2, 2, 2, 2)
   )
 
-# --- SPHARM PERMANOVA ---
-perm_morph <- run_permanova(z_morph[non_im_idx, ], y_typology, "SPHARM morphology spectrum")
-perm_dir   <- run_permanova(z_dir[non_im_idx, ],   y_typology, "SPHARM direction spectrum")
+# --- SPHARM PERMANOVA (ILR / Aitchison; ilr_dir / ilr_morph computed above) ---
+perm_morph <- run_permanova(ilr_morph, y_typology, "SPHARM morphology spectrum (ILR)")
+perm_dir   <- run_permanova(ilr_dir,   y_typology, "SPHARM direction spectrum (ILR)")
 
 cat("\n========== PERMANOVA + PERMDISP summary ==========\n")
 cat(sprintf("SPHARM morphology : R2 = %.3f, p = %.3f | PERMDISP p = %.3f\n",
@@ -426,10 +445,10 @@ p_adj_vec <- c(
   0.010, 0.010, 0.357, 0.072,
   0.055, 0.357, 0.010,
   0.804, 0.010, 0.012,
-  # Direction SPHARM（Holm）
-  0.458, 0.010, 0.045, 0.010,
-  0.012, 0.458, 0.010,
-  0.012, 0.028, 0.010
+  # Direction SP-SPHARM (Holm, ILR/Aitchison; from perm_dir$pairwise, seed 42)
+  0.392, 0.010, 0.024, 0.010,
+  0.012, 0.382, 0.010,
+  0.012, 0.042, 0.010
 )
 
 plot_data <- tibble(
@@ -453,13 +472,13 @@ p_bubble <- ggplot(
   aes(x = Method, y = Pair)
 ) +
   geom_point(aes(fill = Sig),
-             shape = 21, size = 10, color = "white", stroke = 0.1, alpha = 0.7) +
+             shape = 21, size = 7, color = "white", stroke = 0.1, alpha = 0.7) +
   geom_text(aes(label = case_when(
     Sig == "p ≤ 0.001" ~ "***",
     Sig == "p ≤ 0.01"  ~ "**",
     TRUE               ~ "*"
   ), color = Sig),
-  size = 5, fontface = "bold") +
+  size = 3.2, fontface = "bold") +
   scale_fill_manual(values  = c("p ≤ 0.001" = "#802520",
                                 "p ≤ 0.01"  = "#B26538",
                                 "p ≤ 0.05"  = "#BA8530"),
@@ -471,14 +490,14 @@ p_bubble <- ggplot(
   scale_x_discrete(position = "top", limits = method_levels) +
   scale_y_discrete(position = "right", limits = levels(plot_data$Pair),
                    expand = expansion(add = 0.6)) +
-  theme_bw() +
+  theme_bw(base_size = 8) +
   theme(
-    panel.grid.major = element_line(color = "gray50", linewidth = 0.35,
+    panel.grid.major = element_line(color = "gray50", linewidth = 0.3,
                                     linetype = "dashed"),
     panel.grid.minor = element_blank(),
-    axis.text.x      = element_text(face = "bold", size = 10, hjust = 0.5,
+    axis.text.x      = element_text(face = "bold", size = 7.5, hjust = 0.5,
                                     margin = ggplot2::margin(b = 4)),
-    axis.text.y      = element_text(size = 10, hjust = 0,
+    axis.text.y      = element_text(size = 7.5, hjust = 0,
                                     margin = ggplot2::margin(r = -1)),
     axis.title       = element_blank(),
     legend.position  = "none",
@@ -501,7 +520,11 @@ cat("Saved: SPHARM_morphology_filter.rds\n")
 # 7. Combined panel: three left plots + bubble plot
 # ==============================================================================
 benn_grob <- ggplotGrob(p_benn)
-p_benn_wrap <- wrap_elements(full = benn_grob)
+# wrap_elements() holds a raw grob, so the global plot.tag size from
+# plot_annotation() does not reach it (it falls back to the ggtern-modified
+# default theme, making tag "b" oversized). Set the tag size explicitly here.
+p_benn_wrap <- wrap_elements(full = benn_grob) +
+  theme(plot.tag = element_text(size = 9, face = "bold", family = ""))
 
 hull_dir <- res_dir$scores %>%
   group_by(Typology) %>%
@@ -510,25 +533,25 @@ hull_dir <- res_dir$scores %>%
 
 p_dir_plot <- ggplot(res_dir$scores,
                      aes(x = LD1, y = LD2, color = Typology)) +
-  geom_hline(yintercept = 0, color = "grey50", linewidth = 0.35, linetype = "dashed") +
-  geom_vline(xintercept = 0, color = "grey50", linewidth = 0.35, linetype = "dashed") +
+  geom_hline(yintercept = 0, color = "grey50", linewidth = 0.25, linetype = "dashed") +
+  geom_vline(xintercept = 0, color = "grey50", linewidth = 0.25, linetype = "dashed") +
   annotate("text", x = Inf, y = Inf,
            label = "SP-SPHARM: PERMANOVA\nP = 0.001",
-           hjust = 1.05, vjust = 1.2, size = 4, color = "grey40") +
+           hjust = 1.05, vjust = 1.2, size = 2.6, color = "grey40") +
   geom_polygon(data = hull_dir, aes(fill = Typology, group = Typology),
                alpha = 0.25, color = NA) +
   geom_polygon(data = hull_dir, aes(color = Typology, group = Typology),
                fill = NA, linewidth = 0.01) +
-  geom_point(size = 2.0, alpha = 0.88, stroke = 0.3, shape = 16) +
+  geom_point(size = 1.4, alpha = 0.88, stroke = 0.25, shape = 16) +
   scale_color_manual(values = TYPOLOGY_COLORS) +
   scale_fill_manual(values  = TYPOLOGY_COLORS) +
-  scale_x_continuous(limits = c(-2.5, 4.5), expand = expansion(mult = 0.08),
-                     breaks = seq(-2.5, 4.5, by = 1)) +
-  scale_y_continuous(limits = c(-5, 3), expand = expansion(mult = 0.08),
-                     breaks = seq(-5, 3, by = 1)) +
+  scale_x_continuous(limits = c(-4.5, 3), expand = expansion(mult = 0.08),
+                     breaks = seq(-4, 3, by = 1)) +
+  scale_y_continuous(limits = c(-4.5, 3), expand = expansion(mult = 0.08),
+                     breaks = seq(-4, 3, by = 1)) +
   labs(x = sprintf("LD1 (%.1f%%)", res_dir$prop_var[1] * 100),
        y = sprintf("LD2 (%.1f%%)", res_dir$prop_var[2] * 100)) +
-  theme_bw() +
+  theme_bw(base_size = 8) +
   theme(panel.grid = element_blank(), legend.position = "none")
 
 left_col <- (p_SPI_box / p_benn_wrap / p_dir_plot) +
@@ -537,6 +560,6 @@ left_col <- (p_SPI_box / p_benn_wrap / p_dir_plot) +
 exp_method_compare_combined <- (left_col | p_bubble) +
   plot_layout(ncol = 2, widths = c(1, 0.5)) +
   plot_annotation(
-    tag_levels = "A",
-    theme = theme(plot.tag = element_text(face = "bold"))
+    tag_levels = "a",
+    theme = theme(plot.tag = element_text(face = "bold", size = 9))
   )

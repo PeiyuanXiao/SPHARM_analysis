@@ -17,10 +17,16 @@ library(here)
 library(tidyverse)
 library(readxl)
 library(ggrepel)
+library(grid)
 library(patchwork)
+library(compositions)   # ilr (Aitchison distance for the compositional SP-SPHARM panel)
 conflicted::conflicts_prefer(dplyr::select)
 conflicted::conflicts_prefer(dplyr::filter)
-conflicted::conflicts_prefer(base::`%*%`)
+conflicted::conflicts_prefer(compositions::`%*%`)  # S4 matmul: plain matrices + ilr internals
+conflicted::conflicts_prefer(stats::dist)          # compositions masks dist
+conflicted::conflicts_prefer(base::scale)          # compositions masks scale
+conflicted::conflicts_prefer(stats::var)           # compositions masks var
+conflicted::conflicts_prefer(stats::sd)            # compositions masks sd
 
 # ==============================================================================
 # Helpers
@@ -42,6 +48,64 @@ compute_EI <- function(ux, uy, uz) {
   list(
     E = ifelse(lambda[1] > 1e-10, 1 - lambda[2] / lambda[1], NA_real_),
     I = ifelse(lambda[1] > 1e-10,     lambda[3] / lambda[1], NA_real_)
+  )
+}
+
+# Power spectra are compositional; the SP-SPHARM panel below therefore uses
+# Aitchison distance (ilr -> standardised Euclidean) rather than raw standardised
+# Euclidean. Zero-variance columns are dropped, then zeros replaced for the log-ratio.
+replace_zeros <- function(X, delta = NULL) {
+  X <- as.matrix(X)
+  for (i in seq_len(nrow(X))) {
+    row_i <- X[i, ]; zero_idx <- row_i == 0
+    if (!any(zero_idx)) next
+    nonzero_min <- min(row_i[!zero_idx])
+    d <- ifelse(is.null(delta), nonzero_min * 0.65, delta)
+    n_zero <- sum(zero_idx)
+    row_i[zero_idx]  <- d
+    row_i[!zero_idx] <- row_i[!zero_idx] * (1 - n_zero * d)
+    X[i, ] <- row_i
+  }
+  X
+}
+make_ilr <- function(power_df) {
+  X    <- as.matrix(power_df)
+  keep <- apply(X, 2, function(v) sd(v, na.rm = TRUE) > 0)
+  as.matrix(ilr(replace_zeros(X[, keep, drop = FALSE])))
+}
+
+GeomRoundTile <- ggplot2::ggproto(
+  "GeomRoundTile", ggplot2::GeomTile,
+  draw_panel = function(self, data, panel_params, coord,
+                        radius = grid::unit(2, "pt")) {
+    coords <- coord$transform(data, panel_params)
+    grobs <- lapply(seq_len(nrow(coords)), function(i) {
+      a <- coords$alpha[i];     if (is.null(a) || is.na(a)) a <- 1
+      lw <- coords$linewidth[i]; if (is.null(lw))           lw <- 0.1
+      grid::roundrectGrob(
+        x = coords$xmin[i], y = coords$ymin[i],
+        width  = coords$xmax[i] - coords$xmin[i],
+        height = coords$ymax[i] - coords$ymin[i],
+        just = c("left", "bottom"), r = radius,
+        gp = grid::gpar(
+          col  = coords$colour[i],
+          fill = scales::alpha(coords$fill[i], a),
+          lwd  = lw * ggplot2::.pt,
+          lty  = coords$linetype[i] %||% 1
+        )
+      )
+    })
+    grid::gTree(children = do.call(grid::gList, grobs))
+  }
+)
+
+geom_round_tile <- function(mapping = NULL, data = NULL, stat = "identity",
+                            position = "identity", ..., radius = grid::unit(2, "pt"),
+                            na.rm = FALSE, show.legend = NA, inherit.aes = TRUE) {
+  ggplot2::layer(
+    geom = GeomRoundTile, mapping = mapping, data = data, stat = stat,
+    position = position, show.legend = show.legend, inherit.aes = inherit.aes,
+    params = list(radius = radius, na.rm = na.rm, ...)
   )
 }
 
@@ -116,23 +180,6 @@ variance_IM <- SPHARM_IM %>%
 variance_IM %>%
   mutate(across(c(var_pct, var_cumsum), \(x) round(x, 2))) %>%
   print(n = Inf)
-
-p_variance_IM <- ggplot(variance_IM, aes(x = degree, y = variance)) +
-  geom_line(color = "#FFBAE0", linewidth = 1, alpha = 0.9) +
-  geom_point(color = "#FFBAE0", size = 3, alpha = 0.9) +
-  scale_x_continuous(breaks = seq(min(variance_IM$degree),
-                                  max(variance_IM$degree), by = 1)) +
-  scale_y_continuous(labels = scales::scientific) +
-  theme_bw() +
-  labs(
-    title = "Direction SPHARM Variance per Degree\n(Ideal Models only)",
-    x     = "Spherical Harmonic Degree (l)",
-    y     = "Variance"
-  ) +
-  theme(
-    plot.title         = element_text(face = "bold", size = 10, hjust = 0.5),
-    panel.grid.minor.x = element_blank()
-  )
 
 # --- B-2: per-type power spectra ---
 df_long <- SPHARM_IM %>%
@@ -251,7 +298,9 @@ labs <- df_im$label
 dist_all <- bind_rows(
   make_dist_df(df_im %>% select(R)                 %>% as.matrix(), labs, "SPI"),
   make_dist_df(df_im %>% select(E, I)              %>% as.matrix(), labs, "Fabric"),
-  make_dist_df(df_im %>% select(power_l1:power_l4) %>% as.matrix(), labs, "SPHARM")
+  # SP-SPHARM: Aitchison distance — ilr coordinates fed through the same
+  # standardise-then-Euclidean path as the other (non-compositional) panels.
+  make_dist_df(make_ilr(df_im %>% select(power_l1:power_l4)),       labs, "SPHARM")
 ) %>%
   mutate(
     From   = factor(From,   levels = id_order),
@@ -272,9 +321,14 @@ dist_all_upper <- dist_all %>%
   dplyr::filter(as.numeric(From) < as.numeric(To))
 
 p_heatmap <- ggplot(dist_all_upper, aes(x = To, y = From, fill = distance)) +
-  geom_tile(color = "white", linewidth = 0.3) +
-  geom_text(aes(label = sprintf("%.1f", distance)), size = 2.2) +
-  facet_wrap(~ method, ncol = 3) +
+  geom_round_tile(color = "white", linewidth = 0.1, radius = unit(3, "pt")) +
+  geom_text(aes(label = sprintf("%.1f", distance)), size = 1.7) +
+  facet_wrap(~ method, ncol = 3,
+             labeller = as_labeller(c(
+               SPI    = "Scar Pattern Index",
+               Fabric = "Fabric metrics",
+               SPHARM = "SP-SPHARM"
+             ))) +
   scale_fill_gradient2(
     low      = "#5C7F71",
     mid      = "#F5EDDC",
@@ -282,12 +336,15 @@ p_heatmap <- ggplot(dist_all_upper, aes(x = To, y = From, fill = distance)) +
     midpoint = 2,
     name     = "Euclidean\ndistance\n(standardised)"
   ) +
-  scale_x_discrete(guide = guide_axis(angle = 45)) +
+  scale_x_discrete(guide = guide_axis(angle = 90)) +
   scale_y_discrete(limits = rev) +
-  theme_bw(base_size = 8) +
+  theme_bw(base_size = 6) +
   labs(x = NULL, y = NULL) +
   theme(
-    strip.text       = element_text(face = "bold", size = 9),
+    strip.text       = element_text(face = "bold", size = 6.5),
     strip.background = element_rect(fill = "#EBEBEB", color = "#EBEBEB"),
-    axis.text        = element_text(size = 6.5)
+    axis.text        = element_text(size = 6),
+    legend.title     = element_text(size = 6),
+    legend.text      = element_text(size = 6),
+    legend.key.size  = unit(0.32, "cm")
   )

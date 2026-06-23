@@ -8,6 +8,7 @@
 *.las
 *.laz
 **/3D_models_cores/
+**/3D_models_cores.zip
 
 # ==============================================================================
 # Generated data — all reproducible via tar_make()
@@ -23,6 +24,8 @@ analysis/data/derived_data/
 _targets/
 analysis/paper/_targets/
 analysis/robustness/_targets_store/
+# Quarto/SI render log (generated artifact)
+analysis/robustness/_si_render.log
 
 # ==============================================================================
 # Analysis output (figures, HTML, rendered docs)
@@ -30,6 +33,7 @@ analysis/robustness/_targets_store/
 analysis/output/
 *.html
 *.docx
+*.pdf
 figure origin/
 # keep the Word reference template (formatting, not a rendered output)
 !analysis/templates/template.docx
@@ -71,6 +75,55 @@ Start_SPHARM.bat
 .env
 .quarto/
 .positai/
+.Rproj.user
+.Rproj.user
+.Rproj.user
+.Rproj.user
+.Rproj.user
+.Rproj.user
+.Rproj.user
+.Rproj.user
+.Rproj.user
+.Rproj.user
+.Rproj.user
+.Rproj.user
+.Rproj.user
+.Rproj.user
+.Rproj.user
+.Rproj.user
+.Rproj.user
+.Rproj.user
+.Rproj.user
+.Rproj.user
+.Rproj.user
+.Rproj.user
+.Rproj.user
+.Rproj.user
+.Rproj.user
+.Rproj.user
+.Rproj.user
+.Rproj.user
+.Rproj.user
+.Rproj.user
+.Rproj.user
+.Rproj.user
+.Rproj.user
+.Rproj.user
+.Rproj.user
+.Rproj.user
+.Rproj.user
+.Rproj.user
+.Rproj.user
+.Rproj.user
+.Rproj.user
+.Rproj.user
+.Rproj.user
+.Rproj.user
+.Rproj.user
+.Rproj.user
+.Rproj.user
+.Rproj.user
+.Rproj.user
 .Rproj.user
 .Rproj.user
 .Rproj.user

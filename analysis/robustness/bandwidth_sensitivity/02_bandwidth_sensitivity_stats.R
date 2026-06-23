@@ -11,7 +11,7 @@
 # It re-uses the project's existing statistical machinery (the same package
 # functions the main pipeline calls — vegan::adonis2 / mantel, ade4::coinertia /
 # randtest, compositions::ilr) and replicates, verbatim, the data-prep steps from:
-#   - analysis/scripts/r_spharm/power_order_selection.R   (order selection)
+#   - analysis/scripts/r_spharm/power_degree_selection.R   (degree selection)
 #   - analysis/scripts/r_validation/methods_comparison_IM.R (ideal-core distance)
 #   - analysis/scripts/r_spharm/spharm_analysis.R          (EXP PERMANOVA `perm_dir`)
 #   - analysis/scripts/r_statistics/exp_cores_statistics.R (EXP Mantel + RV)
@@ -89,7 +89,7 @@ TYPOLOGY_ORDER  <- c("Unidirectional", "Bidirectional", "Levallois",
 EXCLUDE_CORE_TYPES <- c("Handaxe", "Pick")
 
 # Committed h=0.35 reference values used for the sanity check (from the cached
-# derived_data CSVs — see OrderSelection_stats_direction_EXP.csv, EXP_L1_results.csv,
+# derived_data CSVs — see DegreeSelection_stats_direction_EXP.csv, EXP_L1_results.csv,
 # L1_results.csv, L3_permanova.csv).
 REF <- list(
   exp_cumpower_l6 = 99.92, exp_cv_cross_l = 9,
@@ -117,6 +117,14 @@ replace_zeros <- function(X, delta = NULL) {
     X[i, ] <- row_i
   }
   X
+}
+
+# ILR / Aitchison helper (exp/SDG_cores_statistics.R convention): drop zero-variance
+# columns, multiplicative zero replacement, then ilr into Euclidean space.
+make_ilr <- function(power_df) {
+  X    <- as.matrix(power_df)
+  keep <- apply(X, 2, function(v) sd(v, na.rm = TRUE) > 0)
+  as.matrix(ilr(replace_zeros(X[, keep, drop = FALSE])))
 }
 
 # exp_cores_statistics.R:81-83
@@ -153,7 +161,7 @@ scale_features <- function(df_target, cols) {
   base::scale(mat, center = col_mean, scale = col_sd)
 }
 
-# power_order_selection.R:74-124 (trimmed to the quantities used here)
+# power_degree_selection.R:74-124 (trimmed to the quantities used here)
 compute_order_stats <- function(df, cols) {
   mat       <- df %>% select(all_of(cols)) %>% as.matrix()
   n_orders  <- length(cols)
@@ -206,7 +214,7 @@ core_meta <- read_excel(here("analysis/data/raw_data/SDG_core_metric.xlsx")) %>%
 
 # ---- (a) order selection: EXP & SDG -----------------------------------------
 order_selection_block <- function(dir_df) {
-  dir_exp <- dir_df %>% filter(str_starts(ID, "EXP"))                       # power_order_selection.R:38
+  dir_exp <- dir_df %>% filter(str_starts(ID, "EXP"))                       # power_degree_selection.R:38
   dir_sdg <- dir_df %>% filter(str_starts(ID, "SDG"), !str_starts(ID, "IM_")) # :42-43
   cols    <- intersect(POWER_COLS_ALL, colnames(dir_df))
   list(
@@ -233,7 +241,6 @@ im_distance_matrix <- function(dir_df) {
 exp_permanova_block <- function(dir_df) {
   SPHARM_direction_filter <- filter_spharm(dir_df, POWER_COLS_DIR, metric_data)
   df_exp_dir <- split_by_group(SPHARM_direction_filter)$exp_im            # :99-107
-  z_dir      <- scale_features(df_exp_dir, POWER_COLS_DIR)                # :120
   df_exp_only <- df_exp_dir %>%
     filter(!str_starts(ID, "IM_"), !Typology %in% EXCLUDE_TYPES) %>%      # :125-133
     mutate(Typology = case_when(Typology %in% LEVALLOIS_MERGE ~ "Levallois",
@@ -242,7 +249,8 @@ exp_permanova_block <- function(dir_df) {
   non_im_idx <- !str_starts(df_exp_dir$ID, "IM_") &
     !df_exp_dir$Typology %in% EXCLUDE_TYPES                               # :135-136
   y_typology <- df_exp_only$Typology
-  pm <- run_permanova_dir(z_dir[non_im_idx, , drop = FALSE], y_typology)
+  ilr_dir <- make_ilr(df_exp_dir[non_im_idx, POWER_COLS_DIR])   # ILR / Aitchison (was z-score)
+  pm <- run_permanova_dir(ilr_dir, y_typology)
 
   # Resolution profile: which typology pairs are significant (Holm, p < 0.05).
   pv  <- pm$pairwise

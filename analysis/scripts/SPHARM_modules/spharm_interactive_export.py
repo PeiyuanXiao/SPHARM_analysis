@@ -21,7 +21,7 @@ import pandas as pd
 # ── 配置 ─────────────────────────────────────────────────────────────────────
 MORPH_CSV = "analysis/data/derived_data/SPHARM_morphology.csv"
 SCAR_CSV  = "analysis/data/derived_data/SPHARM_direction.csv"
-OUT_DIR   = "analysis/output/figures/reconstruction_interactive"
+OUT_DIR   = "analysis/output/html/reconstruction_interactive"
 
 LMAX = 20
 
@@ -262,6 +262,13 @@ def generate_html(records, group_name, lmax):
   <button class="btn active" id="btnW">Wire</button>
   <button class="btn" id="btnI">Info</button>
   <button class="btn" id="btnCmap">Colormap</button>
+  <select class="matsel" id="cmapSel" title="Colormap scheme">
+    <option value="RdBu" selected>Red–Blue</option>
+    <option value="viridis">Viridis</option>
+    <option value="magma">Magma</option>
+    <option value="plasma">Plasma</option>
+    <option value="inferno">Inferno</option>
+  </select>
   <button class="btn" id="btnMean">Type Mean</button>
   <div class="sep"></div>
   <button class="btn" id="btnSnap" title="Save screenshot">📷 PNG</button>
@@ -349,6 +356,34 @@ function shSynthesize(cilm,maxDeg){{
 }}
 
 /* ================================================================
+   Colormaps  (x in 0..1 -> [r,g,b] in 0..1)
+   RdBu reproduces the original signed blue-white-red scheme exactly;
+   the sequential maps are 6th-degree polynomial approximations of the
+   matplotlib colormaps (coefficients after Matt Zucker, shadertoy WlfXRN).
+   ================================================================ */
+const CMAP_POLY={{
+  viridis:[[0.27773,0.00541,0.33410],[0.10509,1.40461,1.38459],[-0.33086,0.21485,0.09510],[-4.63423,-5.79910,-19.33244],[6.22827,14.17993,56.69055],[4.77638,-13.74515,-65.35303],[-5.43546,4.64585,26.31244]],
+  magma:[[-0.00214,-0.00075,-0.00539],[0.25166,0.67752,2.49403],[8.35372,-3.57772,0.31447],[-27.66873,14.26473,-13.64921],[52.17614,-27.94361,12.94417],[-50.76853,29.04658,4.23415],[18.65571,-11.48977,-5.60196]],
+  plasma:[[0.05873,0.02334,0.54334],[2.17651,0.23838,0.75396],[-2.68946,-7.45585,3.11080],[6.13035,42.34619,-28.51885],[-11.10744,-82.66631,60.13985],[10.02307,71.41362,-54.07219],[-3.65871,-22.93153,18.19191]],
+  inferno:[[0.00022,0.00165,-0.01948],[0.10651,0.56396,3.93271],[11.60249,-3.97285,-15.94239],[-41.70400,17.43640,44.35415],[77.16294,-33.40236,-81.80731],[-71.31943,32.62606,73.20952],[25.13113,-12.24267,-23.07033]]
+}};
+function cmapRGB(name,x){{
+  x=x<0?0:(x>1?1:x);
+  if(name==='RdBu'){{ // diverging: 0=blue, 0.5=white, 1=red
+    const t=x*2-1;
+    return t<0?[1+t,1+t,1]:[1,1-t,1-t];
+  }}
+  const c=CMAP_POLY[name]||CMAP_POLY.viridis;
+  const out=[0,0,0];
+  for(let j=0;j<3;j++){{
+    let v=c[6][j];
+    for(let p=5;p>=0;p--)v=v*x+c[p][j];
+    out[j]=v<0?0:(v>1?1:v);
+  }}
+  return out;
+}}
+
+/* ================================================================
    Grid → Geometry (with optional vertex colors for radial map)
    ================================================================ */
 function gridToGeometry(synthResult, useColormap){{
@@ -415,12 +450,7 @@ function gridToGeometry(synthResult, useColormap){{
     const colors=new Float32Array(nV*3);
     for(let k=0;k<nV;k++){{
       const t=(rVals[k]-rMean)/absMax; // -1..+1
-      let r,gg,b;
-      if(t<0){{ // blue-white
-        r=1+t;gg=1+t;b=1; // t=-1→(0,0,1), t=0→(1,1,1)
-      }} else {{ // white-red
-        r=1;gg=1-t;b=1-t; // t=0→(1,1,1), t=1→(1,0,0)
-      }}
+      const [r,gg,b]=cmapRGB(curCmap,(t+1)*0.5); // signed -1..+1 -> 0..1
       colors[k*3]=r;colors[k*3+1]=gg;colors[k*3+2]=b;
     }}
     colorAttr=new THREE.BufferAttribute(colors,3);
@@ -488,7 +518,7 @@ class OC{{
    ================================================================ */
 const DATA={data_json};
 let showWire=true,showInfo=false,showCmap=false,showMean=false;
-let curIdx=0,curDeg=LMAX,curMatKey='ceramic';
+let curIdx=0,curDeg=LMAX,curMatKey='ceramic',curCmap='RdBu';
 let animating=false,animTimer=null;
 
 /* ================================================================
@@ -536,11 +566,9 @@ function drawColorbar(canvasId,labelId,rMin,rMax){{
   const ctx=c.getContext('2d');
   const h=c.height,w=c.width;
   for(let y=0;y<h;y++){{
-    const t=1-y/h; // top=+1, bottom=-1 → map to 0..1 then to -1..+1
-    const v=t*2-1; // -1..+1
-    let r,g,b;
-    if(v<0){{r=Math.round((1+v)*255);g=Math.round((1+v)*255);b=255;}}
-    else{{r=255;g=Math.round((1-v)*255);b=Math.round((1-v)*255);}}
+    const t01=1-y/h; // top = high end, bottom = low end
+    const cc=cmapRGB(curCmap,t01);
+    const r=Math.round(cc[0]*255),g=Math.round(cc[1]*255),b=Math.round(cc[2]*255);
     ctx.fillStyle=`rgb(${{r}},${{g}},${{b}})`;
     ctx.fillRect(0,y,w,1);
   }}
@@ -793,6 +821,17 @@ bCmap.addEventListener('click',()=>{{
   loadSpec(curIdx); // rebuild with/without vertex colors
 }});
 
+// Colormap scheme selector
+document.getElementById('cmapSel').addEventListener('change',e=>{{
+  curCmap=e.target.value;
+  if(!showCmap){{ // auto-enable colormap display so the choice is visible
+    showCmap=true;bCmap.classList.add('active');
+    document.getElementById('cbM').classList.add('vis');
+    document.getElementById('cbS').classList.add('vis');
+  }}
+  loadSpec(curIdx);
+}});
+
 // Type Mean
 const bMean=document.getElementById('btnMean');
 bMean.addEventListener('click',()=>{{
@@ -820,7 +859,7 @@ document.getElementById('btnSnap').addEventListener('click',()=>{{
     ctx.fillStyle='#6cb4d8';ctx.fillText('Morphology',20,30);
     ctx.fillStyle='#d8a06c';ctx.fillText('Scar Direction',imgM.width+20,30);
     ctx.font='12px JetBrains Mono, monospace';ctx.fillStyle='#7878a0';
-    const info=DATA[curIdx].id+(showMean?' (type mean)':'')+' | l≤'+curDeg+' | '+curMatKey;
+    const info=DATA[curIdx].id+(showMean?' (type mean)':'')+' | l≤'+curDeg+' | '+curMatKey+(showCmap?' | '+curCmap:'');
     ctx.fillText(info,20,c.height-15);
     c.toBlob(blob=>{{
       if(!blob)return;

@@ -16,6 +16,10 @@ renv/staging/
 .Rhistory
 .RData
 .Ruserdata
+# RStudio session state (written continuously while the project is open in an
+# RStudio container; including it makes `docker build` race the live writes and
+# fail with "error from sender: context canceled")
+.Rproj.user/
 
 # Python cache
 **/__pycache__/
