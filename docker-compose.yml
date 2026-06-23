@@ -8,13 +8,8 @@ services:
     ports:
       - "8787:8787"
     environment:
-<<<<<<< HEAD
-      - DISABLE_AUTH=${DISABLE_AUTH:-true}
-      - PASSWORD=${RSTUDIO_PASSWORD:-spharm}
-=======
       - DISABLE_AUTH=${DISABLE_AUTH:-false}
       - PASSWORD=${RSTUDIO_PASSWORD:-rstudio}
->>>>>>> d8a2ba1959da5283cab81b76aeab906cb8e2f830
       - RENV_PATHS_LIBRARY=/opt/renv/library
       - RENV_PATHS_CACHE=/opt/renv/cache
     volumes:

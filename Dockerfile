@@ -1,7 +1,5 @@
 # 1. Use the pre-built geospatial image
-<<<<<<< HEAD
-FROM rocker/rstudio:4.4.2
-=======
+
 #    Pin the platform to linux/amd64. The conda env (analysis/scripts/
 #    environment.yml) locks linux-64 package build hashes for numerical
 #    reproducibility, so the image MUST be amd64. Without this flag, building
@@ -10,7 +8,6 @@ FROM rocker/rstudio:4.4.2
 #    (Linux, Windows/Intel, CI) this flag is the native default and is a no-op;
 #    on Apple Silicon it forces emulation, giving bit-identical results.
 FROM --platform=linux/amd64 rocker/geospatial:4.4.2
->>>>>>> d8a2ba1959da5283cab81b76aeab906cb8e2f830
 
 # 2. Install Python and Conda dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
