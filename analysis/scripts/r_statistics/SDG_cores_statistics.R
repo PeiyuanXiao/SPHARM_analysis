@@ -273,7 +273,7 @@ mantel_cross_l1 <- bind_rows(
 ) %>%
   mutate(
     p_holm       = p.adjust(p, method = "holm"),
-    significance = ifelse(p_holm < 0.05, "P\u22640.05", "P>0.05")
+    significance = ifelse(p_holm < 0.05, "p\u22640.05", "p>0.05")
   )
 
 spec_arch_full <- bind_cols(morph_arch_df, scar_arch_df)
@@ -298,7 +298,7 @@ p_mantel_net <- qcorrplot(
     name     = "Spearman's rho"
   ) +
   scale_color_manual(
-    values = c("P\u22640.05" = "#E6A5A5", "P>0.05" = "#BABABA"),
+    values = c("p\u22640.05" = "#E6A5A5", "p>0.05" = "#BABABA"),
     name   = "Mantel test\n(Holm corrected)"
   ) +
   scale_size_continuous(range = c(0.5, 2.5), name = "Mantel's |r|") +
@@ -1067,7 +1067,7 @@ run_arrow_length_analysis <- function(group_col, group_label, palette,
     stat_summary(fun = mean, geom = "point",
                  shape = 16, size = 2.4, color = "white") +
     annotate("text", x = Inf, y = Inf,
-             label = sprintf("Kruskal-Wallis\nchi\u00b2 = %.2f, P = %.3f",
+             label = sprintf("Kruskal-Wallis\nchi\u00b2 = %.2f, p = %.3f",
                              kw$statistic, kw$p.value),
              hjust = 1.05, vjust = 1.2, size = 2.6, color = "grey40") +
     scale_fill_manual(values  = palette) +
@@ -1141,9 +1141,9 @@ plot_rose <- function(res, palette, show_color_legend = TRUE) {
   rayleigh_labels <- res$rayleigh %>%
     mutate(
       label = case_when(
-        rayleigh_p < 0.001 ~ "Rayleigh P < 0.001",
-        rayleigh_p < 0.05  ~ sprintf("Rayleigh P = %.3f", rayleigh_p),
-        TRUE               ~ sprintf("Rayleigh P = %.3f", rayleigh_p)
+        rayleigh_p < 0.001 ~ "Rayleigh p < 0.001",
+        rayleigh_p < 0.05  ~ sprintf("Rayleigh p = %.3f", rayleigh_p),
+        TRUE               ~ sprintf("Rayleigh p = %.3f", rayleigh_p)
       ),
       !!group_col := factor(group, levels = levels(kde_df[[group_col]]))
     )

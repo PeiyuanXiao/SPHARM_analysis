@@ -1,12 +1,14 @@
 # 1. Use the pre-built geospatial image
 
 #    Pin the platform to linux/amd64. The conda env (analysis/scripts/
-#    environment.yml) locks linux-64 package build hashes for numerical
-#    reproducibility, so the image MUST be amd64. Without this flag, building
-#    on an Apple Silicon Mac would target linux/arm64 and the conda solve
-#    would fail (those build hashes do not exist for arm64). On amd64 hosts
-#    (Linux, Windows/Intel, CI) this flag is the native default and is a no-op;
-#    on Apple Silicon it forces emulation, giving bit-identical results.
+#    environment.yml) pins package versions (not exact build hashes), so it
+#    resolves on both amd64 and arm64; amd64 is the reference platform the
+#    results were validated on, and this flag keeps every build on it. On
+#    amd64 hosts (Linux, Windows/Intel, CI) the flag is the native default and
+#    is a no-op; on an Apple Silicon Mac it forces emulation so the build runs
+#    on the reference platform. Building natively for arm64 also works, but
+#    resolves different binary package builds, so results are not guaranteed
+#    bit-identical to the amd64 reference.
 FROM --platform=linux/amd64 rocker/geospatial:4.4.2
 
 # 2. Install Python and Conda dependencies
@@ -76,10 +78,10 @@ RUN rm -rf /usr/local/lib/R/site-library/*
 RUN R -e "options(renv.config.cache.symlinks = FALSE); renv::restore(prompt = FALSE)"
 
 # --- 6. Build Python Env ---
-#    environment.yml pins every package including BLAS/LAPACK build hashes.
-#    A single conda solve is sufficient — do NOT add a second `conda install`
-#    step after this, as it would trigger a re-solve and may alter numerical
-#    library builds, breaking floating-point reproducibility.
+#    environment.yml pins every package version. A single conda solve is
+#    sufficient — do NOT add a second `conda install` step after this, as it
+#    would trigger a re-solve and may alter the resolved numerical library
+#    builds, perturbing floating-point results.
 RUN conda tos accept --override-channels --channel https://repo.anaconda.com/pkgs/main && \
     conda tos accept --override-channels --channel https://repo.anaconda.com/pkgs/r && \
     conda env create -f analysis/scripts/environment.yml --solver=libmamba && \
