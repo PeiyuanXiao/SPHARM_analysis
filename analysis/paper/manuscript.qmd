@@ -439,7 +439,7 @@ All data and code required to reproduce this study, including the 3D core models
 
 # Acknowledgements
 
-<!-- The following line inserts a page break  -->
+We are grateful to Chris Clarkson of Griffith University and Sam Lin of the University of Wollongong for generously sharing the idealized digital core dataset and the experimentally knapped core dataset, and for permitting us to make this high-quality dataset publicly available. We also thank Yiyuan Li of the Hunan Provincial Institute of Cultural Relics and Archaeology for providing access to the Sandinggai specimens for this study.
 
 \newpage
 
