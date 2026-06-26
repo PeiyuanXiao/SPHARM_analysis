@@ -101,7 +101,7 @@ those conclusions would be parameter dependent, which would also limit
 the broader generalizability of the analytical method.
 
 We therefore assessed whether the main results depend on the principal
-free parameters of the two descriptors. For the scar-pattern descriptor
+free parameters of the two descriptors. For the scar pattern descriptor
 (SP-SPHARM), we varied the von Mises–Fisher kernel bandwidth ($h$) and
 the scar minimum-size inclusion threshold. For the core morphology
 descriptor (M-SPHARM), we varied the mesh decimation target and the
@@ -156,22 +156,24 @@ bw$fig_im_heatmaps
 ```
 
 The scar pattern PERMANOVA by experimental core type stays significant
-across $h$ ($R^2$ = 0.298–0.329; $p$ \< 0.05 throughout). The pairwise resolution profile is stable: 7 of 10 typology pairs are resolved at the three smallest bandwidths ($h$ = 0.20–0.30) and 8 of 10 from $h$ = 0.35 to 0.50, including the chosen $h$
-= 0.35), dropping to 6/10 at the two smallest bandwidths and 7/10 at the
-largest. The association between morphology and scar patterning is
-negligible in magnitude at every bandwidth: Mantel $r$ ≈ 0 throughout
-(EXP -0.062 to -0.008; SDG 0.001 to 0.017) and RV ≈ 0.10–0.12 (EXP) and
-≈ 0.09 (SDG). For SDG both measures are non-significant across the
-entire range. For the experimental assemblage the Mantel test is
-non-significant at every $h$, and the RV coefficient is non-significant
-from $h$ = 0.20 to 0.40, becomes marginal at $h$ = 0.45 ($p$ = 0.078),
-and crosses $p$ \< 0.05 only at the most over smoothed setting ($h$ =
-0.50: RV = 0.117, $p$ = 0.044), where the association is still
-negligible and is not corroborated by the Mantel test ($r$ = -0.008, $p$
-= 0.54). Read on effect size, the decoupling is robust across the full
-range, and the chosen $h$ = 0.35 sits well inside the non-significant
-regime. The SDG scar–core type PERMANOVA remains significant throughout
-($R^2$ = 0.166–0.177; $p$ \< 0.05).
+across $h$ ($R^2$ = 0.298–0.329; $p$ \< 0.05 throughout). The pairwise
+resolution profile is stable: 7 of 10 typology pairs are resolved at the
+three smallest bandwidths ($h$ = 0.20–0.30) and 8 of 10 from $h$ = 0.35
+to 0.50, including the chosen $h$ = 0.35), dropping to 6/10 at the two
+smallest bandwidths and 7/10 at the largest. The association between
+morphology and scar patterning is negligible in magnitude at every
+bandwidth: Mantel $r$ ≈ 0 throughout (EXP -0.062 to -0.008; SDG 0.001 to
+0.017) and RV ≈ 0.10–0.12 (EXP) and ≈ 0.09 (SDG). For SDG both measures
+are non-significant across the entire range. For the experimental
+assemblage the Mantel test is non-significant at every $h$, and the RV
+coefficient is non-significant from $h$ = 0.20 to 0.40, becomes marginal
+at $h$ = 0.45 ($p$ = 0.078), and crosses $p$ \< 0.05 only at the most
+over smoothed setting ($h$ = 0.50: RV = 0.117, $p$ = 0.044), where the
+association is still negligible and is not corroborated by the Mantel
+test ($r$ = -0.008, $p$ = 0.54). Read on effect size, the decoupling is
+robust across the full range, and the chosen $h$ = 0.35 sits well inside
+the non-significant regime. The SDG scar–core type PERMANOVA remains
+significant throughout ($R^2$ = 0.166–0.177; $p$ \< 0.05).
 
 ```{r}
 #| label: tbl-si-bandwidth
@@ -236,7 +238,12 @@ scar$fig_orderselection
 ```
 
 The scar pattern PERMANOVA by core type is significant at every
-threshold ($R^2$ = 0.282–0.322; $p$ \< 0.05 throughout). The pairwise resolution profile is 8/10 typology pairs at the main analysis baseline, 7/10 at \>5 mm, and 8/10 at \>10 mm. Restricting the analysis to larger, more reliably measured scars therefore does not weaken type discrimination; the experimental core-type signal is carried by the larger scars and is not an artifact of small scars.
+threshold ($R^2$ = 0.282–0.322; $p$ \< 0.05 throughout). The pairwise
+resolution profile is 8/10 typology pairs at the main analysis baseline,
+7/10 at \>5 mm, and 8/10 at \>10 mm. Restricting the analysis to larger,
+more reliably measured scars therefore does not weaken type
+discrimination; the experimental core-type signal is carried by the
+larger scars and is not an artifact of small scars.
 
 Morphology and scar patterning remain negligibly associated and
 non-significant at every threshold: Mantel $r$ ≈ 0 (EXP -0.061 to 0.004;
@@ -296,13 +303,18 @@ SDG). The $l$ = 1–8 truncation is robust to decimation and smoothing.
 mesh$fig_orderselection
 ```
 
-The experimental morphology PERMANOVA by core type is weak but consistently significant ($R^2$ = 0.121–0.149; 0 of 10 typology pairs resolved). In the experimental assemblage, type information is therefore carried far more strongly by the scar pattern descriptor (which resolves 8/10 pairs; S2) than by morphology, evidence that the two descriptors are complementary rather than redundant. Core type is the dominant, significant morphology term
-across all settings ($R^2$ = 0.178–0.216; $p$ \< 0.05 throughout), while
-raw material is small ($R^2$ = 0.013–0.051; significant only at the
-heaviest smoothing) and layer is negligible ($R^2$ = 0.007–0.030;
-non-significant throughout). The "core type dominant, technological
-continuity across layers and raw materials" picture holds across all
-settings.
+The experimental morphology PERMANOVA by core type is weak but
+consistently significant ($R^2$ = 0.121–0.149; 0 of 10 typology pairs
+resolved). In the experimental assemblage, type information is therefore
+carried far more strongly by the scar pattern descriptor (which resolves
+8/10 pairs; @tbl-si-scar) than by morphology, evidence that the two
+descriptors are complementary rather than redundant. Core type is the
+dominant, significant morphology term across all settings ($R^2$ =
+0.178–0.216; $p$ \< 0.05 throughout), while raw material is small ($R^2$
+= 0.013–0.051; significant only at the heaviest smoothing) and layer is
+negligible ($R^2$ = 0.007–0.030; non-significant throughout). The "core
+type dominant, technological continuity across layers and raw materials"
+picture holds across all settings.
 
 With the perturbed morphology and the fixed scar descriptor, the
 association between morphology and scar patterning is negligible in
@@ -311,10 +323,11 @@ magnitude at every setting: Mantel $r$ ≈ 0 (EXP -0.106 to -0.048; SDG
 Mantel test is non-significant throughout (EXP and SDG), and the RV is
 non-significant at every setting except the unsmoothed mesh (0 smoothing
 iterations: EXP RV = 0.116, $p$ = 0.043) — where, as for the most over
-smoothed bandwidth in S1, the association is still negligible and is not
-corroborated by the Mantel test ($r$ = -0.069, $p$ = 0.83). Read on
-effect size, the decoupling holds under perturbation of the morphology
-descriptor as well as the scar descriptor (S1–S2).
+smoothed bandwidth in @tbl-si-bandwidth, the association is still
+negligible and is not corroborated by the Mantel test ($r$ = -0.069, $p$
+= 0.83). Read on effect size, the decoupling holds under perturbation of
+the morphology descriptor as well as the scar descriptor
+(@tbl-si-bandwidth, @tbl-si-scar).
 
 ```{r}
 #| label: tbl-si-mesh
@@ -347,9 +360,9 @@ Across both descriptors, every conclusion the analysis relies on is
 robust to its principal free parameters: early truncation ($l$ = 1–6 for
 the scar descriptor, $l$ = 1–8 for morphology); idealized core
 discrimination; the dominance of core type over raw material and layer
-in the archaeological (SDG) morphology and scar pattern signals; and the
-decoupling of morphology and scar patterning, which holds under
-perturbation of either descriptor.
+in the archaeological morphology and scar patterning; and the decoupling
+of morphology and scar patterning, which holds under perturbation of
+either descriptor.
 
 \newpage
 
