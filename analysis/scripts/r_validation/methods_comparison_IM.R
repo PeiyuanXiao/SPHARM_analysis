@@ -19,7 +19,7 @@ library(readxl)
 library(ggrepel)
 library(grid)
 library(patchwork)
-library(compositions)   # ilr (Aitchison distance for the compositional SP-SPHARM panel)
+library(compositions)   # ilr (standardized Euclidean distance on ILR coords for the compositional SP-SPHARM panel)
 conflicted::conflicts_prefer(dplyr::select)
 conflicted::conflicts_prefer(dplyr::filter)
 conflicted::conflicts_prefer(compositions::`%*%`)  # S4 matmul: plain matrices + ilr internals
@@ -51,9 +51,10 @@ compute_EI <- function(ux, uy, uz) {
   )
 }
 
-# Power spectra are compositional; the SP-SPHARM panel below therefore uses
-# Aitchison distance (ilr -> standardised Euclidean) rather than raw standardised
-# Euclidean. Zero-variance columns are dropped, then zeros replaced for the log-ratio.
+# Power spectra are compositional; the SP-SPHARM panel below therefore computes
+# standardized Euclidean distances on ILR coordinates (ilr -> standardise -> Euclidean),
+# putting it on the same scale as the other panels. Zero-variance columns are dropped,
+# then zeros replaced for the log-ratio.
 replace_zeros <- function(X, delta = NULL) {
   X <- as.matrix(X)
   for (i in seq_len(nrow(X))) {
@@ -298,8 +299,8 @@ labs <- df_im$label
 dist_all <- bind_rows(
   make_dist_df(df_im %>% select(R)                 %>% as.matrix(), labs, "SPI"),
   make_dist_df(df_im %>% select(E, I)              %>% as.matrix(), labs, "Fabric"),
-  # SP-SPHARM: Aitchison distance — ilr coordinates fed through the same
-  # standardise-then-Euclidean path as the other (non-compositional) panels.
+  # SP-SPHARM: standardized Euclidean distance on ILR coordinates — ilr coords fed
+  # through the same standardise-then-Euclidean path as the other (non-compositional) panels.
   make_dist_df(make_ilr(df_im %>% select(power_l1:power_l4)),       labs, "SPHARM")
 ) %>%
   mutate(

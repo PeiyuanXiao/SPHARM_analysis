@@ -98,10 +98,14 @@ safe_filter_groups <- function(meta_df, group_col, min_n = 3) {
            .data[[group_col]] %in% valid)
 }
 
+# Axial circular statistics: CoIA line directions are undirected (an axis,
+# theta equivalent to theta+180). Angles are doubled before averaging and the
+# mean resultant is halved back; rho is the axial mean resultant length
+# (Mardia & Jupp 2000).
 circ_stats_one <- function(angles_rad) {
-  circ_obj <- circular(angles_rad, type = "angles",
+  circ_obj <- circular(2 * angles_rad, type = "angles",
                        units = "radians", modulo = "2pi")
-  mean_rad <- as.numeric(mean.circular(circ_obj)) %% (2 * pi)
+  mean_rad <- (as.numeric(mean.circular(circ_obj)) %% (2 * pi)) / 2
   list(
     mean_rad = mean_rad,
     mean_deg = mean_rad * 180 / pi,
@@ -1159,7 +1163,8 @@ run_circular_analysis <- function(group_col, group_label, palette) {
   cat(sprintf("\n----- %s Rayleigh test -----\n", group_label))
   rayleigh_res <- map_dfr(valid_groups_ordered, function(g) {
     angles   <- sub_df %>% filter(.data[[group_col]] == g) %>% pull(arrow_angle)
-    circ_obj <- circular(angles, type = "angles", units = "radians", modulo = "2pi")
+    # axial: test for a preferred axis by doubling the undirected line angles
+    circ_obj <- circular(2 * angles, type = "angles", units = "radians", modulo = "2pi")
     rt       <- rayleigh.test(circ_obj)
     cat(sprintf("  %s: U = %.4f, p = %.4f -> %s\n",
                 g, rt$statistic, rt$p.value,
@@ -1178,11 +1183,16 @@ run_circular_analysis <- function(group_col, group_label, palette) {
   mean_dirs <- map_dfr(valid_groups_ordered, function(g) {
     angles <- sub_df_plot %>% filter(.data[[group_col]] == g) %>% pull(arrow_angle)
     cs     <- circ_stats_one(angles)
-    tibble(!!group_col := g, mean_deg = cs$mean_deg)
+    # axial mean is an axis: draw it at both ends (mean and mean+180)
+    tibble(!!group_col := g,
+           mean_deg = c(cs$mean_deg, (cs$mean_deg + 180) %% 360))
   }) %>%
     mutate(!!group_col := factor(.data[[group_col]], levels = valid_groups_ordered))
   
   compute_circular_kde <- function(angles_deg, bw = 25, n = 360) {
+    # axial: reflect each undirected line by 180 deg so the KDE is symmetric
+    # about the axis (theta equivalent to theta+180)
+    angles_deg <- c(angles_deg, (angles_deg + 180) %% 360)
     circ <- circular(angles_deg * pi / 180,
                      type = "angles", units = "radians", modulo = "2pi")
     dens <- density(circ, bw = bw, n = n)

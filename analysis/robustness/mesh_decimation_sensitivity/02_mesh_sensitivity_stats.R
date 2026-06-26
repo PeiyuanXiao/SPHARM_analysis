@@ -408,18 +408,26 @@ tryCatch({
                   aes(order, cumul_pct, color = lab, group = lab)) +
     geom_hline(yintercept = c(95, 98), linetype = "dashed", color = "grey75", linewidth = 0.3) +
     geom_vline(xintercept = 8, linetype = "dotted", color = "grey50", linewidth = 0.3) +
-    geom_line(linewidth = 0.6) + geom_point(size = 1.1) + facet_wrap(~ dataset) +
+    geom_line(linewidth = 0.6) + geom_point(size = 1.1) +
+    facet_wrap(~ dataset, labeller = as_labeller(
+      c(EXP = "Experimentally knapped cores", SDG = "Sandinggai cores"))) +
     scale_color_manual(values = pal, name = "faces/smooth") + scale_x_continuous(breaks = 1:12) +
-    labs(x = "Spherical-harmonic degree (l)", y = "Cumulative power (%)") +
-    theme_bw() + theme(panel.grid.minor = element_blank())
+    labs(x = "SPHARM degree (l)", y = "Cumulative power (%)") +
+    theme_bw(base_size = 11) +
+    theme(panel.grid.minor = element_blank(),
+          strip.text = element_text(face = "bold"))
   p_cv <- ggplot(order_long_df %>% filter(order <= 12),
                  aes(order, cv_pct, color = lab, group = lab)) +
     geom_hline(yintercept = 90, linetype = "dashed", color = "grey50", linewidth = 0.4) +
     geom_vline(xintercept = 8, linetype = "dotted", color = "grey50", linewidth = 0.3) +
-    geom_line(linewidth = 0.6) + geom_point(size = 1.1) + facet_wrap(~ dataset) +
+    geom_line(linewidth = 0.6) + geom_point(size = 1.1) +
+    facet_wrap(~ dataset, labeller = as_labeller(
+      c(EXP = "Experimentally knapped cores", SDG = "Sandinggai cores"))) +
     scale_color_manual(values = pal, name = "faces/smooth") + scale_x_continuous(breaks = 1:12) +
-    labs(x = "Spherical-harmonic degree (l)", y = "Cross-specimen CV (%)") +
-    theme_bw() + theme(panel.grid.minor = element_blank())
+    labs(x = "SPHARM degree (l)", y = "Cross-specimen CV (%)") +
+    theme_bw(base_size = 11) +
+    theme(panel.grid.minor = element_blank(),
+          strip.text = element_text(face = "bold"))
   ggsave(file.path(FIG_DIR, "fig_S_mesh_orderselection.png"), p_cum / p_cv,
          width = 9, height = 8, dpi = 300)
 

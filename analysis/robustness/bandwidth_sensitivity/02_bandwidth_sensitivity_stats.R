@@ -48,6 +48,7 @@ suppressPackageStartupMessages({
   library(compositions)   # ilr
   library(RVAideMemoire)  # pairwise.perm.manova
   library(patchwork)
+  library(grid)           # rounded-tile heatmap geom (matches main-text IM figure)
   library(conflicted)
 })
 
@@ -497,6 +498,45 @@ cat("\nWrote bandwidth_sensitivity_metrics.csv and bandwidth_orderselection_by_d
 # =============================================================================
 # Figures
 # =============================================================================
+
+# Facet-label maps and the rounded-tile geom, aligned with the manuscript
+# figures (power_degree_selection.R / methods_comparison_IM.R).
+DATASET_LABS <- c(EXP = "Experimentally knapped cores", SDG = "Sandinggai cores")
+
+GeomRoundTile <- ggplot2::ggproto(
+  "GeomRoundTile", ggplot2::GeomTile,
+  draw_panel = function(self, data, panel_params, coord,
+                        radius = grid::unit(2, "pt")) {
+    coords <- coord$transform(data, panel_params)
+    grobs <- lapply(seq_len(nrow(coords)), function(i) {
+      a <- coords$alpha[i];     if (is.null(a) || is.na(a)) a <- 1
+      lw <- coords$linewidth[i]; if (is.null(lw))           lw <- 0.1
+      grid::roundrectGrob(
+        x = coords$xmin[i], y = coords$ymin[i],
+        width  = coords$xmax[i] - coords$xmin[i],
+        height = coords$ymax[i] - coords$ymin[i],
+        just = c("left", "bottom"), r = radius,
+        gp = grid::gpar(
+          col  = coords$colour[i],
+          fill = scales::alpha(coords$fill[i], a),
+          lwd  = lw * ggplot2::.pt,
+          lty  = coords$linetype[i] %||% 1
+        )
+      )
+    })
+    grid::gTree(children = do.call(grid::gList, grobs))
+  }
+)
+geom_round_tile <- function(mapping = NULL, data = NULL, stat = "identity",
+                            position = "identity", ..., radius = grid::unit(2, "pt"),
+                            na.rm = FALSE, show.legend = NA, inherit.aes = TRUE) {
+  ggplot2::layer(
+    geom = GeomRoundTile, mapping = mapping, data = data, stat = stat,
+    position = position, show.legend = show.legend, inherit.aes = inherit.aes,
+    params = list(radius = radius, na.rm = na.rm, ...)
+  )
+}
+
 ok_fig <- TRUE
 tryCatch({
   hv <- sort(unique(order_long_df$h))
@@ -511,22 +551,26 @@ tryCatch({
     geom_hline(yintercept = c(95, 99), linetype = "dashed", color = "grey75", linewidth = 0.3) +
     geom_vline(xintercept = 6, linetype = "dotted", color = "grey50", linewidth = 0.3) +
     geom_line(linewidth = 0.7) + geom_point(size = 1.3) +
-    facet_wrap(~ dataset) +
+    facet_wrap(~ dataset, labeller = as_labeller(DATASET_LABS)) +
     scale_color_manual(values = pal, name = "h") +
     scale_x_continuous(breaks = 1:12) +
-    labs(x = "Spherical-harmonic degree (l)", y = "Cumulative power (%)") +
-    theme_bw() + theme(panel.grid.minor = element_blank())
+    labs(x = "SPHARM degree (l)", y = "Cumulative power (%)") +
+    theme_bw(base_size = 11) +
+    theme(panel.grid.minor = element_blank(),
+          strip.text = element_text(face = "bold"))
 
   p_cv <- ggplot(order_long_df %>% filter(order <= 12),
                  aes(order, cv_pct, color = hf, group = hf)) +
     geom_hline(yintercept = 100, linetype = "dashed", color = "grey50", linewidth = 0.4) +
     geom_vline(xintercept = 9, linetype = "dotted", color = "grey50", linewidth = 0.3) +
     geom_line(linewidth = 0.7) + geom_point(size = 1.3) +
-    facet_wrap(~ dataset) +
+    facet_wrap(~ dataset, labeller = as_labeller(DATASET_LABS)) +
     scale_color_manual(values = pal, name = "h") +
     scale_x_continuous(breaks = 1:12) +
-    labs(x = "Spherical-harmonic degree (l)", y = "Cross-specimen CV (%)") +
-    theme_bw() + theme(panel.grid.minor = element_blank())
+    labs(x = "SPHARM degree (l)", y = "Cross-specimen CV (%)") +
+    theme_bw(base_size = 11) +
+    theme(panel.grid.minor = element_blank(),
+          strip.text = element_text(face = "bold"))
 
   ggsave(file.path(FIG_DIR, "fig_S_bandwidth_orderselection.png"),
          p_cum / p_cv, width = 9, height = 8, dpi = 300)
@@ -541,14 +585,24 @@ tryCatch({
       mutate(h = k, From = lab(From), To = lab(To))
   })
   p_heat <- ggplot(heat_df, aes(To, From, fill = distance)) +
-    geom_tile(color = "white", linewidth = 0.2) +
-    facet_wrap(~ h, ncol = length(hsel)) +
+    geom_round_tile(color = "white", linewidth = 0.1, radius = grid::unit(3, "pt")) +
+    geom_text(aes(label = sprintf("%.1f", distance)), size = 1.7) +
+    facet_wrap(~ h, ncol = length(hsel),
+               labeller = as_labeller(function(x) paste0("h = ", x))) +
     scale_fill_gradient2(low = "#5C7F71", mid = "#F5EDDC", high = "#802520",
-                         midpoint = 2, name = "Std.\ndist.") +
+                         midpoint = 2, name = "Euclidean\ndistance\n(standardised)") +
     scale_x_discrete(guide = guide_axis(angle = 90)) +
     scale_y_discrete(limits = rev) +
     labs(x = NULL, y = NULL) +
-    theme_bw(base_size = 7) + theme(axis.text = element_text(size = 5.5))
+    theme_bw(base_size = 6) +
+    theme(
+      strip.text       = element_text(face = "bold", size = 6.5),
+      strip.background = element_rect(fill = "#EBEBEB", color = "#EBEBEB"),
+      axis.text        = element_text(size = 6),
+      legend.title     = element_text(size = 6),
+      legend.text      = element_text(size = 6),
+      legend.key.size  = grid::unit(0.32, "cm")
+    )
   ggsave(file.path(FIG_DIR, "fig_S_bandwidth_IM_heatmaps.png"),
          p_heat, width = 11, height = 4.5, dpi = 300)
 

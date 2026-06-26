@@ -514,23 +514,29 @@ tryCatch({
     geom_hline(yintercept = c(95, 99), linetype = "dashed", color = "grey75", linewidth = 0.3) +
     geom_vline(xintercept = 6, linetype = "dotted", color = "grey50", linewidth = 0.3) +
     geom_line(linewidth = 0.7) + geom_point(size = 1.3) +
-    facet_wrap(~ dataset) +
+    facet_wrap(~ dataset, labeller = as_labeller(
+      c(EXP = "Experimentally knapped cores", SDG = "Sandinggai cores"))) +
     scale_color_manual(values = pal, name = "min. size",
                        labels = tlab(tv)) +
     scale_x_continuous(breaks = 1:12) +
-    labs(x = "Spherical-harmonic degree (l)", y = "Cumulative power (%)") +
-    theme_bw() + theme(panel.grid.minor = element_blank())
+    labs(x = "SPHARM degree (l)", y = "Cumulative power (%)") +
+    theme_bw(base_size = 11) +
+    theme(panel.grid.minor = element_blank(),
+          strip.text = element_text(face = "bold"))
 
   p_cv <- ggplot(order_long_df %>% filter(order <= 12),
                  aes(order, cv_pct, color = tf, group = tf)) +
     geom_hline(yintercept = 100, linetype = "dashed", color = "grey50", linewidth = 0.4) +
     geom_vline(xintercept = 9, linetype = "dotted", color = "grey50", linewidth = 0.3) +
     geom_line(linewidth = 0.7) + geom_point(size = 1.3) +
-    facet_wrap(~ dataset) +
+    facet_wrap(~ dataset, labeller = as_labeller(
+      c(EXP = "Experimentally knapped cores", SDG = "Sandinggai cores"))) +
     scale_color_manual(values = pal, name = "min. size", labels = tlab(tv)) +
     scale_x_continuous(breaks = 1:12) +
-    labs(x = "Spherical-harmonic degree (l)", y = "Cross-specimen CV (%)") +
-    theme_bw() + theme(panel.grid.minor = element_blank())
+    labs(x = "SPHARM degree (l)", y = "Cross-specimen CV (%)") +
+    theme_bw(base_size = 11) +
+    theme(panel.grid.minor = element_blank(),
+          strip.text = element_text(face = "bold"))
 
   ggsave(file.path(FIG_DIR, "fig_S_threshold_orderselection.png"),
          p_cum / p_cv, width = 9, height = 8, dpi = 300)
@@ -548,10 +554,13 @@ tryCatch({
     p_sc <- ggplot(att, aes(rank, n_retained, color = tf, group = tf)) +
       geom_hline(yintercept = 3, linetype = "dashed", color = "grey60", linewidth = 0.4) +
       geom_line(linewidth = 0.5) + geom_point(size = 1) +
-      facet_wrap(~ group, scales = "free_x") +
+      facet_wrap(~ group, scales = "free_x", labeller = as_labeller(
+        c(EXP = "Experimentally knapped cores", SDG = "Sandinggai cores"))) +
       scale_color_manual(values = pal, name = "min. size", labels = tlab(tv)) +
       labs(x = "Specimen (ranked by baseline scar count)", y = "Scars retained") +
-      theme_bw() + theme(panel.grid.minor = element_blank())
+      theme_bw(base_size = 11) +
+      theme(panel.grid.minor = element_blank(),
+            strip.text = element_text(face = "bold"))
     ggsave(file.path(FIG_DIR, "fig_S_threshold_scarcounts.png"),
            p_sc, width = 9, height = 4.5, dpi = 300)
     cat("Wrote 2 figures to", FIG_DIR, "\n")
