@@ -244,7 +244,12 @@ js_data_block <- paste(js_data_lines, collapse = "\n")
 ids_json      <- toJSON(as.character(all_ids), auto_unbox = FALSE)
 
 grid <- browsable(tagList(
-  tags$script(src = "https://cdn.plot.ly/plotly-2.27.0.min.js"),
+  # Inline the vendored Plotly bundle so the exported HTML is fully
+  # self-contained and works offline (no CDN required).
+  tags$script(HTML(paste(
+    readLines(here("analysis/scripts/vendor/plotly-2.27.0.min.js"),
+              warn = FALSE, encoding = "UTF-8"),
+    collapse = "\n"))),
   tags$h3(style = "font-family:sans-serif; text-align:center; margin:16px 0 4px;",
           "Core Alignment Pipeline (SVD normal)"),
   tags$div(style = "text-align:center; margin-bottom:10px;",

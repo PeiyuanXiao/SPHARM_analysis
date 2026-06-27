@@ -20,8 +20,22 @@
 
 import os
 import json
+import base64
+from pathlib import Path
 import numpy as np
 import pandas as pd
+
+# ── Vendored three.js (r128), inlined as a base64 data: URL so the exported
+#    HTML is fully self-contained and works offline (no CDN required) ──────────
+_THREE_SRC = None
+
+def _three_src() -> str:
+    """three.module.min.js (r128) as a data: URL, read once from the vendored copy."""
+    global _THREE_SRC
+    if _THREE_SRC is None:
+        _p = Path(__file__).resolve().parent.parent / "vendor" / "three.module.min.js"
+        _THREE_SRC = "data:text/javascript;base64," + base64.b64encode(_p.read_bytes()).decode("ascii")
+    return _THREE_SRC
 
 # ── Config ────────────────────────────────────────────────────────────────────
 DIR_CSV = "analysis/data/derived_data/directions_aligned_svd.csv"
@@ -266,7 +280,7 @@ def generate_html(records, group_name, bandwidth):
 <script type="importmap">
 {{
   "imports": {{
-    "three":"https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.module.min.js"
+    "three":"{_three_src()}"
   }}
 }}
 </script>

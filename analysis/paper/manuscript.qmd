@@ -209,7 +209,7 @@ Although coefficients were computed to $l_{\max}$ = 20 for faithful reconstructi
 
 ```{r}
 #| label: fig-degree-selection
-#| fig-cap: "Per-degree diagnostics used to select the spherical-harmonic truncation degree, shown for the experimentally knapped cores (EXP; **a**, **b**) and the Sandinggai assemblage (SDG; **c**, **d**). **(a, c)** Across-specimen coefficient of variation (CV) by harmonic degree *l*; **(b, d)** cumulative power by harmonic degree *l*. In each panel the morphology (M-SPHARM) and scar-direction (SP-SPHARM) power spectra are overlaid. Dashed lines mark the 100% CV reference in (a, c) and the 95% and 99% cumulative-power references in (b, d)"
+#| fig-cap: "Per-degree diagnostics used to select the spherical-harmonic truncation degree, shown for the experimentally knapped cores and the Sandinggai assemblage. **(a, c)** Across-specimen coefficient of variation (CV) by harmonic degree *l*; **(b, d)** cumulative power by harmonic degree *l*. In each panel the morphology (M-SPHARM) and scar pattern (SP-SPHARM) power spectra are overlaid. Dashed lines mark the 100% CV reference in (a, c) and the 95% and 99% cumulative-power references in (b, d)"
 #| fig-width: 10
 #| fig-height: 8
 #| out-width: "100%"
@@ -343,7 +343,7 @@ As in the experimental assemblage, the non-significant global tests mean that th
 
 ```{r}
 #| label: fig-coia-composite
-#| fig-cap: "Co-inertia analysis (CoIA) of M-SPHARM and SP-SPHARM descriptors for the Sandinggai (SDG) core assemblage, with specimens grouped by stratigraphic layer **(a–c)**, raw material **(d–f)**, and core type **(g–i)**. In each grouping, the CoIA ordination (left) shows every core as a morphology point (circle) and a scar pattern point (triangle) joined by a line; the centre panel compares line lengths among groups (Kruskal–Wallis test) and the right panel shows rose diagrams of line directions (Rayleigh test). **(j)** Morphology (top) and scar pattern (bottom) reconstructed along the CoIA axes by inverse spherical harmonic reconstruction"
+#| fig-cap: "Co-inertia analysis (CoIA) of M-SPHARM and SP-SPHARM descriptors for the Sandinggai core assemblage, with specimens grouped by stratigraphic layer **(a–c)**, raw material **(d–f)**, and core type **(g–i)**. In each grouping, the CoIA ordination (left) shows every core as a morphology point (circle) and a scar pattern point (triangle) joined by a line; the centre panel compares line lengths among groups (Kruskal–Wallis test) and the right panel shows rose diagrams of line directions (Rayleigh test). **(j)** Morphology (top) and scar pattern (bottom) reconstructed along the CoIA axes by inverse spherical harmonic reconstruction"
 #| fig-width: 6.85
 #| fig-height: 9.1
 #| out-width: "174mm"
@@ -359,7 +359,7 @@ PERMANOVA identified core type as the dominant factor structuring both dimension
 ```{r}
 #| label: tbl-sdg-permanova
 #| echo: false
-#| tbl-cap: "PERMANOVA results for the Sandinggai (SDG) core assemblage, Layers 3 and 4 only. Each variable (core type, raw material, and layer) was tested in a separate PERMANOVA using 9,999 permutations, for both the morphology (M-SPHARM) and scar pattern (SP-SPHARM) descriptors. R², proportion of variance explained; pseudo-F, PERMANOVA test statistic; p, permutation-based p-value."
+#| tbl-cap: "PERMANOVA results for the Sandinggai core assemblage, Layers 3 and 4 only. Each variable (core type, raw material, and layer) was tested in a separate PERMANOVA using 9,999 permutations, for both the morphology (M-SPHARM) and scar pattern (SP-SPHARM) descriptors. R², proportion of variance explained; pseudo-F, PERMANOVA test statistic; p, permutation-based p-value."
 
 fmt_p <- function(p) ifelse(p < 0.001, "<0.001",
                             formatC(p, format = "f", digits = 3))
@@ -431,7 +431,7 @@ The authors declare that they have no known competing financial interests or per
 
 ## Author Contributions
 
-Peiyuan Xiao: Conceptualization, Data curation, Formal analysis, Investigation, Methodology, Software, Validation, Visualization, Writing – original draft. Hao Li: Funding acquisition, Resources, Supervision, Writing – review & editing. Ben Marwick: Conceptualization, Methodology, Software, Supervision, Validation, Writing – review & editing.
+P. X.: Conceptualization, Data curation, Formal analysis, Investigation, Methodology, Software, Validation, Visualization, Writing – original draft. H. L.: Funding acquisition, Resources, Supervision, Writing – review & editing. B. M.: Conceptualization, Methodology, Software, Supervision, Validation, Writing – review & editing. All authors reviewed and approved the final manuscript.
 
 ## Data Availability
 
