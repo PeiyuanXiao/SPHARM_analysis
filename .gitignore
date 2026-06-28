@@ -26,6 +26,15 @@ analysis/paper/_targets/
 analysis/robustness/_targets_store/
 # Quarto/SI render log (generated artifact)
 analysis/robustness/_si_render.log
+# Robustness sensitivity — regenerated outputs (recomputed by the SI tar_make and
+# read by nothing; the figures duplicate analysis/figures Fig S1-S5). The required
+# INPUTS (spectra/ and scar_attrition*.csv) are intentionally NOT ignored.
+analysis/robustness/*/figures/
+analysis/robustness/*/sweep_manifest.csv
+analysis/robustness/*/*_metrics.csv
+analysis/robustness/*/*_orderselection_by_degree.csv
+analysis/robustness/mesh_decimation_sensitivity/determinism_*.csv
+analysis/robustness/scar_threshold_sensitivity/im_threshold_diagnostic.csv
 
 # ==============================================================================
 # Analysis output (figures, HTML, rendered docs)

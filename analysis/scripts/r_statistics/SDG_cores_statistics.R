@@ -12,7 +12,7 @@
 #   - analysis/data/derived_data/SPHARM_direction.csv
 #   - analysis/data/derived_data/SPHARM_morphology.csv
 #   - analysis/data/raw_data/SDG_core_metric.xlsx
-#   - analysis/figures/Axis_trajectory.png (external panel of the composite figure)
+#   - analysis/figures/source_panels/Axis_trajectory_SDG.png (external panel of the composite figure)
 #
 # Returns (objects): p_final, plus statistics consumed by the paper.
 
@@ -1463,7 +1463,7 @@ if (length(rows_valid) > 0) {
   
   # ---- Step 3: external image, manual final tag ----
   next_tag    <- letters[n_subplots + 1]
-  external_img <- png::readPNG(here("analysis/figures/Axis_trajectory_SDG.png"))
+  external_img <- png::readPNG(here("analysis/figures/source_panels/Axis_trajectory_SDG.png"))
   grob_img     <- grid::rasterGrob(external_img, interpolate = TRUE,
                                    x     = grid::unit(0.5055, "npc"),
                                    width = grid::unit(0.949,  "npc"))

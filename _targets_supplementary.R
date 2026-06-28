@@ -53,7 +53,7 @@ list(
     force(core_metric_xlsx); force(derived_direction_csv); force(derived_morphology_csv)
     force(bandwidth_spectra_csvs)
     local({
-      source(rob("bandwidth_sensitivity/02_bandwidth_sensitivity_stats.R"), local = TRUE)
+      source(rob("bandwidth_sensitivity/bandwidth_sensitivity_stats.R"), local = TRUE)
       list(metrics = metrics_df, order_long = order_long_df,
            fig_orderselection = p_cum / p_cv,
            fig_im_heatmaps = p_heat)
@@ -71,7 +71,7 @@ list(
     force(core_metric_xlsx); force(derived_direction_csv); force(derived_morphology_csv)
     force(scar_spectra_csvs); force(scar_attrition_csvs)
     local({
-      source(rob("scar_threshold_sensitivity/02_scar_threshold_sensitivity_stats.R"), local = TRUE)
+      source(rob("scar_threshold_sensitivity/scar_threshold_sensitivity_stats.R"), local = TRUE)
       list(metrics = metrics_df, order_long = order_long_df,
            fig_orderselection = p_cum / p_cv,
            fig_scarcounts = p_sc)
@@ -85,7 +85,7 @@ list(
     force(core_metric_xlsx); force(derived_direction_csv); force(derived_morphology_csv)
     force(mesh_spectra_csvs)
     local({
-      source(rob("mesh_decimation_sensitivity/02_mesh_sensitivity_stats.R"), local = TRUE)
+      source(rob("mesh_decimation_sensitivity/mesh_sensitivity_stats.R"), local = TRUE)
       list(metrics = metrics_df, order_long = order_long_df,
            fig_orderselection = p_cum / p_cv)
     })

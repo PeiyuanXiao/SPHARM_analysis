@@ -1,8 +1,0 @@
-h,kappa,n_specimens,output_csv,is_reference,max_abs_diff_cache,sanity_flag
-0.2,25.0,126,analysis/bandwidth_sensitivity/spectra/SPHARM_direction_h0.20.csv,False,,
-0.25,16.0,126,analysis/bandwidth_sensitivity/spectra/SPHARM_direction_h0.25.csv,False,,
-0.3,11.111111,126,analysis/bandwidth_sensitivity/spectra/SPHARM_direction_h0.30.csv,False,,
-0.35,8.163265,126,analysis/bandwidth_sensitivity/spectra/SPHARM_direction_h0.35.csv,True,0.0,OK
-0.4,6.25,126,analysis/bandwidth_sensitivity/spectra/SPHARM_direction_h0.40.csv,False,,
-0.45,4.938272,126,analysis/bandwidth_sensitivity/spectra/SPHARM_direction_h0.45.csv,False,,
-0.5,4.0,126,analysis/bandwidth_sensitivity/spectra/SPHARM_direction_h0.50.csv,False,,

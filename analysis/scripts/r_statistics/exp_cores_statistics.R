@@ -11,7 +11,7 @@
 #   - analysis/data/derived_data/SPHARM_direction.csv
 #   - analysis/data/derived_data/SPHARM_morphology.csv
 #   - analysis/data/raw_data/SDG_core_metric.xlsx
-#   - analysis/figures/Axis_trajectory.png (panel D of the composite figure)
+#   - analysis/figures/source_panels/Axis_trajectory.png (panel D of the composite figure)
 #
 # Returns (objects): p_final, plus statistics consumed by the paper.
 
@@ -1328,7 +1328,7 @@ p_composite <- (
   plot_layout(heights = c(2.8, 1))
 
 # Step 3: tag the external image as D
-external_img <- png::readPNG(here("analysis/figures/Axis_trajectory.png"))
+external_img <- png::readPNG(here("analysis/figures/source_panels/Axis_trajectory.png"))
 grob_img     <- grid::rasterGrob(external_img, interpolate = TRUE,
                                  x     = grid::unit(0.5055, "npc"),
                                  width = grid::unit(0.949,  "npc"))

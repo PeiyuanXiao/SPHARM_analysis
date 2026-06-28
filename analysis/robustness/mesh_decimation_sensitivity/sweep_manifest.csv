@@ -1,6 +1,0 @@
-face_target,smooth_iters,is_production,n_specimens,elapsed_s,sec_per_specimen,output_csv,max_abs_diff_cache,anchor_flag
-10000,3,False,126,377.1,2.99,analysis/mesh_decimation_sensitivity/spectra/SPHARM_morphology_f10000_s3.csv,,
-20000,3,True,126,406.0,3.22,analysis/mesh_decimation_sensitivity/spectra/SPHARM_morphology_f20000_s3.csv,1.1102230246251565e-16,OK
-50000,3,False,126,498.9,3.96,analysis/mesh_decimation_sensitivity/spectra/SPHARM_morphology_f50000_s3.csv,,
-20000,0,False,126,398.5,3.16,analysis/mesh_decimation_sensitivity/spectra/SPHARM_morphology_f20000_s0.csv,,
-20000,6,False,126,397.7,3.16,analysis/mesh_decimation_sensitivity/spectra/SPHARM_morphology_f20000_s6.csv,,
