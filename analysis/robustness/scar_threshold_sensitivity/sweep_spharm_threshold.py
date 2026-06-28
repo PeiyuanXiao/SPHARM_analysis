@@ -1,5 +1,5 @@
 """
-01_sweep_spharm_threshold.py
+sweep_spharm_threshold.py
 ============================
 Scar minimum-SIZE-THRESHOLD sensitivity sweep for the SP-SPHARM (scar-patterning)
 pipeline. NEW, self-contained add-on for the paper's Supplementary Information.
@@ -53,10 +53,10 @@ a BLAS/library mismatch — the numerical core is pinned in
 analysis/scripts/environment.yml).
 
 HOW TO RUN (canonical environment — conda `spharm`, same as the main pipeline):
-    python analysis/scar_threshold_sensitivity/01_sweep_spharm_threshold.py
-    # or, mirroring _targets.R: PYTHONPATH=analysis/scripts python .../01_sweep_spharm_threshold.py
+    python analysis/scar_threshold_sensitivity/sweep_spharm_threshold.py
+    # or, mirroring _targets.R: PYTHONPATH=analysis/scripts python .../sweep_spharm_threshold.py
 
-Then run 02_scar_threshold_sensitivity_stats.R to evaluate stability of the
+Then run scar_threshold_sensitivity_stats.R to evaluate stability of the
 downstream conclusions across thresholds.
 """
 
@@ -65,7 +65,7 @@ import sys
 from pathlib import Path
 
 # ---------------------------------------------------------------------------
-# PARAMETERS  (keep in sync with 00_scar_attrition.py and 02_*.R)
+# PARAMETERS  (keep in sync with scar_attrition.py and 02_*.R)
 # ---------------------------------------------------------------------------
 # Minimum-size cutoffs in mm. MUST include T_REF (0.0) for the sanity check.
 # Keep scars with length > T. T = 0 reproduces the production (all-scar) spectra.
@@ -283,7 +283,7 @@ def main() -> None:
     manifest = []
     for T in THRESHOLDS:
         df_t = filter_for_threshold(df, T)
-        # per-group retained scar counts (cross-check against 00_scar_attrition.py)
+        # per-group retained scar counts (cross-check against scar_attrition.py)
         g = df_t["ID"].map(assemblage_of)
         n_exp, n_sdg, n_im = int((g == "EXP").sum()), int((g == "SDG").sum()), int((g == "IM").sum())
         print(f"[T = {T:>4.1f} mm]  scars kept: EXP={n_exp}, SDG={n_sdg}, IM={n_im} (held), "
@@ -335,7 +335,7 @@ def main() -> None:
         pysh_v = "not importable"
 
     print("\nDone. Next: Rscript analysis/scar_threshold_sensitivity/"
-          "02_scar_threshold_sensitivity_stats.R")
+          "scar_threshold_sensitivity_stats.R")
 
 
 if __name__ == "__main__":

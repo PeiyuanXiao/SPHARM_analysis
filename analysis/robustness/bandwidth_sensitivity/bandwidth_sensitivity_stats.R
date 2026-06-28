@@ -1,11 +1,11 @@
-# 02_bandwidth_sensitivity_stats.R
+# bandwidth_sensitivity_stats.R
 # =============================================================================
 # Bandwidth (h) SENSITIVITY ANALYSIS for the SP-SPHARM pipeline — SI add-on.
 #
 # NEW, self-contained file. Does NOT modify the main pipeline, the cached
 # _targets store, the derived_data cache, or the manuscript. It only READS the
 # committed h=0.35 outputs (for a sanity check) and the per-h SP-SPHARM power
-# spectra produced by 01_sweep_spharm_bandwidth.py, and WRITES new outputs
+# spectra produced by sweep_spharm_bandwidth.py, and WRITES new outputs
 # under analysis/robustness/bandwidth_sensitivity/.
 #
 # It re-uses the project's existing statistical machinery (the same package
@@ -35,8 +35,8 @@
 #   figures/fig_S_bandwidth_IM_heatmaps.png
 #
 # HOW TO RUN (canonical environment, R 4.4 + renv):
-#   Rscript analysis/robustness/bandwidth_sensitivity/02_bandwidth_sensitivity_stats.R
-#   # or in RStudio: source(here::here("analysis/robustness/bandwidth_sensitivity/02_bandwidth_sensitivity_stats.R"))
+#   Rscript analysis/robustness/bandwidth_sensitivity/bandwidth_sensitivity_stats.R
+#   # or in RStudio: source(here::here("analysis/robustness/bandwidth_sensitivity/bandwidth_sensitivity_stats.R"))
 # =============================================================================
 
 suppressPackageStartupMessages({
@@ -395,7 +395,7 @@ im_matrices  <- list()     # IM distance matrices, for correlation + heatmaps
 for (h in H_GRID) {
   csv <- file.path(SPECTRA_DIR, sprintf("SPHARM_direction_h%.2f.csv", h))
   if (!file.exists(csv)) {
-    warning(sprintf("Missing spectra for h=%.2f (%s); run 01_sweep_spharm_bandwidth.py first. Skipping.",
+    warning(sprintf("Missing spectra for h=%.2f (%s); run sweep_spharm_bandwidth.py first. Skipping.",
                     h, basename(csv)))
     next
   }
@@ -438,7 +438,7 @@ for (h in H_GRID) {
 }
 
 metrics_df <- bind_rows(metrics)
-if (nrow(metrics_df) == 0) stop("No spectra found. Run 01_sweep_spharm_bandwidth.py first.")
+if (nrow(metrics_df) == 0) stop("No spectra found. Run sweep_spharm_bandwidth.py first.")
 
 # ---- IM distance-matrix correlation vs the h=0.35 matrix --------------------
 ref_key <- sprintf("%.2f", H_REF)

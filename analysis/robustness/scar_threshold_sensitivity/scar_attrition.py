@@ -1,5 +1,5 @@
 """
-00_scar_attrition.py
+scar_attrition.py
 ====================
 Scar-RETENTION / ATTRITION report for the scar minimum-size-threshold sensitivity
 analysis (SI add-on). Self-contained; reads only committed raw data and writes new
@@ -42,7 +42,7 @@ OUTPUTS (all NEW, under analysis/scar_threshold_sensitivity/)
     figures/fig_S_threshold_attrition.png   (best-effort; needs matplotlib)
 
 HOW TO RUN
-    python analysis/scar_threshold_sensitivity/00_scar_attrition.py
+    python analysis/scar_threshold_sensitivity/scar_attrition.py
 """
 
 from __future__ import annotations
@@ -68,7 +68,7 @@ APPLIED_GROUPS = ["EXP", "SDG"]
 
 
 # ---------------------------------------------------------------------------
-# Paths (discover project root via _targets.R, like 01_sweep_spharm_bandwidth.py)
+# Paths (discover project root via _targets.R, like sweep_spharm_bandwidth.py)
 # ---------------------------------------------------------------------------
 def find_project_root(start: Path) -> Path:
     for p in [start, *start.parents]:

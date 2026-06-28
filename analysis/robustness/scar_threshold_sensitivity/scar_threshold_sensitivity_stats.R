@@ -1,17 +1,17 @@
-# 02_scar_threshold_sensitivity_stats.R
+# scar_threshold_sensitivity_stats.R
 # =============================================================================
 # Scar minimum-SIZE-THRESHOLD sensitivity analysis for the SP-SPHARM pipeline —
 # SI add-on. NEW, self-contained file. Does NOT modify the main pipeline, the
 # cached _targets store, the derived_data cache, or the manuscript. It only READS
 # the committed production outputs (for a sanity check) and the per-threshold
-# SP-SPHARM power spectra produced by 01_sweep_spharm_threshold.py, plus the
-# attrition tables from 00_scar_attrition.py, and WRITES new outputs under
+# SP-SPHARM power spectra produced by sweep_spharm_threshold.py, plus the
+# attrition tables from scar_attrition.py, and WRITES new outputs under
 # analysis/robustness/scar_threshold_sensitivity/.
 #
 # It re-uses the project's existing statistical machinery (the same package
 # functions the main pipeline calls — vegan::adonis2 / mantel, ade4::coinertia /
 # randtest, compositions::ilr) and replicates, verbatim, the data-prep steps from
-# the main scripts (same source-line attributions as 02_bandwidth_sensitivity_stats.R):
+# the main scripts (same source-line attributions as bandwidth_sensitivity_stats.R):
 #   - r_spharm/power_degree_selection.R     (degree selection)
 #   - r_spharm/spharm_analysis.R           (EXP PERMANOVA `perm_dir`)
 #   - r_statistics/exp_cores_statistics.R  (EXP Mantel + RV)
@@ -26,7 +26,7 @@
 #                         scar~core-type PERMANOVA.
 # Part (b) — ideal-core discriminability — is UNCHANGED BY CONSTRUCTION: the size
 # threshold is not applied to the synthetic ideal cores (their scar lengths are
-# fixed, non-physical values; see 00_scar_attrition.py / README.md), so the ideal
+# fixed, non-physical values; see scar_attrition.py / README.md), so the ideal
 # cores are held at production values and the ideal-core distance structure is
 # identical at every threshold. It is reported once, as the production reference.
 #
@@ -37,8 +37,8 @@
 #   figures/fig_S_threshold_scarcounts.png
 #
 # HOW TO RUN (canonical environment, R 4.4 + renv):
-#   Rscript analysis/robustness/scar_threshold_sensitivity/02_scar_threshold_sensitivity_stats.R
-#   # prerequisite: run 00_scar_attrition.py and 01_sweep_spharm_threshold.py first.
+#   Rscript analysis/robustness/scar_threshold_sensitivity/scar_threshold_sensitivity_stats.R
+#   # prerequisite: run scar_attrition.py and sweep_spharm_threshold.py first.
 # =============================================================================
 
 suppressPackageStartupMessages({
@@ -63,7 +63,7 @@ suppressMessages({
 set.seed(42)
 
 # =============================================================================
-# PARAMETERS  (edit here; must match the Python sweep 01_sweep_spharm_threshold.py)
+# PARAMETERS  (edit here; must match the Python sweep sweep_spharm_threshold.py)
 # =============================================================================
 # Minimum-size cutoffs in mm. T = 0 is the production anchor (all recorded scars).
 THRESHOLDS <- c(0.0, 5.0, 10.0)
@@ -395,7 +395,7 @@ im_ref     <- NULL          # ideal-core distance matrix (threshold-invariant)
 for (T in THRESHOLDS) {
   csv <- spectra_path(T)
   if (!file.exists(csv)) {
-    warning(sprintf("Missing spectra for T=%.1f (%s); run 01_sweep_spharm_threshold.py first. Skipping.",
+    warning(sprintf("Missing spectra for T=%.1f (%s); run sweep_spharm_threshold.py first. Skipping.",
                     T, basename(csv)))
     next
   }
@@ -443,7 +443,7 @@ for (T in THRESHOLDS) {
 }
 
 metrics_df <- bind_rows(metrics)
-if (nrow(metrics_df) == 0) stop("No spectra found. Run 01_sweep_spharm_threshold.py first.")
+if (nrow(metrics_df) == 0) stop("No spectra found. Run sweep_spharm_threshold.py first.")
 order_long_df <- bind_rows(order_long)
 
 # Ideal-core reference separations (threshold-invariant; reported once).
@@ -541,7 +541,7 @@ tryCatch({
   ggsave(file.path(FIG_DIR, "fig_S_threshold_orderselection.png"),
          p_cum / p_cv, width = 9, height = 8, dpi = 300)
 
-  # --- Figure 2: per-specimen scar retention (from 00_scar_attrition.py) -------
+  # --- Figure 2: per-specimen scar retention (from scar_attrition.py) -------
   att_csv <- file.path(OUT_DIR, "scar_attrition_by_specimen.csv")
   if (file.exists(att_csv)) {
     att <- read_csv(att_csv, show_col_types = FALSE) %>%
@@ -566,7 +566,7 @@ tryCatch({
     cat("Wrote 2 figures to", FIG_DIR, "\n")
   } else {
     cat("Wrote 1 figure to", FIG_DIR,
-        "(scar-count figure skipped: run 00_scar_attrition.py first)\n")
+        "(scar-count figure skipped: run scar_attrition.py first)\n")
   }
 }, error = function(e) {
   ok_fig <<- FALSE

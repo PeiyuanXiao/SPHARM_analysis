@@ -1,10 +1,10 @@
-# 02_mesh_sensitivity_stats.R
+# mesh_sensitivity_stats.R
 # =============================================================================
 # Mesh-PREPROCESSING sensitivity analysis for the M-SPHARM (morphology) pipeline —
 # SI add-on. NEW, self-contained file. Does NOT modify the main pipeline, the cached
 # _targets store, the derived_data cache, or the manuscript. It only READS the
 # committed production outputs (for the anchor check) + the fixed SP-SPHARM spectra,
-# and the per-setting M-SPHARM spectra produced by 01_sweep_mesh_spharm.py, and
+# and the per-setting M-SPHARM spectra produced by sweep_mesh_spharm.py, and
 # WRITES new outputs under analysis/robustness/mesh_decimation_sensitivity/.
 #
 # It re-uses the project's statistical machinery (the same package functions the
@@ -34,8 +34,8 @@
 #   figures/fig_S_mesh_orderselection.png
 #
 # HOW TO RUN (canonical environment, R 4.4 + renv):
-#   Rscript analysis/robustness/mesh_decimation_sensitivity/02_mesh_sensitivity_stats.R
-#   # prerequisite: run 01_sweep_mesh_spharm.py first.
+#   Rscript analysis/robustness/mesh_decimation_sensitivity/mesh_sensitivity_stats.R
+#   # prerequisite: run sweep_mesh_spharm.py first.
 # =============================================================================
 
 suppressPackageStartupMessages({
@@ -51,7 +51,7 @@ suppressMessages({
 set.seed(42)
 
 # =============================================================================
-# PARAMETERS  (must match the Python sweep 01_sweep_mesh_spharm.py)
+# PARAMETERS  (must match the Python sweep sweep_mesh_spharm.py)
 # =============================================================================
 FACE_TARGETS <- c(10000, 20000, 50000)
 SMOOTH_ITERS <- c(0, 3, 6)
@@ -309,7 +309,7 @@ for (st in SETTINGS) {
   key  <- sprintf("f%d_s%d", face, smooth)
   csv  <- spectra_path(face, smooth)
   if (!file.exists(csv)) {
-    warning(sprintf("Missing spectra %s; run 01_sweep_mesh_spharm.py first. Skipping.", basename(csv)))
+    warning(sprintf("Missing spectra %s; run sweep_mesh_spharm.py first. Skipping.", basename(csv)))
     next
   }
   cat(sprintf("\n=== faces=%d, smooth=%d ===\n", face, smooth))
@@ -345,7 +345,7 @@ for (st in SETTINGS) {
 }
 
 metrics_df <- bind_rows(metrics)
-if (nrow(metrics_df) == 0) stop("No spectra found. Run 01_sweep_mesh_spharm.py first.")
+if (nrow(metrics_df) == 0) stop("No spectra found. Run sweep_mesh_spharm.py first.")
 order_long_df <- bind_rows(order_long)
 
 # =============================================================================

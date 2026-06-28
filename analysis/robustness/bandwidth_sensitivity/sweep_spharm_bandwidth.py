@@ -1,5 +1,5 @@
 """
-01_sweep_spharm_bandwidth.py
+sweep_spharm_bandwidth.py
 ============================
 Bandwidth (h) SENSITIVITY SWEEP for the SP-SPHARM (scar-patterning) pipeline.
 
@@ -29,16 +29,16 @@ mismatch — see analysis/scripts/environment.yml, which pins the numerical core
 
 HOW TO RUN (canonical environment):
     # inside the project's conda `spharm` env (same one the main pipeline uses):
-    python analysis/bandwidth_sensitivity/01_sweep_spharm_bandwidth.py
+    python analysis/bandwidth_sensitivity/sweep_spharm_bandwidth.py
 
     # or via the Docker image, mirroring _targets.R's PYTHONPATH:
-    #   PYTHONPATH=analysis/scripts python analysis/bandwidth_sensitivity/01_sweep_spharm_bandwidth.py
+    #   PYTHONPATH=analysis/scripts python analysis/bandwidth_sensitivity/sweep_spharm_bandwidth.py
 
 Outputs (all NEW, under analysis/bandwidth_sensitivity/):
     spectra/SPHARM_direction_h0.20.csv ... SPHARM_direction_h0.50.csv
     sweep_manifest.csv      (one row per h: kappa, n_specimens, max|diff| vs cache)
 
-Then run 02_bandwidth_sensitivity_stats.R to evaluate stability of the
+Then run bandwidth_sensitivity_stats.R to evaluate stability of the
 downstream conclusions across h.
 """
 
@@ -253,7 +253,7 @@ def main() -> None:
     except Exception:
         pysh_v = "not importable"
 
-    print("\nDone. Next: Rscript analysis/bandwidth_sensitivity/02_bandwidth_sensitivity_stats.R")
+    print("\nDone. Next: Rscript analysis/bandwidth_sensitivity/bandwidth_sensitivity_stats.R")
 
 
 if __name__ == "__main__":

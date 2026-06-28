@@ -1,5 +1,5 @@
 """
-01_sweep_mesh_spharm.py
+sweep_mesh_spharm.py
 =======================
 Mesh-PREPROCESSING sensitivity sweep for the M-SPHARM (morphology) pipeline.
 NEW, self-contained add-on for the paper's Supplementary Information. It does NOT
@@ -39,10 +39,10 @@ TWO BUILT-IN CHECKS at the production setting (20000, 3):
     A mismatch here is itself an important finding (decimation still not deterministic).
 
 HOW TO RUN (canonical environment — conda `spharm`, same as the main pipeline):
-    python analysis/mesh_decimation_sensitivity/01_sweep_mesh_spharm.py
-    # or, mirroring _targets.R: PYTHONPATH=analysis/scripts python .../01_sweep_mesh_spharm.py
+    python analysis/mesh_decimation_sensitivity/sweep_mesh_spharm.py
+    # or, mirroring _targets.R: PYTHONPATH=analysis/scripts python .../sweep_mesh_spharm.py
 
-Then run 02_mesh_sensitivity_stats.R to evaluate stability of the downstream
+Then run mesh_sensitivity_stats.R to evaluate stability of the downstream
 conclusions across settings.
 """
 
@@ -365,7 +365,7 @@ def main() -> None:
             return __import__(mod).__version__
         except Exception:
             return "not importable"
-    print("\nDone. Next: Rscript analysis/mesh_decimation_sensitivity/02_mesh_sensitivity_stats.R")
+    print("\nDone. Next: Rscript analysis/mesh_decimation_sensitivity/mesh_sensitivity_stats.R")
 
 
 if __name__ == "__main__":
