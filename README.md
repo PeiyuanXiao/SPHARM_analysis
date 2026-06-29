@@ -118,7 +118,7 @@ directly in that folder.
 ### 🚀 How to Reproduce the Analysis in a Docker Container
 
 This compendium ships a [Dockerfile](Dockerfile) that builds the
-complete computational environment: R 4.4.0 with RStudio and all
+complete computational environment: R 4.4.2 with RStudio and all
 required R packages (restored from `renv.lock`), plus the conda `spharm`
 environment for the Python SPHARM steps. Because both stacks are bundled
 in a single image, the entire workflow can be reproduced with a single
