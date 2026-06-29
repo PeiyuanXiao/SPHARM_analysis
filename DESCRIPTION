@@ -17,6 +17,7 @@ Description: Research compendium with the data and code to reproduce the
     and R statistical analysis, orchestrated as a single reproducible
     'targets' pipeline.
 Imports:
+    MatrixCorrelation,
     quarto,
     visNetwork
 License: MIT + file LICENSE

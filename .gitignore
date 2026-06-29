@@ -33,6 +33,7 @@ analysis/robustness/*/figures/
 analysis/robustness/*/sweep_manifest.csv
 analysis/robustness/*/*_metrics.csv
 analysis/robustness/*/*_orderselection_by_degree.csv
+analysis/robustness/*/*_curves.csv
 analysis/robustness/mesh_decimation_sensitivity/determinism_*.csv
 analysis/robustness/scar_threshold_sensitivity/im_threshold_diagnostic.csv
 
@@ -84,6 +85,10 @@ Start_SPHARM.bat
 .env
 .quarto/
 .positai/
+.Rproj.user
+.Rproj.user
+.Rproj.user
+.Rproj.user
 .Rproj.user
 .Rproj.user
 .Rproj.user

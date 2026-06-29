@@ -70,7 +70,11 @@ tar_config_set(store = si_store)
 bw   <- tar_read(robustness_bandwidth)
 scar <- tar_read(robustness_scar_threshold)
 mesh <- tar_read(robustness_mesh_decimation)
-pm <- function(r, p) sprintf("%.3f (%.3f)", r, p)  
+pwr  <- tar_read(robustness_power)
+pm <- function(r, p) sprintf("%.3f (%.3f)", r, p)
+# inline accessor: a formatted power/sensitivity metric for one assemblage
+pv <- function(asm, col, d = 3) sprintf(paste0("%.", d, "f"),
+  pwr$metrics[[col]][pwr$metrics$assemblage == asm])
 ```
 
 # Sensitivity analysis
@@ -363,6 +367,110 @@ discrimination; the dominance of core type over raw material and layer
 in the archaeological morphology and scar patterning; and the decoupling
 of morphology and scar patterning, which holds under perturbation of
 either descriptor.
+
+# Statistical power of the morphology and scar patterning covariation test
+
+The tests of covariation between core morphology and scar patterning
+returned null results in both assemblages (main text; @tbl-si-bandwidth,
+@tbl-si-scar, @tbl-si-mesh). Because a non-significant result does not
+by itself distinguish a genuine absence of association from insufficient
+power to detect one, we assessed the informativeness of these nulls
+directly. Rather than computing observed power from the realized effect,
+which is uninformative [@hoenigAbusePowerPervasive2001], we followed the
+recommendation to characterize the range of effect sizes a fixed design
+can resolve [@lakensSampleSizeJustification2022]. Three quantities were
+computed for each assemblage, reusing the same ILR transformed power
+spectra as the main analysis. At the main analysis setting the
+recomputed coefficients reproduced the reported raw RV and Mantel
+statistics, confirming that the analysis was anchored to the values in
+the main text.
+
+We evaluated the null results in three complementary ways. First,
+because raw RV coefficients can be upwardly biased when the number of
+variables is large relative to sample size
+[@adamsEvaluatingModularityMorphometric2016;
+@smildeMatrixCorrelationsHighdimensional2009], we recalculated the
+association using the bias-corrected modified RV
+[@smildeMatrixCorrelationsHighdimensional2009]. Second, we used a
+percentile bootstrap over specimens (2,000 resamples) to estimate how
+large the association might plausibly be, while keeping each specimen's
+morphology and scar pattern coordinates paired. Third, we used Monte
+Carlo simulation to estimate how sensitive the Mantel and RV permutation
+tests were at the realized sample sizes [@rohlfUseTwoBlockPartial2000;
+@manlyRandomizationBootstrapMonte2007]. In these simulations, data were
+generated with a known degree of association between the two blocks,
+following established practice in morphometric studies of modularity and
+integration [@adamsEvaluatingModularityMorphometric2016]. Variation
+within each block was drawn from the empirical mean and covariance of
+that block, and a shared component was added to create a controlled
+level of between-block association. The strength of this component was
+calibrated to a target population RV, by which we mean the underlying
+between-block association imposed in the simulated population, rather
+than the RV estimated from any single finite sample. Because the
+simulated association was aligned with the leading axis of each block,
+the resulting minimum detectable effects should be understood as
+best-case values: a less favorably structured association would require
+a larger effect to be detected [@lakensSampleSizeJustification2022].
+Simulation settings were kept modest, and all procedures used fixed
+seeds.
+
+These checks suggest that the observed decoupling between morphology and
+scar patterning is unlikely to be explained by sample size alone. After
+bias correction, the modified RV fell from `r pv("EXP","raw_RV")` to
+`r pv("EXP","RV2")` in the EXP assemblage and from
+`r pv("SDG","raw_RV")` to `r pv("SDG","RV2")` in the SDG assemblage.
+This indicates that much of the already small raw association was
+attributable to small-sample inflation rather than to a strong
+underlying signal. The bootstrap results also placed only modest upper
+bounds on the possible association: approximately RV =
+`r pv("EXP","RV2_CI_high",2)` for EXP and `r pv("SDG","RV2_CI_high",2)`
+for SDG, and Mantel $r$ = `r pv("EXP","mantel_CI_high",2)` for EXP and
+`r pv("SDG","mantel_CI_high",2)` for SDG. The simulation results showed
+that the RV permutation test had sufficient power to detect a moderate
+association at the realized sample sizes. It reached at least 80% power
+at a population RV of `r pv("EXP","MDES_RV")` in EXP and
+`r pv("SDG","MDES_RV")` in SDG, and exceeded 96% power by a population
+RV of about 0.13. The Mantel test was less sensitive, reaching 80% power
+only at a population RV of `r pv("EXP","MDES_mantel")` in EXP and
+`r pv("SDG","MDES_mantel")` in SDG, consistent with the lower power of
+Mantel tests relative to covariance-based statistics. Power curves are
+shown in @fig-si-power, and all values are summarized in @tbl-si-power.
+
+Taken together, these results support the interpretation that core
+morphology and scar patterning are largely decoupled at the assemblage
+level. If a moderate or stronger association had been present, it would
+probably have been detected by the RV test. Instead, the bias-corrected
+estimates were close to zero in both assemblages. A very weak residual
+association, below a population RV of roughly
+`r pv("EXP","MDES_RV",2)`–`r pv("SDG","MDES_RV",2)`, cannot be excluded.
+The small per-type subsamples also remain underpowered, which is why the
+within-type analyses are treated as exploratory in the main text.
+
+```{r}
+#| label: tbl-si-power
+#| tbl-cap: "Power and sensitivity metrics for the morphology and scar patterning covariation test, by assemblage. Raw RV and Mantel $r$ are the values reported in the main text (anchor). RV2 is the bias-corrected modified RV coefficient. The 95% confidence intervals are percentile bootstrap intervals (2,000 resamples) and are interpreted as upper bounds on the association (see text). MDES is the minimum population effect detectable at 80% power, estimated by Monte Carlo simulation, and is a lower bound. Values in parentheses are permutation p values."
+pwr$metrics |>
+  transmute(
+    Assemblage        = assemblage,
+    n                 = n,
+    `Raw RV (p)`      = pm(raw_RV, raw_RV_p),
+    RV2               = sprintf("%.3f", RV2),
+    `RV2 95% CI`      = sprintf("[%.3f, %.3f]", RV2_CI_low, RV2_CI_high),
+    `Mantel r (p)`    = pm(mantel_r, mantel_p),
+    `Mantel r 95% CI` = sprintf("[%.3f, %.3f]", mantel_CI_low, mantel_CI_high),
+    `MDES RV`         = sprintf("%.3f", MDES_RV),
+    `MDES Mantel`     = sprintf("%.3f", MDES_mantel)
+  ) |>
+  knitr::kable()
+```
+
+```{r}
+#| label: fig-si-power
+#| fig-cap: "Monte Carlo power of the RV permutation test and the Mantel test as a function of the population RV coefficient, at the realized sample sizes of the experimental and Sandinggai assemblages. The dashed horizontal line marks 80% power and the dotted vertical line marks the observed raw RV."
+#| fig-width: 9
+#| fig-height: 4.5
+pwr$fig_power
+```
 
 \newpage
 

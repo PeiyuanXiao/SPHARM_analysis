@@ -18,7 +18,8 @@ library(targets)
 
 tar_option_set(
   packages = c("tidyverse", "here", "readxl", "patchwork",
-               "vegan", "ade4", "compositions", "RVAideMemoire", "conflicted")
+               "vegan", "ade4", "compositions", "RVAideMemoire",
+               "MatrixCorrelation", "conflicted")
 )
 
 suppressMessages(
@@ -88,6 +89,19 @@ list(
       source(rob("mesh_decimation_sensitivity/mesh_sensitivity_stats.R"), local = TRUE)
       list(metrics = metrics_df, order_long = order_long_df,
            fig_orderselection = p_cum / p_cv)
+    })
+  }),
+
+  # ---- CoIA null-result power / sensitivity (RV2 + bootstrap CI + MDES) -------
+  # Reuses ONLY the committed main outputs (no per-setting spectra): it rebuilds
+  # the exact EXP/SDG CoIA ILR matrices and asks what coupling the null
+  # RV / Mantel result can rule out, for both assemblages.
+  tar_target(robustness_power, {
+    force(core_metric_xlsx); force(derived_direction_csv); force(derived_morphology_csv)
+    local({
+      source(rob("coia_power_sensitivity/coia_power_sensitivity_stats.R"), local = TRUE)
+      list(metrics = metrics_df, power_long = power_long_df,
+           fig_power = p_power)
     })
   })
 )

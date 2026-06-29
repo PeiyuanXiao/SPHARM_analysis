@@ -369,6 +369,41 @@
       "Maintainer": "Martin Maechler <mmaechler+Matrix@gmail.com>",
       "Repository": "CRAN"
     },
+    "MatrixCorrelation": {
+      "Package": "MatrixCorrelation",
+      "Version": "0.10.1",
+      "Source": "Repository",
+      "Encoding": "UTF-8",
+      "Type": "Package",
+      "Title": "Matrix Correlation Coefficients",
+      "Date": "2025-07-28",
+      "Authors@R": "c(person(\"Kristian Hovde\", \"Liland\", role = c(\"aut\", \"cre\"), email = \"kristian.liland@nmbu.no\"))",
+      "Description": "Computation and visualization of matrix correlation coefficients. The main method is the Similarity of Matrices Index, while various related measures like r1, r2, r3, r4, Yanai's GCD, RV, RV2, adjusted RV, Rozeboom's linear correlation and Coxhead's coefficient are included for comparison and flexibility.",
+      "URL": "https://github.com/khliland/MatrixCorrelation/",
+      "BugReports": "https://github.com/khliland/MatrixCorrelation/issues/",
+      "Depends": [
+        "R (>= 3.0.1)"
+      ],
+      "Imports": [
+        "Rcpp",
+        "plotrix",
+        "pracma",
+        "progress",
+        "RSpectra"
+      ],
+      "License": "GPL-2",
+      "LazyData": "TRUE",
+      "RoxygenNote": "7.3.2",
+      "LinkingTo": [
+        "progress",
+        "Rcpp",
+        "RcppArmadillo"
+      ],
+      "NeedsCompilation": "yes",
+      "Author": "Kristian Hovde Liland [aut, cre]",
+      "Maintainer": "Kristian Hovde Liland <kristian.liland@nmbu.no>",
+      "Repository": "CRAN"
+    },
     "MatrixModels": {
       "Package": "MatrixModels",
       "Version": "0.5-4",
@@ -441,6 +476,42 @@
       "License": "Apache License 2.0",
       "NeedsCompilation": "no",
       "Repository": "RSPM",
+      "Encoding": "UTF-8"
+    },
+    "RSpectra": {
+      "Package": "RSpectra",
+      "Version": "0.16-2",
+      "Source": "Repository",
+      "Type": "Package",
+      "Title": "Solvers for Large-Scale Eigenvalue and SVD Problems",
+      "Date": "2024-07-18",
+      "Authors@R": "c( person(\"Yixuan\", \"Qiu\", , \"yixuan.qiu@cos.name\", c(\"aut\", \"cre\")), person(\"Jiali\", \"Mei\", , \"vermouthmjl@gmail.com\", \"aut\", comment = \"Function interface of matrix operation\"), person(\"Gael\", \"Guennebaud\", , \"gael.guennebaud@inria.fr\", \"ctb\", comment = \"Eigenvalue solvers from the 'Eigen' library\"), person(\"Jitse\", \"Niesen\", , \"jitse@maths.leeds.ac.uk\", \"ctb\", comment = \"Eigenvalue solvers from the 'Eigen' library\") )",
+      "Description": "R interface to the 'Spectra' library <https://spectralib.org/> for large-scale eigenvalue and SVD problems. It is typically used to compute a few eigenvalues/vectors of an n by n matrix, e.g., the k largest eigenvalues, which is usually more efficient than eigen() if k << n. This package provides the 'eigs()' function that does the similar job as in 'Matlab', 'Octave', 'Python SciPy' and 'Julia'. It also provides the 'svds()' function to calculate the largest k singular values and corresponding singular vectors of a real matrix. The matrix to be computed on can be dense, sparse, or in the form of an operator defined by the user.",
+      "License": "MPL (>= 2)",
+      "URL": "https://github.com/yixuan/RSpectra",
+      "BugReports": "https://github.com/yixuan/RSpectra/issues",
+      "Depends": [
+        "R (>= 3.0.2)"
+      ],
+      "Imports": [
+        "Matrix (>= 1.1-0)",
+        "Rcpp (>= 0.11.5)"
+      ],
+      "Suggests": [
+        "knitr",
+        "rmarkdown",
+        "prettydoc"
+      ],
+      "LinkingTo": [
+        "Rcpp",
+        "RcppEigen (>= 0.3.3.3.0)"
+      ],
+      "VignetteBuilder": "knitr, rmarkdown",
+      "RoxygenNote": "7.1.2",
+      "NeedsCompilation": "yes",
+      "Author": "Yixuan Qiu [aut, cre], Jiali Mei [aut] (Function interface of matrix operation), Gael Guennebaud [ctb] (Eigenvalue solvers from the 'Eigen' library), Jitse Niesen [ctb] (Eigenvalue solvers from the 'Eigen' library)",
+      "Maintainer": "Yixuan Qiu <yixuan.qiu@cos.name>",
+      "Repository": "CRAN",
       "Encoding": "UTF-8"
     },
     "RVAideMemoire": {
@@ -5775,6 +5846,37 @@
       "URL": "https://www.rforge.net/png/",
       "BugReports": "https://github.com/s-u/png/issues/",
       "NeedsCompilation": "yes",
+      "Repository": "CRAN",
+      "Encoding": "UTF-8"
+    },
+    "pracma": {
+      "Package": "pracma",
+      "Version": "2.4.6",
+      "Source": "Repository",
+      "Type": "Package",
+      "Date": "2025-10-20",
+      "Title": "Practical Numerical Math Functions",
+      "Authors@R": "person(\"Hans W.\", \"Borchers\",  email=\"hwborchers@googlemail.com\",  role=c(\"aut\", \"cre\"))",
+      "Depends": [
+        "R (>= 3.1.0)"
+      ],
+      "Imports": [
+        "graphics",
+        "grDevices",
+        "stats",
+        "utils"
+      ],
+      "Suggests": [
+        "NlcOptim",
+        "quadprog"
+      ],
+      "Description": "Provides a large number of functions from numerical analysis and linear algebra, numerical optimization, differential equations, time series, plus some well-known special mathematical functions. Uses 'MATLAB' function names where appropriate to simplify porting.",
+      "License": "GPL (>= 3)",
+      "ByteCompile": "true",
+      "LazyData": "yes",
+      "NeedsCompilation": "no",
+      "Author": "Hans W. Borchers [aut, cre]",
+      "Maintainer": "Hans W. Borchers <hwborchers@googlemail.com>",
       "Repository": "CRAN",
       "Encoding": "UTF-8"
     },
