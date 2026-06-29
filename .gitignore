@@ -47,6 +47,8 @@ analysis/output/
 figure origin/
 # keep the Word reference template (formatting, not a rendered output)
 !analysis/templates/template.docx
+!analysis/paper/manuscript.docx
+!analysis/paper/manuscript.pdf
 
 # ==============================================================================
 # R / RStudio
@@ -85,6 +87,8 @@ Start_SPHARM.bat
 .env
 .quarto/
 .positai/
+.Rproj.user
+.Rproj.user
 .Rproj.user
 .Rproj.user
 .Rproj.user

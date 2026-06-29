@@ -286,8 +286,8 @@ dependencies:
   - zlib=1.3.1
   - zlib-ng=2.3.2
   - zstd=1.5.7
-  - pymeshfix
-  - networkx
-  - openpyxl
+  - pymeshfix=0.17.2
+  - networkx=3.4.2
+  - openpyxl=3.1.5
   - pip:
-    - fast-simplification
+    - fast-simplification==0.1.13

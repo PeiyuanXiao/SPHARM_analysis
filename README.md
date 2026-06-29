@@ -145,16 +145,11 @@ restores all R packages and resolves the conda environment:
 
     docker build --platform=linux/amd64 -t spharm_analysis .
 
-> **Note (Apple Silicon Macs):** We recommend the
-> `--platform=linux/amd64` flag. The conda environment pins package
-> versions (not exact build hashes), so it resolves on both amd64 and
-> arm64; amd64 is the reference platform the results were validated on.
-> With the flag, Docker on an Apple Silicon Mac runs the image under
-> emulation (Rosetta 2), slower, but on the reference platform. Building
-> natively for arm64 also works and is faster, but resolves different
-> binary package builds, so results are not guaranteed bit-identical to
-> the amd64 reference. On Linux and Windows/Intel hosts the flag is the
-> native default and has no effect.
+> **Note (Apple Silicon Macs):** The Dockerfile pins the base image to
+> `linux/amd64`, the reference platform used for validation. On Apple
+> Silicon Macs, Docker will run the image under emulation, which is
+> slower but keeps the computational platform consistent. Native arm64
+> builds are not the documented reproduction path for this compendium.
 
 On OSX you may need to run:
 
