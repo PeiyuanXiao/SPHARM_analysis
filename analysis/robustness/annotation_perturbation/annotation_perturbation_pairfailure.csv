@@ -1,0 +1,17 @@
+perturbation,comparison,first_fail_level,p_holm_at_max,baseline_p_raw,baseline_p_holm
+angle,Bidirectional-Multiplatform,15,0.11954999999999999,0.0034,0.0136
+angle,Levallois-Multiplatform,15,0.1215,0.0026,0.013
+angle,Unidirectional-Levallois,NA,0.00515,0.0162,0.0486
+angle,Levallois-Discoid,NA,0.0028,8e-4,0.0048000000000000004
+angle,Unidirectional-Discoid,NA,0.0018000000000000002,4e-4,0.0032
+angle,Unidirectional-Multiplatform,NA,0.004,4e-4,0.0032
+angle,Bidirectional-Levallois,NA,0.00275,2e-4,0.002
+angle,Unidirectional-Bidirectional,NA,0.00225,2e-4,0.002
+polarity,Unidirectional-Levallois,0.02,0.02645,0.0162,0.0486
+polarity,Bidirectional-Multiplatform,0.1,0.13255,0.0034,0.0136
+polarity,Levallois-Multiplatform,0.1,0.22949999999999998,0.0026,0.013
+polarity,Levallois-Discoid,0.15,0.1247,8e-4,0.0048000000000000004
+polarity,Unidirectional-Bidirectional,0.2,0.0524,2e-4,0.002
+polarity,Unidirectional-Discoid,NA,0.004,4e-4,0.0032
+polarity,Unidirectional-Multiplatform,NA,0.0042,4e-4,0.0032
+polarity,Bidirectional-Levallois,NA,0.0245,2e-4,0.002

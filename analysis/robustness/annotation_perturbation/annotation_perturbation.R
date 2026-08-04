@@ -20,29 +20,63 @@
 # perturb_spharm.py, which reuses the production functions verbatim and whose
 # --verify mode reproduces the committed SPHARM_direction.csv to < 1e-8.
 #
-# THREE PERTURBATIONS
-#   P1 polarity : flip a fraction f of scar vectors, f in {0.02 .. 0.20}. THE
-#                 headline. The manuscript's case for SP-SPHARM over fabric rests
-#                 on SP-SPHARM retaining polarity (a fabric orientation tensor is
-#                 invariant to u -> -u, Mark 1973), so polarity is its most
-#                 exposed assumption and the one most worth stress-testing.
-#                 Fabric (E, I) and SPI are recomputed on the SAME perturbed
-#                 vectors: fabric should be immune by construction. That contrast
-#                 turns "SP-SPHARM encodes polarity, fabric does not" from a
-#                 theoretical claim into a measurement, and supports the paper's
-#                 three-methods-are-complementary argument.
+# TWO PERTURBATIONS, both with the SP-SPHARM / fabric / SPI three-method contrast
+#   P1 polarity : flip a fraction f of scar vectors, f in {0.02 .. 0.20}. The
+#                 manuscript's case for SP-SPHARM over fabric rests on SP-SPHARM
+#                 retaining polarity (a fabric orientation tensor is invariant to
+#                 u -> -u, Mark 1973), so polarity is its most exposed assumption.
+#                 NOTE what this contrast is and is not: fabric's immunity here is a
+#                 mathematical identity, not an empirical finding — sum(u u') is
+#                 literally unchanged by a sign flip, so E and I come out bit-
+#                 identical. It is worth reporting as a check, but it discovers
+#                 nothing.
 #   P2 angle    : isotropic random rotation per vector, s.d. sigma in {5..20} deg.
-#   P3 dropout  : delete a fraction d of scars, d in {0.05, 0.10, 0.20}, with a
-#                 floor of 3 scars per specimen (Figure S3's existing bound).
+#                 THIS is the real experiment. No method has analytic immunity to
+#                 small rotations, so the ordering of degradation rates is not known
+#                 in advance and is determined purely by how each method encodes
+#                 direction. It therefore tests a concrete mechanistic claim
+#                 (see PREDICTION below).
+#
+# A scar-dropout perturbation (P3) was tried and REMOVED: the sparsest EXP specimen
+# carries 10 scars, so even 20% dropout leaves 8 and the 3-scar floor never once
+# triggered. It only ever probed the data-rich regime — "what if a specimen with
+# plenty of scars loses a few?" — whose answer is necessarily "little". The question
+# that matters, how few scars suffice, is a downsampling analysis (k = 3/5/8/10/15)
+# and belongs in its own script.
+#
+# PREDICTION (declared before the angle contrast was run, and adjudicated at the end)
+#   SP-SPHARM truncates the power spectrum at l = 1-6. Spherical-harmonic angular
+#   resolution is roughly 180/l degrees, so l = 6 corresponds to about 30 deg:
+#   jitter below that scale falls under the truncation and is filtered out by the
+#   descriptor itself. The other two methods have no such explicit low-pass stage —
+#   SPI is the resultant-length ratio of the raw unit vectors, with no angular
+#   smoothing at all, and fabric's second-moment eigenvalues average somewhat but
+#   impose no cutoff. Predicted degradation rate (by retention relative to each
+#   method's own baseline):  SPI fastest > fabric > SP-SPHARM slowest.
+#
+# WHY RETENTION RATIOS. Baseline resolved-pair counts differ by method (SP-SPHARM
+# 8/10, fabric 6/10, SPI 4/10), so absolute counts cannot rank degradation rates —
+# a drop of one pair means something different at each baseline. Every three-method
+# panel therefore reports (i) the absolute count, (ii) the continuous median
+# -log10(p), and (iii) retention = value / that method's own baseline. Verdicts are
+# adjudicated on (iii), using the continuous statistic, which is free of both the
+# baseline mismatch and the integer-threshold steps.
+#
+# EACH METHOD KEEPS ITS OWN TEST, as in the main analysis: SP-SPHARM and fabric are
+# tested by PERMANOVA (adonis2; spharm_analysis.R:352, 407), SPI by Kruskal-Wallis
+# with Dunn post-hoc (spharm_analysis.R:282). No test type was changed to make the
+# three comparable; the test used is stated in every table and figure caption.
 #
 # Statistical helpers are imported verbatim from the joint-MFA scripts by
 # selective evaluation (the pattern established in joint_mfa_discrimination_SDG.R),
 # so every number here is byte-comparable with the existing analyses.
 #
-# Outputs (all NEW):
-#   annotation_perturbation_polarity.csv / _angle.csv / _dropout.csv / _summary.csv
+# Outputs:
+#   annotation_perturbation_polarity.csv / _angle.csv / _summary.csv
+#   annotation_perturbation_angle_three_methods.csv
 #   annotation_perturbation_pairfailure.csv
 #   figures/fig_S_perturbation_polarity_three_methods.png
+#   figures/fig_S_perturbation_angle_three_methods.png
 #   figures/fig_S_perturbation_degradation.png
 #   figures/fig_S_perturbation_continuous.png
 #
@@ -90,8 +124,23 @@ TYPOLOGY_ORDER   <- c("Unidirectional", "Bidirectional", "Levallois",
 METHOD_COLORS <- c("SP-SPHARM" = "#4A6E8A", "Fabric (E, I)" = "#BA8530",
                    "SPI" = "#802520")
 PERT_LABS <- c(polarity = "P1  polarity flips (fraction)",
-               angle    = "P2  angular jitter (s.d., degrees)",
-               dropout  = "P3  scar dropout (fraction)")
+               angle    = "P2  angular jitter (s.d., degrees)")
+
+# Perturbations that get the SP-SPHARM / fabric / SPI contrast. Both, now: the same
+# seeds, the same call path, the same per-replicate vector array for all three
+# methods (perturb_spharm.py Engine.run perturbs U once per specimen and derives the
+# KDE, SPI and E/I from that one array), so the polarity and angle contrasts are
+# structurally identical and can be read side by side.
+THREE_METHOD_KINDS <- c("polarity", "angle")
+
+# Spherical-harmonic angular resolution at the truncation degree, for the mechanism
+# claim: l = 6 resolves features no finer than about 180/6 = 30 degrees.
+LMAX_KEEP    <- 6
+SH_RES_DEG   <- 180 / LMAX_KEEP
+# Committed bandwidth-sensitivity trend for the R2 cross-check
+# (bandwidth_sensitivity_metrics.csv: h = 0.35 -> 0.50).
+BW_REF <- list(h_lo = 0.35, h_hi = 0.50, R2_lo = 0.30174, R2_hi = 0.32879,
+               nsig_lo = 8L, nsig_hi = 8L)
 
 # Committed baseline (EXP SP-SPHARM core-type PERMANOVA), same anchor the joint-MFA
 # scripts use. R2 / pseudo-F are deterministic and CHECKED; p is permutation noise.
@@ -196,23 +245,41 @@ eval_spharm <- function(df) {
 eval_fabric <- function(df) {
   df <- df %>% arrange(ID)
   X  <- df %>% select(E, I) %>% as.matrix()
-  if (any(!is.finite(X))) return(list(n_sig_05 = NA_integer_, n_sig_01 = NA_integer_,
-                                      med_neglog10 = NA_real_))
+  if (any(!is.finite(X)))
+    return(list(R2 = NA_real_, F = NA_real_, p = NA_real_,
+                n_sig_05 = NA_integer_, n_sig_01 = NA_integer_, med_neglog10 = NA_real_))
+  gl <- permanova_global(X, grp, nperm = N_PERM)
   pw <- permanova_pairwise(X, grp, nperm = N_PERM)
-  list(n_sig_05 = sum(pw$p_holm < ALPHA_1),
+  list(R2 = gl$R2, F = gl$F, p = gl$p,
+       n_sig_05 = sum(pw$p_holm < ALPHA_1),
        n_sig_01 = sum(pw$p_holm < ALPHA_2),
        med_neglog10 = stats::median(-log10(pw$p)))
 }
 
 # SPI: univariate, so the main analysis's Dunn test with Holm (spharm_analysis.R:282).
+# SPI is univariate, so it keeps the main analysis's test: Kruskal-Wallis for the
+# global effect, Dunn with Holm for the pairwise comparisons. Deliberately NOT
+# converted to a PERMANOVA — the point is to compare each method as the paper
+# actually uses it. The "global" columns therefore hold the KW chi-squared, not a
+# pseudo-F, and R2 is undefined for it.
 eval_spi <- function(df) {
   df <- df %>% arrange(ID)
   d  <- data.frame(SPI = df$SPI, g = grp)
-  if (any(!is.finite(d$SPI))) return(list(n_sig_05 = NA_integer_, n_sig_01 = NA_integer_,
-                                          med_neglog10 = NA_real_))
-  dt <- suppressWarnings(FSA::dunnTest(SPI ~ g, data = d, method = "holm"))
+  if (any(!is.finite(d$SPI)))
+    return(list(R2 = NA_real_, F = NA_real_, p = NA_real_,
+                n_sig_05 = NA_integer_, n_sig_01 = NA_integer_, med_neglog10 = NA_real_))
+  kw <- stats::kruskal.test(SPI ~ g, data = d)
+  # dunnTest prints the KW test and the comparison table to stderr as a side effect;
+  # with one call per replicate that would bury the report, so both streams are sunk.
+  dt <- NULL
+  invisible(utils::capture.output(
+    invisible(utils::capture.output(
+      dt <- suppressWarnings(FSA::dunnTest(SPI ~ g, data = d, method = "holm")),
+      type = "message")),
+    type = "output"))
   padj <- dt$res$P.adj; praw <- dt$res$P.unadj
-  list(n_sig_05 = sum(padj < ALPHA_1), n_sig_01 = sum(padj < ALPHA_2),
+  list(R2 = NA_real_, F = as.numeric(kw$statistic), p = as.numeric(kw$p.value),
+       n_sig_05 = sum(padj < ALPHA_1), n_sig_01 = sum(padj < ALPHA_2),
        med_neglog10 = stats::median(-log10(pmax(praw, .Machine$double.xmin))))
 }
 
@@ -275,11 +342,15 @@ for (ci in seq_len(nrow(conds))) {
                   med_neglog10_p = s$med_neglog10,
                   ilr_shift = s$ilr_shift, mantel_vs_base = s$mantel_vs_base,
                   decoup_mantel = s$decoup_mantel, decoup_rv = s$decoup_rv)
-    # Three-method comparison is P1-specific (brief: "P1 zhuanshu").
-    if (kind == "polarity") {
+    # Three-method contrast, for BOTH perturbations. fabric and SPI are evaluated on
+    # `dfr` — the very same replicate rows, hence the very same perturbed vectors —
+    # so no additional sampling noise enters the comparison.
+    if (kind %in% THREE_METHOD_KINDS) {
       f <- eval_fabric(dfr); sp <- eval_spi(dfr)
-      row <- row %>% mutate(fabric_n_sig_05 = f$n_sig_05, fabric_n_sig_01 = f$n_sig_01,
+      row <- row %>% mutate(fabric_R2 = f$R2, fabric_F = f$F, fabric_p = f$p,
+                            fabric_n_sig_05 = f$n_sig_05, fabric_n_sig_01 = f$n_sig_01,
                             fabric_med_neglog10 = f$med_neglog10,
+                            spi_KW_chisq = sp$F, spi_p = sp$p,
                             spi_n_sig_05 = sp$n_sig_05, spi_n_sig_01 = sp$n_sig_01,
                             spi_med_neglog10 = sp$med_neglog10)
     }
@@ -310,7 +381,9 @@ agg_cols <- function(d, cols) {
 }
 CORE <- c("R2", "pseudo_F", "n_sig_05", "n_sig_01", "med_neglog10_p",
           "ilr_shift", "mantel_vs_base", "decoup_mantel", "decoup_rv")
-P1EX <- c("fabric_n_sig_05", "fabric_n_sig_01", "fabric_med_neglog10",
+P1EX <- c("fabric_R2", "fabric_F", "fabric_p",
+          "fabric_n_sig_05", "fabric_n_sig_01", "fabric_med_neglog10",
+          "spi_KW_chisq", "spi_p",
           "spi_n_sig_05", "spi_n_sig_01", "spi_med_neglog10")
 
 summarise_cond <- function(d) {
@@ -345,16 +418,14 @@ write_csv(summary_df %>% filter(perturbation == "polarity"),
           file.path(OUT_DIR, "annotation_perturbation_polarity.csv"))
 write_csv(summary_df %>% filter(perturbation == "angle"),
           file.path(OUT_DIR, "annotation_perturbation_angle.csv"))
-write_csv(summary_df %>% filter(perturbation == "dropout"),
-          file.path(OUT_DIR, "annotation_perturbation_dropout.csv"))
 write_csv(summary_all, file.path(OUT_DIR, "annotation_perturbation_summary.csv"))
-cat("\nWrote 4 summary CSVs\n")
+cat("\nWrote 3 summary CSVs\n")
 
 # =============================================================================
-# (1) Collapse thresholds
+# A. Collapse thresholds
 # =============================================================================
 cat("\n", strrep("=", 70), "\n", sep = "")
-cat("(1) DISCRIMINATIVE-POWER COLLAPSE THRESHOLDS\n")
+cat("A. DISCRIMINATIVE-POWER COLLAPSE THRESHOLDS\n")
 cat(strrep("=", 70), "\n", sep = "")
 collapse_tbl <- summary_df %>% group_by(perturbation) %>%
   summarise(first_below = {
@@ -381,10 +452,10 @@ print(summary_df %>%
                   R2 = round(R2_med, 4)) %>% as.data.frame())
 
 # =============================================================================
-# (2) P1 three-method comparison
+# B. P1 three-method comparison
 # =============================================================================
 cat("\n", strrep("=", 70), "\n", sep = "")
-cat("(2) P1 THREE-METHOD COMPARISON (polarity flips)\n")
+cat("B. P1 THREE-METHOD COMPARISON (polarity flips)\n")
 cat(strrep("=", 70), "\n", sep = "")
 pol <- summary_df %>% filter(perturbation == "polarity")
 print(pol %>% transmute(level,
@@ -408,10 +479,10 @@ cat(sprintf("  SP-SPHARM %d/%d at baseline -> %.1f at f = %.2f -> %s\n",
                    "no degradation detected")))
 
 # =============================================================================
-# (3) Which baseline pairs fail first
+# C. Which baseline pairs fail first
 # =============================================================================
 cat("\n", strrep("=", 70), "\n", sep = "")
-cat("(3) ORDER IN WHICH THE BASELINE-SIGNIFICANT PAIRS FAIL\n")
+cat("C. ORDER IN WHICH THE BASELINE-SIGNIFICANT PAIRS FAIL\n")
 cat(strrep("=", 70), "\n", sep = "")
 pair_med <- pair_df %>%
   filter(comparison %in% base_sig_pairs) %>%
@@ -440,10 +511,10 @@ cat("\n  Wrote annotation_perturbation_pairfailure.csv\n")
 cat("  (Expectation: failure starts with the pair holding the smallest baseline margin.)\n")
 
 # =============================================================================
-# (4) Decoupling conclusion
+# D. Decoupling conclusion
 # =============================================================================
 cat("\n", strrep("=", 70), "\n", sep = "")
-cat("(4) DECOUPLING (morphology vs perturbed scars) ACROSS ALL LEVELS\n")
+cat("D. DECOUPLING (morphology vs perturbed scars) ACROSS ALL LEVELS\n")
 cat(strrep("=", 70), "\n", sep = "")
 print(summary_df %>% transmute(perturbation, level,
                                mantel_r = sprintf("%.3f [%.3f, %.3f]", decoup_mantel_med,
@@ -463,20 +534,47 @@ cat(sprintf("  => the decoupling conclusion %s across every perturbation level\n
 # =============================================================================
 # Figures
 # =============================================================================
-# Fig 1 — P1 three-method degradation, the headline output.
-three <- bind_rows(
-  pol %>% transmute(level, method = "SP-SPHARM", med = n_sig_05_med,
-                    lo = n_sig_05_lo, hi = n_sig_05_hi),
-  pol %>% transmute(level, method = "Fabric (E, I)", med = fabric_n_sig_05_med,
-                    lo = fabric_n_sig_05_lo, hi = fabric_n_sig_05_hi),
-  pol %>% transmute(level, method = "SPI", med = spi_n_sig_05_med,
-                    lo = spi_n_sig_05_lo, hi = spi_n_sig_05_hi)) %>%
-  bind_rows(tibble(level = 0,
-                   method = c("SP-SPHARM", "Fabric (E, I)", "SPI"),
-                   med = c(b$n_sig_05, bf$n_sig_05, bs$n_sig_05),
-                   lo = c(b$n_sig_05, bf$n_sig_05, bs$n_sig_05),
-                   hi = c(b$n_sig_05, bf$n_sig_05, bs$n_sig_05))) %>%
-  mutate(method = factor(method, levels = names(METHOD_COLORS))) %>% arrange(method, level)
+# ---- shared three-method assembly (identical for P1 and P2) ------------------
+# Baselines, one per method, used both as the level-0 point and as the denominator
+# of the retention ratio.
+BASE_MET <- tibble(method = c("SP-SPHARM", "Fabric (E, I)", "SPI"),
+                   base_count   = c(b$n_sig_05, bf$n_sig_05, bs$n_sig_05),
+                   base_neglog  = c(b$med_neglog10, bf$med_neglog10, bs$med_neglog10))
+
+# quantity = "count" (resolved pairs) or "neglog" (median -log10 raw p).
+three_method_tbl <- function(kind, quantity = c("count", "neglog")) {
+  quantity <- match.arg(quantity)
+  d <- summary_df %>% filter(perturbation == kind)
+  pick <- function(sp_pre, fa_pre, spi_pre)
+    bind_rows(
+      d %>% transmute(level, method = "SP-SPHARM",
+                      med = .data[[paste0(sp_pre, "_med")]],
+                      lo  = .data[[paste0(sp_pre, "_lo")]],
+                      hi  = .data[[paste0(sp_pre, "_hi")]]),
+      d %>% transmute(level, method = "Fabric (E, I)",
+                      med = .data[[paste0(fa_pre, "_med")]],
+                      lo  = .data[[paste0(fa_pre, "_lo")]],
+                      hi  = .data[[paste0(fa_pre, "_hi")]]),
+      d %>% transmute(level, method = "SPI",
+                      med = .data[[paste0(spi_pre, "_med")]],
+                      lo  = .data[[paste0(spi_pre, "_lo")]],
+                      hi  = .data[[paste0(spi_pre, "_hi")]]))
+  out <- if (quantity == "count")
+    pick("n_sig_05", "fabric_n_sig_05", "spi_n_sig_05") else
+      pick("med_neglog10_p", "fabric_med_neglog10", "spi_med_neglog10")
+  base_col <- if (quantity == "count") "base_count" else "base_neglog"
+  out %>%
+    bind_rows(BASE_MET %>% transmute(level = 0, method,
+                                     med = .data[[base_col]],
+                                     lo = .data[[base_col]], hi = .data[[base_col]])) %>%
+    left_join(BASE_MET %>% select(method, base = all_of(base_col)), by = "method") %>%
+    mutate(method = factor(method, levels = names(METHOD_COLORS)),
+           ret_med = med / base, ret_lo = lo / base, ret_hi = hi / base) %>%
+    arrange(method, level)
+}
+
+# Fig 1 — P1 three-method degradation (counts; unchanged from the previous run).
+three <- three_method_tbl("polarity", "count")
 
 p1 <- ggplot(three, aes(level, med, color = method, fill = method)) +
   geom_ribbon(aes(ymin = lo, ymax = hi), alpha = 0.18, colour = NA) +
@@ -494,6 +592,67 @@ p1 <- ggplot(three, aes(level, med, color = method, fill = method)) +
 ggsave(file.path(FIG_DIR, "fig_S_perturbation_polarity_three_methods.png"), p1,
        width = 7, height = 4.8, dpi = 300)
 cat("\nWrote figures/fig_S_perturbation_polarity_three_methods.png\n")
+
+# =============================================================================
+# Fig 1b — P2 angle three-method contrast: counts / continuous / retention
+# =============================================================================
+# Same colours, same method levels, same seeds and call path as the polarity
+# figure, so the two can be read side by side. Three panels rather than one
+# because absolute counts alone cannot rank degradation across methods whose
+# baselines are 8, 6 and 4 of 10 — see the header note on retention.
+ang_cnt <- three_method_tbl("angle", "count")
+ang_nlg <- three_method_tbl("angle", "neglog")
+
+ang_panels <- bind_rows(
+  ang_cnt %>% transmute(level, method, med, lo, hi,
+                        panel = sprintf("(i) pairs resolved (of %d)", n_pairs)),
+  ang_nlg %>% transmute(level, method, med, lo, hi,
+                        panel = "(ii) median -log10(raw p)"),
+  ang_nlg %>% transmute(level, method, med = ret_med, lo = ret_lo, hi = ret_hi,
+                        panel = "(iii) retention vs own baseline")) %>%
+  mutate(panel = factor(panel, levels = c(sprintf("(i) pairs resolved (of %d)", n_pairs),
+                                          "(ii) median -log10(raw p)",
+                                          "(iii) retention vs own baseline")))
+
+p1b <- ggplot(ang_panels, aes(level, med, color = method, fill = method)) +
+  geom_ribbon(aes(ymin = lo, ymax = hi), alpha = 0.18, colour = NA) +
+  geom_line(linewidth = 0.8) + geom_point(size = 1.7) +
+  facet_wrap(~ panel, nrow = 1, scales = "free_y") +
+  scale_color_manual(values = METHOD_COLORS, name = NULL) +
+  scale_fill_manual(values = METHOD_COLORS, name = NULL) +
+  scale_x_continuous(breaks = c(0, sort(unique(ang_cnt$level[ang_cnt$level > 0])))) +
+  labs(x = "Angular jitter (s.d., degrees)", y = NULL,
+       caption = paste0("Tests as in the main analysis: SP-SPHARM and fabric by PERMANOVA ",
+                        "(adonis2), SPI by Kruskal-Wallis with Dunn post-hoc; Holm throughout.\n",
+                        "Panel (iii) divides each method by its own unperturbed baseline ",
+                        "(SP-SPHARM 8/10, fabric 6/10, SPI 4/10) and is the only panel on ",
+                        "which degradation rates are comparable across methods.")) +
+  theme_bw(base_size = 10) +
+  theme(panel.grid.minor = element_blank(), legend.position = "bottom",
+        strip.text = element_text(face = "bold", size = 8),
+        legend.key.size = grid::unit(0.34, "cm"),
+        plot.caption = element_text(size = 6.5, colour = "grey40", hjust = 0))
+ggsave(file.path(FIG_DIR, "fig_S_perturbation_angle_three_methods.png"), p1b,
+       width = 10, height = 4.4, dpi = 300)
+cat("Wrote figures/fig_S_perturbation_angle_three_methods.png\n")
+
+# Three-method angle table, with retention on both quantities.
+angle_three_csv <- ang_cnt %>%
+  transmute(perturbation = "angle", level, method,
+            n_sig_05_med = med, n_sig_05_lo = lo, n_sig_05_hi = hi,
+            n_sig_05_baseline = base, n_sig_05_retention = ret_med) %>%
+  left_join(ang_nlg %>%
+              transmute(level, method,
+                        med_neglog10_med = med, med_neglog10_lo = lo,
+                        med_neglog10_hi = hi, med_neglog10_baseline = base,
+                        med_neglog10_retention = ret_med),
+            by = c("level", "method")) %>%
+  mutate(test = dplyr::case_when(
+    method == "SPI" ~ "Kruskal-Wallis + Dunn (Holm)",
+    TRUE            ~ "PERMANOVA adonis2 + Holm")) %>%
+  arrange(method, level)
+write_csv(angle_three_csv, file.path(OUT_DIR, "annotation_perturbation_angle_three_methods.csv"))
+cat("Wrote annotation_perturbation_angle_three_methods.csv\n")
 
 # Fig 2 — resolved pairs vs level, all three perturbations, both alphas.
 deg <- summary_df %>%
@@ -547,10 +706,10 @@ ggsave(file.path(FIG_DIR, "fig_S_perturbation_continuous.png"), p3,
 cat("Wrote figures/fig_S_perturbation_continuous.png\n")
 
 # =============================================================================
-# (5) Timing
+# E. Timing
 # =============================================================================
 cat("\n", strrep("=", 70), "\n", sep = "")
-cat("(5) COST\n")
+cat("E. COST\n")
 cat(strrep("=", 70), "\n", sep = "")
 n_rep_total <- nrow(rep_df)
 cat(sprintf("  replicates evaluated : %d (%d conditions)\n", n_rep_total, nrow(conds)))
@@ -558,13 +717,114 @@ cat(sprintf("  R-side elapsed       : %.1f min (%.2f s per replicate at N_PERM =
             elapsed_min, elapsed_min * 60 / n_rep_total, N_PERM))
 cat("  Python chain re-run  : 0.30 s per 58-specimen pass (measured; --timing mode)\n")
 
-if (file.exists(file.path(OUT_DIR, "dropout_floor_log.csv"))) {
-  fl <- read_csv(file.path(OUT_DIR, "dropout_floor_log.csv"), show_col_types = FALSE)
-  fs <- fl %>% group_by(level) %>%
-    summarise(mean_floored = mean(n_floored), max_floored = max(n_floored), .groups = "drop")
-  cat("\n  P3 dropout: specimens hitting the 3-scar floor (per replicate)\n")
-  print(as.data.frame(fs))
-  cat("  Handling: such specimens keep as many scars as the floor allows.\n")
+# =============================================================================
+# (1) Angle three-method retention table and degradation ranking
+# =============================================================================
+cat("\n", strrep("=", 70), "\n", sep = "")
+cat("(1) P2 ANGLE: THREE-METHOD RETENTION AND DEGRADATION RANKING\n")
+cat(strrep("=", 70), "\n", sep = "")
+cat(sprintf("  Tests: SP-SPHARM / fabric = PERMANOVA (adonis2); SPI = Kruskal-Wallis + Dunn.\n"))
+cat(sprintf("  Baselines: SP-SPHARM %d/%d, fabric %d/%d, SPI %d/%d resolved;\n",
+            b$n_sig_05, n_pairs, bf$n_sig_05, n_pairs, bs$n_sig_05, n_pairs))
+cat(sprintf("             median -log10(p) %.3f / %.3f / %.3f respectively.\n",
+            b$med_neglog10, bf$med_neglog10, bs$med_neglog10))
+cat("  (res = pairs resolved; medNL = median -log10 raw p; ret_* = value / own baseline)\n")
+print(angle_three_csv %>%
+        transmute(method, sigma = level,
+                  res = sprintf("%.1f [%.0f,%.0f]", n_sig_05_med, n_sig_05_lo, n_sig_05_hi),
+                  ret_n = sprintf("%.2f", n_sig_05_retention),
+                  medNL = sprintf("%.2f [%.2f,%.2f]", med_neglog10_med,
+                                  med_neglog10_lo, med_neglog10_hi),
+                  ret_c = sprintf("%.2f", med_neglog10_retention)) %>%
+        as.data.frame(), row.names = FALSE)
+
+SIG_MAX <- max(angle_three_csv$level)
+ret_at_max <- angle_three_csv %>% filter(level == SIG_MAX) %>%
+  select(method, retention_cont = med_neglog10_retention,
+         retention_count = n_sig_05_retention)
+# Ranking is adjudicated on the CONTINUOUS retention: free of both the differing
+# baselines and the integer-threshold steps.
+ord_obs <- ret_at_max %>% arrange(retention_cont) %>% pull(method) %>% as.character()
+ord_pred <- c("SPI", "Fabric (E, I)", "SP-SPHARM")   # fastest -> slowest decay
+pred_ok  <- identical(ord_obs, ord_pred)
+
+cat(sprintf("\n  Retention at sigma = %.0f deg (continuous statistic):\n", SIG_MAX))
+for (i in seq_len(nrow(ret_at_max)))
+  cat(sprintf("    %-14s %.3f   (count-based %.3f)\n",
+              ret_at_max$method[i], ret_at_max$retention_cont[i],
+              ret_at_max$retention_count[i]))
+cat(sprintf("\n  observed decay order (fastest -> slowest): %s\n",
+            paste(ord_obs, collapse = " > ")))
+cat(sprintf("  predicted decay order                    : %s\n",
+            paste(ord_pred, collapse = " > ")))
+
+# First sigma at which each method falls below its own baseline (continuous stat).
+first_below <- angle_three_csv %>% group_by(method) %>%
+  summarise(first_sigma = {
+    idx <- which(med_neglog10_retention < 1)
+    if (length(idx) == 0) NA_real_ else level[min(idx)]
+  }, .groups = "drop")
+
+# =============================================================================
+# (2) Prediction verdicts
+# =============================================================================
+cat("\n", strrep("=", 70), "\n", sep = "")
+cat("(2) PREDICTION VERDICTS (declared before the angle contrast was run)\n")
+cat(strrep("=", 70), "\n", sep = "")
+cat(sprintf("  Mechanism: SP-SPHARM truncates at l = %d, i.e. ~%.0f deg angular resolution;\n",
+            LMAX_KEEP, SH_RES_DEG))
+cat(sprintf("  jitter below that scale should be filtered out by the truncation itself.\n"))
+cat(sprintf("\n  (a) retention at sigma = %.0f deg, ordering vs prediction -> %s\n",
+            SIG_MAX, ifelse(pred_ok, "MATCHES PREDICTION", "DOES NOT MATCH")))
+cat(sprintf("      %s\n", paste(sprintf("%s %.3f", ret_at_max$method,
+                                        ret_at_max$retention_cont), collapse = " | ")))
+cat("\n  (b) first sigma at which each method drops below its own baseline:\n")
+for (i in seq_len(nrow(first_below)))
+  cat(sprintf("      %-14s %s\n", first_below$method[i],
+              ifelse(is.na(first_below$first_sigma[i]), "never in range",
+                     sprintf("%.0f deg", first_below$first_sigma[i]))))
+if (!pred_ok) {
+  cat("\n  (c) MECHANISM EXPLANATION DOES NOT HOLD — needs re-examination.\n")
+  cat(sprintf("      Observed ordering is %s, not the predicted %s.\n",
+              paste(ord_obs, collapse = " > "), paste(ord_pred, collapse = " > ")))
+  cat("      The low-pass-truncation account of SP-SPHARM's tolerance is not supported\n")
+  cat("      by the observed decay rates and should not be asserted in the manuscript.\n")
+} else {
+  cat("\n  (c) ordering matches; the low-pass-truncation account is consistent with the data.\n")
+  cat("      (Consistent with, not proof of — no alternative mechanism was tested.)\n")
+}
+
+# =============================================================================
+# (3) SP-SPHARM R2 trend under angular jitter vs the bandwidth sweep
+# =============================================================================
+cat("\n", strrep("=", 70), "\n", sep = "")
+cat("(3) SP-SPHARM R2 TREND UNDER ANGULAR JITTER\n")
+cat(strrep("=", 70), "\n", sep = "")
+ang_sum <- summary_df %>% filter(perturbation == "angle") %>% arrange(level)
+r2_rises <- ang_sum$R2_med[nrow(ang_sum)] > b$R2
+cat(sprintf("  baseline R2 = %.5f; by sigma:\n", b$R2))
+print(ang_sum %>% transmute(sigma = level, R2 = round(R2_med, 5),
+                            resolved = n_sig_05_med) %>% as.data.frame(),
+      row.names = FALSE)
+cat(sprintf("\n  R2 %s with jitter (%.5f -> %.5f) while resolved pairs go %d -> %.0f.\n",
+            ifelse(r2_rises, "RISES slightly", "does not rise"),
+            b$R2, ang_sum$R2_med[nrow(ang_sum)], b$n_sig_05,
+            ang_sum$n_sig_05_med[nrow(ang_sum)]))
+if (r2_rises) {
+  cat(sprintf("  Same direction as the bandwidth sweep (Table S1): h %.2f -> %.2f gives\n",
+              BW_REF$h_lo, BW_REF$h_hi))
+  cat(sprintf("  R2 %.5f -> %.5f. Small isotropic jitter acts like a wider KDE kernel.\n",
+              BW_REF$R2_lo, BW_REF$R2_hi))
+  cat("  This is NOT an improvement in discriminative power: R2 measures between-group\n")
+  cat("  spread against total spread, and smoothing shrinks within-group spread too.\n")
+  cat(sprintf("  The pairwise resolution falls over the same range (%d -> %.0f pairs), which\n",
+              b$n_sig_05, ang_sum$n_sig_05_med[nrow(ang_sum)]))
+  cat("  is the quantity that actually matters.\n")
+  cat(sprintf("  One asymmetry worth noting: over h %.2f -> %.2f the resolved count HOLDS at\n",
+              BW_REF$h_lo, BW_REF$h_hi))
+  cat(sprintf("  %d/%d, whereas jitter costs pairs. Wider smoothing and annotation noise raise\n",
+              BW_REF$nsig_hi, n_pairs))
+  cat("  R2 alike, but only the noise destroys resolution.\n")
 }
 
 cat("\nDone.\n\n")

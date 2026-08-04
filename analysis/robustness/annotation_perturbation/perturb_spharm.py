@@ -10,15 +10,26 @@ by perturbing the UPSTREAM UNIT VECTORS and re-running the entire
 vector -> vMF-sKDE -> DH grid -> spherical-harmonic -> power-spectrum chain, exactly
 as the production pipeline does. Noise is NEVER added to the power spectra directly.
 
-Three perturbations (P1 is the headline):
+Two perturbations:
   P1 polarity : flip a fraction f of scar vectors (proximal/distal mislabelled)
   P2 angle    : isotropic random rotation of each unit vector, s.d. sigma degrees
-  P3 dropout  : delete a fraction d of scars (floor of 3 scars per specimen)
 
-For every replicate the engine also recomputes SPI and the fabric metrics (E, I)
-from the SAME perturbed vectors, so the three methods can be compared on identical
-data. Fabric is expected to be immune to P1 (the orientation tensor U'U discards
-polarity, Mark 1973) — that contrast is the point, not a weakness.
+A scar-dropout perturbation was tried and REMOVED. The sparsest EXP specimen has 10
+scars, so even 20% dropout leaves 8 and the 3-scar floor never once triggered: the
+perturbation only ever operated in the data-rich regime, i.e. it asked "what if a
+specimen with plenty of scars loses a few?", whose answer is necessarily "nothing
+much". The question that matters — how few scars can a specimen have — is a
+downsampling analysis (k = 3/5/8/10/15) and belongs in its own script.
+
+For every replicate the engine recomputes SPI and the fabric metrics (E, I) from the
+SAME perturbed vector array (see Engine.run: U is perturbed once per specimen, then
+the KDE, SPI and E/I are all derived from that one array), so the three methods are
+compared on byte-identical data with no extra sampling noise.
+
+Fabric is EXACTLY invariant under P1 — the orientation tensor sum(u u') is unchanged
+by u -> -u (Mark 1973) — which makes the polarity contrast a mathematical identity
+rather than an empirical finding. P2 is the real experiment: no method has analytic
+immunity to small rotations, so the degradation ordering is genuinely unknown a priori.
 
 REUSES the production implementation verbatim:
   SPHARM_modules.spherical_kde.make_sphere_grid / fit_vmf_kde   (h = 0.35, kappa = 8.16)
@@ -75,8 +86,6 @@ SEED      = 42
 # Perturbation levels
 POLARITY_LEVELS = [0.02, 0.05, 0.10, 0.15, 0.20]
 ANGLE_LEVELS    = [5.0, 10.0, 15.0, 20.0]
-DROPOUT_LEVELS  = [0.05, 0.10, 0.20]
-MIN_SCARS       = 3          # Figure S3's existing lower bound
 
 POWER_COLS_KEEP = [f"power_l{l}" for l in range(1, 7)]   # SP-SPHARM uses l = 1-6
 
@@ -204,31 +213,6 @@ def perturb_angle(U: np.ndarray, sigma_deg: float, rng) -> np.ndarray:
     return V / np.linalg.norm(V, axis=1, keepdims=True)
 
 
-def perturb_dropout(df_spec: pd.DataFrame, d: float, rng):
-    """
-    P3: delete a random fraction d of scars, never dropping below MIN_SCARS.
-
-    Returns (kept_dataframe, was_floored). A specimen that cannot lose its full
-    quota without breaching the floor keeps as many as the floor allows; if it is
-    already at or below the floor it keeps ALL its scars and is counted as floored.
-    """
-    n = len(df_spec)
-    k = int(round(d * n))
-    if k == 0:
-        return df_spec, False
-    if n - k < MIN_SCARS:
-        k = max(0, n - MIN_SCARS)
-        floored = True
-    else:
-        floored = False
-    if k == 0:
-        return df_spec, True
-    drop_idx = rng.choice(n, size=k, replace=False)
-    keep = np.ones(n, dtype=bool)
-    keep[drop_idx] = False
-    return df_spec.iloc[keep], floored
-
-
 # ============================================================
 # One full pass: perturbed vectors -> spectra + SPI + fabric
 # ============================================================
@@ -300,7 +284,7 @@ def do_timing(eng: Engine):
     t3 = time.time()
     print(f"baseline pass (58 specimens) : {t1-t0:6.2f} s")
     print(f"perturbed pass               : {t3-t2:6.2f} s")
-    n_cond = len(POLARITY_LEVELS) + len(ANGLE_LEVELS) + len(DROPOUT_LEVELS)
+    n_cond = len(POLARITY_LEVELS) + len(ANGLE_LEVELS)
     for reps in (50, 100):
         print(f"  python total, R={reps:3d}, {n_cond} conditions : "
               f"{(t3-t2)*n_cond*reps/60:6.1f} min")
@@ -312,7 +296,6 @@ def do_run(eng: Engine, reps: int):
     base.insert(0, "rep", 0); base.insert(0, "level", 0.0)
     base.insert(0, "perturbation", "baseline")
     frames = [base]
-    floor_log = []
 
     def seed_for(kind, level, rep):
         # crc32 is stable across processes; Python's hash() on str is salted by
@@ -322,34 +305,25 @@ def do_run(eng: Engine, reps: int):
 
     t0 = time.time()
     for kind, levels in (("polarity", POLARITY_LEVELS),
-                         ("angle",    ANGLE_LEVELS),
-                         ("dropout",  DROPOUT_LEVELS)):
+                         ("angle",    ANGLE_LEVELS)):
         for lv in levels:
             for r in range(1, reps + 1):
                 rng = np.random.default_rng(seed_for(kind, lv, r))
                 if kind == "polarity":
                     fn = lambda i, U, rng=rng, lv=lv: (perturb_polarity(U, lv, rng), False)
-                elif kind == "angle":
-                    fn = lambda i, U, rng=rng, lv=lv: (perturb_angle(U, lv, rng), False)
                 else:
-                    def fn(i, U, rng=rng, lv=lv):
-                        dfx = pd.DataFrame(U, columns=["ux", "uy", "uz"])
-                        kept, fl = perturb_dropout(dfx, lv, rng)
-                        return kept.to_numpy(float), fl
-                out, fl = eng.run(fn)
+                    fn = lambda i, U, rng=rng, lv=lv: (perturb_angle(U, lv, rng), False)
+                out, _ = eng.run(fn)
                 out.insert(0, "rep", r); out.insert(0, "level", lv)
                 out.insert(0, "perturbation", kind)
                 frames.append(out)
-                if kind == "dropout":
-                    floor_log.append({"level": lv, "rep": r, "n_floored": fl})
             print(f"  {kind} {lv}: {reps} reps done "
                   f"({time.time()-t0:.0f}s elapsed)", flush=True)
 
     allout = pd.concat(frames, ignore_index=True)
     keep = ["perturbation", "level", "rep", "ID", "Typology", "SPI", "E", "I"] + POWER_COLS_KEEP
     allout[keep].to_csv(f"{OUT_DIR}/perturbed_descriptors.csv", index=False)
-    pd.DataFrame(floor_log).to_csv(f"{OUT_DIR}/dropout_floor_log.csv", index=False)
-    print(f"\nWrote perturbed_descriptors.csv ({len(allout)} rows) and dropout_floor_log.csv")
+    print(f"\nWrote perturbed_descriptors.csv ({len(allout)} rows)")
     print(f"Total python time: {(time.time()-t0)/60:.1f} min")
 
 
