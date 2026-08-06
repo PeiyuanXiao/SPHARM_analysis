@@ -74,11 +74,12 @@
 # Outputs:
 #   annotation_perturbation_polarity.csv / _angle.csv / _summary.csv
 #   annotation_perturbation_angle_three_methods.csv
+#   annotation_perturbation_polarity_three_methods.csv
 #   annotation_perturbation_pairfailure.csv
-#   figures/fig_S_perturbation_polarity_three_methods.png
-#   figures/fig_S_perturbation_angle_three_methods.png
-#   figures/fig_S_perturbation_degradation.png
-#   figures/fig_S_perturbation_continuous.png
+#   figures/fig_S_perturbation_combined.png
+#     — the single SI figure, assembled by annotation_perturbation_figure.R from
+#       the CSVs above. That script is source()d here and can also be run on its
+#       own to redraw the figure without repeating the replicate sweep.
 #
 # HOW TO RUN (Docker spharm_analysis):
 #   /opt/conda/envs/spharm/bin/python analysis/robustness/annotation_perturbation/perturb_spharm.py --run --reps 100
@@ -107,9 +108,7 @@ ALPHA_2    <- 0.01
 QLO        <- 0.025
 QHI        <- 0.975
 
-OUT_DIR <- here("analysis/robustness/annotation_perturbation")
-FIG_DIR <- file.path(OUT_DIR, "figures")
-dir.create(FIG_DIR, recursive = TRUE, showWarnings = FALSE)
+OUT_DIR <- here("analysis/robustness/annotation_perturbation")   # figures/ is created by the plotting script
 
 DESC_CSV <- file.path(OUT_DIR, "perturbed_descriptors.csv")
 
@@ -121,10 +120,9 @@ LEVALLOIS_MERGE  <- c("Levallois convergent", "Levallois laminar",
 TYPOLOGY_ORDER   <- c("Unidirectional", "Bidirectional", "Levallois",
                       "Discoid", "Multiplatform")
 
-METHOD_COLORS <- c("SP-SPHARM" = "#4A6E8A", "Fabric (E, I)" = "#BA8530",
-                   "SPI" = "#802520")
-PERT_LABS <- c(polarity = "P1  polarity flips (fraction)",
-               angle    = "P2  angular jitter (s.d., degrees)")
+# METHOD_COLORS (which also fixes the method ordering) and the figure builder come
+# from the plotting script, so the two entry points cannot drift apart.
+source(file.path(OUT_DIR, "annotation_perturbation_figure.R"))
 
 # Perturbations that get the SP-SPHARM / fabric / SPI contrast. Both, now: the same
 # seeds, the same call path, the same per-replicate vector array for all three
@@ -532,7 +530,7 @@ cat(sprintf("  => the decoupling conclusion %s across every perturbation level\n
                    "DOES NOT hold everywhere — inspect")))
 
 # =============================================================================
-# Figures
+# Three-method tables, then the figure
 # =============================================================================
 # ---- shared three-method assembly (identical for P1 and P2) ------------------
 # Baselines, one per method, used both as the level-0 point and as the denominator
@@ -573,70 +571,12 @@ three_method_tbl <- function(kind, quantity = c("count", "neglog")) {
     arrange(method, level)
 }
 
-# Fig 1 — P1 three-method degradation (counts; unchanged from the previous run).
-three <- three_method_tbl("polarity", "count")
-
-p1 <- ggplot(three, aes(level, med, color = method, fill = method)) +
-  geom_ribbon(aes(ymin = lo, ymax = hi), alpha = 0.18, colour = NA) +
-  geom_line(linewidth = 0.8) + geom_point(size = 1.8) +
-  scale_color_manual(values = METHOD_COLORS, name = NULL) +
-  scale_fill_manual(values = METHOD_COLORS, name = NULL) +
-  scale_x_continuous(breaks = c(0, POLARITY_LEVELS <- sort(unique(pol$level))),
-                     labels = scales::percent_format(accuracy = 1)) +
-  scale_y_continuous(breaks = 0:n_pairs, limits = c(0, n_pairs)) +
-  labs(x = "Scar vectors with reversed polarity",
-       y = sprintf("Core-type pairs resolved (Holm, p < %.2f; of %d)", ALPHA_1, n_pairs)) +
-  theme_bw(base_size = 10) +
-  theme(panel.grid.minor = element_blank(), legend.position = "bottom",
-        legend.key.size = grid::unit(0.34, "cm"))
-ggsave(file.path(FIG_DIR, "fig_S_perturbation_polarity_three_methods.png"), p1,
-       width = 7, height = 4.8, dpi = 300)
-cat("\nWrote figures/fig_S_perturbation_polarity_three_methods.png\n")
-
-# =============================================================================
-# Fig 1b — P2 angle three-method contrast: counts / continuous / retention
-# =============================================================================
-# Same colours, same method levels, same seeds and call path as the polarity
-# figure, so the two can be read side by side. Three panels rather than one
-# because absolute counts alone cannot rank degradation across methods whose
-# baselines are 8, 6 and 4 of 10 — see the header note on retention.
+# P2 angle three-method table. The polarity twin of this table, and the figure
+# that draws both, are built by annotation_perturbation_figure.R (called below);
+# this one stays here because sections (1)-(2) adjudicate the prediction on it.
 ang_cnt <- three_method_tbl("angle", "count")
 ang_nlg <- three_method_tbl("angle", "neglog")
 
-ang_panels <- bind_rows(
-  ang_cnt %>% transmute(level, method, med, lo, hi,
-                        panel = sprintf("(i) pairs resolved (of %d)", n_pairs)),
-  ang_nlg %>% transmute(level, method, med, lo, hi,
-                        panel = "(ii) median -log10(raw p)"),
-  ang_nlg %>% transmute(level, method, med = ret_med, lo = ret_lo, hi = ret_hi,
-                        panel = "(iii) retention vs own baseline")) %>%
-  mutate(panel = factor(panel, levels = c(sprintf("(i) pairs resolved (of %d)", n_pairs),
-                                          "(ii) median -log10(raw p)",
-                                          "(iii) retention vs own baseline")))
-
-p1b <- ggplot(ang_panels, aes(level, med, color = method, fill = method)) +
-  geom_ribbon(aes(ymin = lo, ymax = hi), alpha = 0.18, colour = NA) +
-  geom_line(linewidth = 0.8) + geom_point(size = 1.7) +
-  facet_wrap(~ panel, nrow = 1, scales = "free_y") +
-  scale_color_manual(values = METHOD_COLORS, name = NULL) +
-  scale_fill_manual(values = METHOD_COLORS, name = NULL) +
-  scale_x_continuous(breaks = c(0, sort(unique(ang_cnt$level[ang_cnt$level > 0])))) +
-  labs(x = "Angular jitter (s.d., degrees)", y = NULL,
-       caption = paste0("Tests as in the main analysis: SP-SPHARM and fabric by PERMANOVA ",
-                        "(adonis2), SPI by Kruskal-Wallis with Dunn post-hoc; Holm throughout.\n",
-                        "Panel (iii) divides each method by its own unperturbed baseline ",
-                        "(SP-SPHARM 8/10, fabric 6/10, SPI 4/10) and is the only panel on ",
-                        "which degradation rates are comparable across methods.")) +
-  theme_bw(base_size = 10) +
-  theme(panel.grid.minor = element_blank(), legend.position = "bottom",
-        strip.text = element_text(face = "bold", size = 8),
-        legend.key.size = grid::unit(0.34, "cm"),
-        plot.caption = element_text(size = 6.5, colour = "grey40", hjust = 0))
-ggsave(file.path(FIG_DIR, "fig_S_perturbation_angle_three_methods.png"), p1b,
-       width = 10, height = 4.4, dpi = 300)
-cat("Wrote figures/fig_S_perturbation_angle_three_methods.png\n")
-
-# Three-method angle table, with retention on both quantities.
 angle_three_csv <- ang_cnt %>%
   transmute(perturbation = "angle", level, method,
             n_sig_05_med = med, n_sig_05_lo = lo, n_sig_05_hi = hi,
@@ -654,56 +594,15 @@ angle_three_csv <- ang_cnt %>%
 write_csv(angle_three_csv, file.path(OUT_DIR, "annotation_perturbation_angle_three_methods.csv"))
 cat("Wrote annotation_perturbation_angle_three_methods.csv\n")
 
-# Fig 2 — resolved pairs vs level, all three perturbations, both alphas.
-deg <- summary_df %>%
-  transmute(perturbation, level,
-            `alpha = 0.05_med` = n_sig_05_med, `alpha = 0.05_lo` = n_sig_05_lo,
-            `alpha = 0.05_hi` = n_sig_05_hi,
-            `alpha = 0.01_med` = n_sig_01_med, `alpha = 0.01_lo` = n_sig_01_lo,
-            `alpha = 0.01_hi` = n_sig_01_hi) %>%
-  pivot_longer(-c(perturbation, level),
-               names_to = c("alpha", ".value"), names_sep = "_") %>%
-  mutate(perturbation = factor(perturbation, levels = names(PERT_LABS)))
-p2 <- ggplot(deg, aes(level, med, color = alpha, fill = alpha)) +
-  geom_ribbon(aes(ymin = lo, ymax = hi), alpha = 0.18, colour = NA) +
-  geom_line(linewidth = 0.8) + geom_point(size = 1.6) +
-  facet_wrap(~ perturbation, scales = "free_x",
-             labeller = as_labeller(PERT_LABS)) +
-  scale_color_manual(values = c("alpha = 0.05" = "#4A6E8A", "alpha = 0.01" = "#788C4A"),
-                     name = NULL) +
-  scale_fill_manual(values = c("alpha = 0.05" = "#4A6E8A", "alpha = 0.01" = "#788C4A"),
-                    name = NULL) +
-  scale_y_continuous(breaks = 0:n_pairs, limits = c(0, n_pairs)) +
-  labs(x = "Perturbation level", y = sprintf("Core-type pairs resolved (of %d)", n_pairs)) +
-  theme_bw(base_size = 10) +
-  theme(panel.grid.minor = element_blank(), legend.position = "bottom",
-        strip.text = element_text(face = "bold", size = 8),
-        legend.key.size = grid::unit(0.34, "cm"))
-ggsave(file.path(FIG_DIR, "fig_S_perturbation_degradation.png"), p2,
-       width = 9, height = 4.2, dpi = 300)
-cat("Wrote figures/fig_S_perturbation_degradation.png\n")
-
-# Fig 3 — continuous margin (median -log10 raw p).
-cont <- summary_df %>%
-  mutate(perturbation = factor(perturbation, levels = names(PERT_LABS)))
-p3 <- ggplot(cont, aes(level, med_neglog10_p_med)) +
-  geom_ribbon(aes(ymin = med_neglog10_p_lo, ymax = med_neglog10_p_hi),
-              alpha = 0.18, fill = "#4A6E8A") +
-  geom_hline(yintercept = b$med_neglog10, linetype = "dashed",
-             color = "#802520", linewidth = 0.4) +
-  geom_line(linewidth = 0.8, color = "#4A6E8A") +
-  geom_point(size = 1.6, color = "#4A6E8A") +
-  facet_wrap(~ perturbation, scales = "free_x", labeller = as_labeller(PERT_LABS)) +
-  labs(x = "Perturbation level",
-       y = "Median -log10(raw p) over all core-type pairs",
-       caption = sprintf("Dashed line: unperturbed baseline (%.2f)", b$med_neglog10)) +
-  theme_bw(base_size = 10) +
-  theme(panel.grid.minor = element_blank(),
-        strip.text = element_text(face = "bold", size = 8),
-        plot.caption = element_text(size = 7, colour = "grey40"))
-ggsave(file.path(FIG_DIR, "fig_S_perturbation_continuous.png"), p3,
-       width = 9, height = 4.2, dpi = 300)
-cat("Wrote figures/fig_S_perturbation_continuous.png\n")
+# =============================================================================
+# The figure
+# =============================================================================
+# One 2 x 2 panel — polarity | angle across the columns, resolved pairs | median
+# -log10(p) down the rows — replacing the four separate PNGs this script used to
+# write. Built entirely from the CSVs just written, by the script source()d at
+# the top, which also deletes the four superseded files. See its header for why
+# both metric rows are kept and why both are drawn as retention ratios.
+make_perturbation_figure(OUT_DIR, n_pairs = n_pairs)
 
 # =============================================================================
 # E. Timing

@@ -53,8 +53,10 @@
 # Outputs (all NEW):
 #   joint_mfa_permanova_comparison.csv   global + pairwise results, 3 models
 #   joint_mfa_weight_scan.csv            one row per w
-#   figures/fig_S_joint_mfa_biplot.png
-#   figures/fig_S_joint_mfa_weight_scan.png
+#   figures/fig_joint_mfa_main.png       MAIN TEXT composite (a biplot | b scan / c curve)
+#   figures/fig_S_joint_mfa_biplot.png                    source panel a
+#   figures/fig_S_joint_mfa_weight_scan.png               source panel b
+#   figures/fig_S_joint_mfa_weight_resolution_continuous.png  source panel c
 #
 # HOW TO RUN (canonical environment, Docker spharm_analysis, R 4.4 + renv):
 #   Rscript analysis/robustness/joint_mfa_discrimination/joint_mfa_discrimination_stats.R
@@ -68,6 +70,7 @@ suppressPackageStartupMessages({
   library(vegan)          # adonis2, betadisper, permutest
   library(compositions)   # ilr, ilrBase, clr
   library(ggrepel)
+  library(patchwork)      # main-text composite
   library(conflicted)
 })
 
@@ -551,43 +554,101 @@ group_pal <- if (ASSEMBLAGE == "EXP")
     setNames(colorRampPalette(unname(TYPOLOGY_COLORS))(nlevels(blocks$group)),
              levels(blocks$group))
 
+# -----------------------------------------------------------------------------
+# MAIN-TEXT FIGURE SPECIFICATION -- taken verbatim, not invented here
+# -----------------------------------------------------------------------------
+# This figure goes in the main text, so its typography follows the manuscript's
+# existing main-text panels rather than the looser SI settings this script used
+# while it was an SI-only analysis.
+#   theme / point / legend sizes  <- SDG_cores_statistics.R make_coia_biplot()
+#                                    (manuscript Fig. 9, fig-coia-composite)
+#   export geometry               <- manuscript.qmd fig-width 6.85 / out-width
+#                                    174mm / fig-dpi 800
+MT <- list(base_size = 8, axis_text = 5, legend_text = 6.5, legend_title = 7,
+           legend_key_cm = 0.30, tag_size = 9, tag_face = "bold",
+           pt_shape = 16, pt_size = 2.0, pt_alpha = 0.90,
+           fig_width_in = 6.85, dpi = 800)
+
+mt_theme <- function() {
+  theme_bw(base_size = MT$base_size) +
+    theme(panel.grid   = element_blank(),
+          axis.text    = element_text(size = MT$axis_text),
+          legend.key.size = grid::unit(MT$legend_key_cm, "cm"),
+          legend.text  = element_text(size = MT$legend_text),
+          legend.title = element_text(size = MT$legend_title),
+          legend.margin = margin(2, 4, 2, 4),
+          plot.tag     = element_text(size = MT$tag_size, face = MT$tag_face))
+}
+
+# Reference line on the two weight panels. Placed at exactly 0.5 (equal
+# weighting) rather than at the data-derived w_mfa. The s1 normalisation lands
+# within a hundredth of 0.5 here, so the two are indistinguishable at this
+# scale, and a round 0.5 is the honest position for an UNANNOTATED line. The
+# realised gap is printed to the console below; what the line marks must be
+# stated in the caption, since the panel no longer says so.
+W_REF <- 0.5
+
+# Convex hulls, not normal ellipses: the main-text ordination panels
+# (spharm_analysis.R run_lda_plot(), Figure 7c) draw group extents as filled
+# chull polygons. An ellipse is a parametric summary that extends well beyond
+# the observed points for the small, non-elliptical groups here (Discoid n = 6),
+# so the hull is both the honest extent and the house style.
+hull_df <- scores_df %>%
+  dplyr::group_by(group) %>%
+  dplyr::slice(chull(Axis1, Axis2)) %>%
+  dplyr::ungroup()
+
 p_biplot <- ggplot() +
-  geom_hline(yintercept = 0, linetype = "dashed", color = "grey70", linewidth = 0.25) +
-  geom_vline(xintercept = 0, linetype = "dashed", color = "grey70", linewidth = 0.25) +
-  stat_ellipse(data = scores_df, aes(Axis1, Axis2, color = group),
-               type = "norm", level = 0.95, linewidth = 0.4, alpha = 0.8) +
-  geom_point(data = scores_df, aes(Axis1, Axis2, fill = group, color = group),
-             shape = 21, size = 2, stroke = 0.4, alpha = 0.90) +
+  geom_hline(yintercept = 0, color = "grey50", linewidth = 0.35, linetype = "dashed") +
+  geom_vline(xintercept = 0, color = "grey50", linewidth = 0.35, linetype = "dashed") +
+  geom_polygon(data = hull_df, aes(Axis1, Axis2, fill = group, group = group),
+               alpha = 0.25, color = NA) +
+  geom_polygon(data = hull_df, aes(Axis1, Axis2, color = group, group = group),
+               fill = NA, linewidth = 0.01) +
+  geom_point(data = scores_df, aes(Axis1, Axis2, color = group),
+             shape = 16, size = 2.0, stroke = 0.3, alpha = 0.88) +
+  # Thin shafts with small open heads: at main-text scale a 0.4 linewidth with a
+  # filled 0.16 cm head reads as a blob and competes with the hulls for
+  # attention. The arrows are a secondary layer here.
   geom_segment(data = load_df,
                aes(x = 0, y = 0, xend = x, yend = y, linetype = block),
-               arrow = grid::arrow(length = grid::unit(0.16, "cm"), type = "closed"),
-               color = "grey25", linewidth = 0.4) +
+               arrow = grid::arrow(length = grid::unit(0.075, "cm"),
+                                   angle = 22, type = "open"),
+               color = "grey30", linewidth = 0.22) +
   ggrepel::geom_text_repel(data = load_df, aes(x = x, y = y, label = label),
-                           size = 2.2, color = "grey20", min.segment.length = 0.2,
+                           size = 1.9, color = "grey20", min.segment.length = 0.2,
                            segment.size = 0.2, segment.color = "grey60",
                            box.padding = 0.2, max.overlaps = 30) +
   scale_color_manual(values = group_pal, name = NULL) +
   scale_fill_manual(values  = group_pal, name = NULL) +
   scale_linetype_manual(values = c("M-SPHARM" = "solid", "SP-SPHARM" = "22"),
-                        name = "CLR loading") +
+                        # Untitled: what the arrows are (CLR loadings, back-mapped
+                        # from the ILR coordinates used in the analysis) is stated
+                        # in the caption instead.
+                        name = NULL) +
   labs(x = sprintf("MFA axis 1 (%.1f%%)", inertia[1]),
        y = sprintf("MFA axis 2 (%.1f%%)", inertia[2])) +
   # Equal aspect: the analysis is distance-based and the two axes carry nearly the
   # same inertia, so an unequal scale would misrepresent between-group proximity.
   coord_fixed() +
-  theme_bw(base_size = 9) +
-  guides(color = guide_legend(order = 1, override.aes = list(shape = 21, size = 2,
+  guides(color = guide_legend(order = 1, override.aes = list(shape = 16, size = 1.6,
                                                              linetype = 0)),
          fill  = "none",
-         linetype = guide_legend(order = 2,
-                                 override.aes = list(color = "grey25"))) +
-  theme(panel.grid.minor = element_blank(),
-        legend.key.size  = grid::unit(0.34, "cm"),
-        legend.text      = element_text(size = 7),
-        legend.title     = element_text(size = 7.5))
+         linetype = guide_legend(order = 2, title = NULL,
+                                 override.aes = list(color = "grey30"))) +
+  mt_theme() +
+  # Inset transparent legend: main-text ordination convention. Anchored bottom
+  # LEFT, not bottom right -- the M-SPHARM l1 arrow points into the lower-right
+  # quadrant and its repel label landed on top of the legend there.
+  theme(legend.position       = c(0.01, 0.01),
+        legend.justification  = c(0, 0),
+        legend.background     = element_rect(fill = "transparent", colour = NA),
+        legend.box.background = element_rect(fill = "transparent", colour = NA),
+        legend.key            = element_rect(fill = "transparent", colour = NA),
+        legend.spacing.y      = grid::unit(0.02, "cm"))
 
 ggsave(file.path(FIG_DIR, "fig_S_joint_mfa_biplot.png"), p_biplot,
-       width = 7, height = 7, dpi = 300)
+       width = 3.7, height = 3.9, dpi = MT$dpi)
 cat("Wrote figures/fig_S_joint_mfa_biplot.png\n")
 
 # =============================================================================
@@ -633,22 +694,22 @@ end_ok <- isTRUE(all.equal(scan_res$R2[scan_res$w == 0],
 cat(sprintf("\n  Endpoint identity (R2 at w = 0 / 1 vs SP / M alone): %s\n",
             ifelse(end_ok, "OK", "<-- CHECK")))
 
+# The reference line carries no in-panel label: the annotation repeated a value
+# the caption states, and at 2.6 pt inside a half-width main-text panel it
+# collided with the curve. Axis titles are shortened for the same reason -- the
+# Holm correction and the alpha level belong in the caption, not on the axis.
 p_scan <- ggplot(scan_res, aes(w, n_sig_pairs)) +
-  geom_vline(xintercept = w_mfa, linetype = "dashed",
+  geom_vline(xintercept = W_REF, linetype = "dashed",
              color = "#802520", linewidth = 0.4) +
-  annotate("text", x = w_mfa, y = n_pairs, hjust = -0.08, vjust = 1.2, size = 2.6,
-           color = "#802520", label = sprintf("MFA (s1) setting: w = %.2f", w_mfa)) +
-  geom_line(linewidth = 0.7, color = "#4A6E8A") +
-  geom_point(size = 1.8, color = "#4A6E8A") +
-  scale_x_continuous(breaks = seq(0, 1, 0.1), limits = c(0, 1)) +
-  scale_y_continuous(breaks = 0:n_pairs, limits = c(0, n_pairs)) +
-  labs(x = "Morphology share of squared distance (w)",
-       y = sprintf("Core-type pairs resolved (Holm, p < 0.05; of %d)", n_pairs)) +
-  theme_bw(base_size = 10) +
-  theme(panel.grid.minor = element_blank())
+  geom_line(linewidth = 0.6, color = "#4A6E8A") +
+  geom_point(size = 1.3, color = "#4A6E8A") +
+  scale_x_continuous(breaks = seq(0, 1, 0.2), limits = c(0, 1)) +
+  scale_y_continuous(breaks = seq(0, n_pairs, 2), limits = c(0, n_pairs)) +
+  labs(x = "w", y = "Pairs resolved") +
+  mt_theme()
 
 ggsave(file.path(FIG_DIR, "fig_S_joint_mfa_weight_scan.png"), p_scan,
-       width = 7, height = 4.5, dpi = 300)
+       width = 3.1, height = 1.95, dpi = MT$dpi)
 cat("Wrote figures/fig_S_joint_mfa_weight_scan.png\n")
 
 # =============================================================================
@@ -917,53 +978,79 @@ cat(sprintf("  => the drop across that interval is %s.\n",
                    "amplified by the Holm cascade (raw p keep several pairs that Holm rejects)")))
 
 # ---- figures ----------------------------------------------------------------
-CRIT_COLORS <- c("Holm, alpha = 0.05" = "#4A6E8A",
-                 "Holm, alpha = 0.01" = "#788C4A",
-                 "Raw, alpha = 0.05"  = "#BA8530")
-dense_long <- dense_res %>%
-  select(w,
-         `Holm, alpha = 0.05` = n_sig_pairs_holm_05,
-         `Holm, alpha = 0.01` = n_sig_pairs_holm_01,
-         `Raw, alpha = 0.05`  = n_sig_pairs_raw_05) %>%
-  pivot_longer(-w, names_to = "criterion", values_to = "n_sig") %>%
-  mutate(criterion = factor(criterion, levels = names(CRIT_COLORS)))
+# The three-criterion dense step plot (fig_S_joint_mfa_weight_scan_dense.png)
+# was dropped: the composite main-text figure carries the coarse scan and the
+# continuous curve, and the criterion comparison it showed is reported
+# numerically in the D3 console block and in joint_mfa_weight_scan_dense.csv.
+# `dense_long` existed only to feed that plot and is gone with it.
 
-p_dense <- ggplot(dense_long, aes(w, n_sig, color = criterion)) +
-  geom_vline(xintercept = w_mfa, linetype = "dashed",
-             color = "#802520", linewidth = 0.4) +
-  annotate("text", x = w_mfa, y = n_pairs, hjust = -0.08, vjust = 1.2, size = 2.6,
-           color = "#802520", label = sprintf("MFA (s1) setting: w = %.2f", w_mfa)) +
-  geom_step(linewidth = 0.7) +
-  scale_color_manual(values = CRIT_COLORS, name = NULL) +
-  scale_x_continuous(breaks = seq(0, 1, 0.1), limits = c(0, 1)) +
-  scale_y_continuous(breaks = 0:n_pairs, limits = c(0, n_pairs)) +
-  labs(x = "Morphology share of squared distance (w)",
-       y = sprintf("Core-type pairs resolved (of %d)", n_pairs)) +
-  theme_bw(base_size = 10) +
-  theme(panel.grid.minor = element_blank(), legend.position = "bottom",
-        legend.key.size = grid::unit(0.34, "cm"))
-
-ggsave(file.path(FIG_DIR, "fig_S_joint_mfa_weight_scan_dense.png"), p_dense,
-       width = 7, height = 4.8, dpi = 300)
-cat("  Wrote figures/fig_S_joint_mfa_weight_scan_dense.png\n")
+# Interior peak of the continuous curve. Taken from the data, not hard-coded, so
+# it cannot silently drift out of step with the CSV.
+# CAVEAT: the dense 0.01 refinement covers only w = 0.61-0.84 (W_GRID_DENSE); around
+# the peak the grid is still 0.05, so this locates the maximum to +/- 0.05 and is
+# not a resolved optimum.
+i_peak <- which.max(dense_res$median_neglog10_p_raw)
+W_PEAK <- dense_res$w[i_peak]
+cat(sprintf("\n  Continuous-curve peak: w = %.2f (median -log10 p = %.4f) vs %.4f at w = 0\n",
+            W_PEAK, dense_res$median_neglog10_p_raw[i_peak],
+            dense_res$median_neglog10_p_raw[dense_res$w == 0]))
+cat(sprintf("    grid spacing at the peak = %.2f, so the maximum is located to +/- that.\n",
+            min(diff(sort(dense_res$w[dense_res$w >= 0.15 & dense_res$w <= 0.40])))))
 
 p_cont <- ggplot(dense_res, aes(w, median_neglog10_p_raw)) +
-  geom_vline(xintercept = w_mfa, linetype = "dashed",
+  # Two markers, deliberately different colours: dark red = equal weighting
+  # (as in panel b), olive = the interior peak. Both unlabelled; the caption
+  # names them.
+  geom_vline(xintercept = W_REF, linetype = "dashed",
              color = "#802520", linewidth = 0.4) +
-  annotate("text", x = w_mfa, y = max(dense_res$median_neglog10_p_raw),
-           hjust = -0.08, vjust = 1.2, size = 2.6, color = "#802520",
-           label = sprintf("MFA (s1) setting: w = %.2f", w_mfa)) +
-  geom_line(linewidth = 0.7, color = "#4A6E8A") +
-  geom_point(size = 1.2, color = "#4A6E8A") +
-  scale_x_continuous(breaks = seq(0, 1, 0.1), limits = c(0, 1)) +
-  labs(x = "Morphology share of squared distance (w)",
-       y = "Median -log10(raw p) over all core-type pairs") +
-  theme_bw(base_size = 10) +
-  theme(panel.grid.minor = element_blank())
+  geom_vline(xintercept = W_PEAK, linetype = "dashed",
+             color = "#788C4A", linewidth = 0.4) +
+  geom_line(linewidth = 0.6, color = "#4A6E8A") +
+  geom_point(size = 0.9, color = "#4A6E8A") +
+  scale_x_continuous(breaks = seq(0, 1, 0.2), limits = c(0, 1)) +
+  labs(x = "w", y = expression("Median" ~ -log[10] * "(" * italic(p) * ")")) +
+  mt_theme()
 
 ggsave(file.path(FIG_DIR, "fig_S_joint_mfa_weight_resolution_continuous.png"), p_cont,
-       width = 7, height = 4.5, dpi = 300)
+       width = 3.1, height = 1.95, dpi = MT$dpi)
 cat("  Wrote figures/fig_S_joint_mfa_weight_resolution_continuous.png\n")
+
+# =============================================================================
+# MAIN-TEXT COMPOSITE -- biplot left, the two weight panels stacked right
+# =============================================================================
+# Assembled from the ggplot objects, NOT by stitching the exported PNGs: that
+# keeps one typographic definition across all three panels and avoids resampling
+# raster panels that were each rendered at a different physical size.
+#
+# Layout: (a) MFA biplot on the left, (b) coarse weight scan top right,
+# (c) continuous resolution curve bottom right -- b above c as requested.
+p_composite <- (
+  (p_biplot + labs(tag = "a")) |
+    ((p_scan + labs(tag = "b")) / (p_cont + labs(tag = "c")))
+) + plot_layout(widths = c(1.18, 1))
+
+COMP_H <- 3.9
+ggsave(file.path(FIG_DIR, "fig_joint_mfa_main.png"), p_composite,
+       width = MT$fig_width_in, height = COMP_H, dpi = MT$dpi)
+cat("  Wrote figures/fig_joint_mfa_main.png   [MAIN TEXT]\n")
+
+cat("\n", strrep("=", 70), "\n", sep = "")
+cat("MAIN-TEXT COMPOSITE: SPECIFICATION AND RENDERED SIZE\n")
+cat(strrep("=", 70), "\n", sep = "")
+cat("  spec source: SDG_cores_statistics.R make_coia_biplot() (manuscript Fig. 9)\n")
+cat("               + manuscript.qmd fig-width / out-width / fig-dpi\n")
+for (nm in names(MT)) cat(sprintf("    %-14s = %s\n", nm, format(MT[[nm]])))
+cat(sprintf("  canvas   : %.2f x %.2f in (%.1f x %.1f mm) at %d dpi = %d x %d px\n",
+            MT$fig_width_in, COMP_H, MT$fig_width_in * 25.4, COMP_H * 25.4,
+            MT$dpi, round(MT$fig_width_in * MT$dpi), round(COMP_H * MT$dpi)))
+cat(sprintf("  placed at 174 mm (full text width): scale %.3f, so %.1f pt axis text\n",
+            174 / (MT$fig_width_in * 25.4), MT$axis_text))
+cat(sprintf("  reference line on (b) and (c) at w = %.2f, UNLABELLED (dark red);\n", W_REF))
+cat(sprintf("    the s1 normalisation lands at w_mfa = %.4f, i.e. %.4f away.\n",
+            w_mfa, abs(w_mfa - W_REF)))
+cat(sprintf("  second line on (c) at the curve's peak, w = %.2f, UNLABELLED (olive).\n",
+            W_PEAK))
+cat("  Neither line is annotated in-panel, so the caption must name both.\n")
 
 # =============================================================================
 # D4. PERMDISP group dispersions

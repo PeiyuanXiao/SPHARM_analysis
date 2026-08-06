@@ -1,0 +1,12 @@
+FIGURE CAPTIONS -- analysis/robustness/sdi_gradient/figures/
+==============================================================================
+
+fig_sdi_gradient_main.png  [MAIN TEXT]
+Core variation at Sandinggai shown in three descriptor spaces: (a) scar pattern (SP-SPHARM), (b) morphology (M-SPHARM), and (c) the two combined by MFA block normalisation. Each panel shows the FIRST TWO PRINCIPAL AXES of that space; the PERMANOVA reported in the text is computed on the full distance matrix of the space (all ILR coordinates), not on these two axes. Points are individual cores (n = 50), coloured by the continuous scar density index SDI, a proxy for reduction intensity, NOT by core type. The absence of any spatial organisation of colour corresponds to the result reported in the text: no detectable SDI gradient in any space. Axis signs are as returned by the PCA, so the panels align one-to-one with the type-coloured biplots elsewhere in the paper.
+
+fig_S_sdi_gradient_by_rawmat.png  [SI]
+The construction of the figure above, split by raw material, to test whether a gradient exists within one material and is cancelled by pooling. All cells use the SAME whole-sample PCA fit and the same axis limits; no PCA is refitted on a subgroup. Cell sample sizes are given in the strips. Layer 2 cores are retained here because this split does not condition on layer. Sandstone (n = 12) is small and its scatter judgement is weaker.
+
+fig_S_sdi_gradient_by_layer.png  [SI]
+As above, split by stratigraphic layer. Layer 2 (n = 2) is excluded. L3 (n = 18) is the smaller cell and its scatter judgement is weaker than L4 (n = 30).
+
