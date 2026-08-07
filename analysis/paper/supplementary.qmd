@@ -71,10 +71,55 @@ bw   <- tar_read(robustness_bandwidth)
 scar <- tar_read(robustness_scar_threshold)
 mesh <- tar_read(robustness_mesh_decimation)
 pwr  <- tar_read(robustness_power)
+trn  <- tar_read(robustness_truncation)
 pm <- function(r, p) sprintf("%.3f (%.3f)", r, p)
 # inline accessor: a formatted power/sensitivity metric for one assemblage
 pv <- function(asm, col, d = 3) sprintf(paste0("%.", d, "f"),
   pwr$metrics[[col]][pwr$metrics$assemblage == asm])
+
+# ---- truncation sweep accessors (scan = "SP" | "M") -------------------------
+trow <- function(scan_, asm, L)
+  trn$summary[trn$summary$scan == scan_ &
+              trn$summary$assemblage == asm &
+              trn$summary$varied_lmax == L, ]
+# one metric, formatted to d decimals
+tv   <- function(scan_, asm, L, col, d = 3)
+  sprintf(paste0("%.", d, "f"), trow(scan_, asm, L)[[col]])
+# one integer-valued metric
+tint <- function(scan_, asm, L, col) as.character(trow(scan_, asm, L)[[col]])
+# min-max of a metric across a sweep; sep is en dash for strictly positive
+# ranges and " to " where the range spans zero, matching the sections above
+trng <- function(scan_, asm, col, d = 3, sep = "–") {
+  x <- trn$summary[[col]][trn$summary$scan == scan_ &
+                          trn$summary$assemblage == asm]
+  paste0(sprintf(paste0("%.", d, "f"), min(x)), sep,
+         sprintf(paste0("%.", d, "f"), max(x)))
+}
+# stable truncation interval for one scan x assemblage, e.g. "1-6 to 1-7"
+tstab <- function(scan_, asm) {
+  r <- trn$stable[trn$stable$scan == scan_ & trn$stable$assemblage == asm, ]
+  sprintf("1–%d to 1–%d", r$lo, r$hi)
+}
+# full swept span for a scan, and the anchor / held-fixed degrees
+tspan   <- function(scan_) {
+  x <- trn$summary$varied_lmax[trn$summary$scan == scan_]
+  sprintf("1–%d to 1–%d", min(x), max(x))
+}
+tanchor <- function(scan_) unique(trn$summary$varied_lmax[
+  trn$summary$scan == scan_ & trn$summary$is_anchor])
+thold   <- function(scan_) {
+  d <- trn$summary[trn$summary$scan == scan_, ]
+  unique(if (scan_ == "SP") d$lmax_M else d$lmax_SP)
+}
+# typology pair(s) resolved at the anchor but lost at truncation L; the leading
+# type name is lower-cased to read as running prose ("unidirectional-Levallois")
+tlost <- function(scan_, asm, L) {
+  pre <- if (scan_ == "SP") "SP_" else "M_"
+  g <- function(LL) trimws(strsplit(
+         trow(scan_, asm, LL)[[paste0(pre, "sig_pairs")]], ";")[[1]])
+  lost <- setdiff(g(tanchor(scan_)), g(L))
+  paste(sub("^([A-Za-z]+)-", "\\L\\1–", lost, perl = TRUE), collapse = ", ")
+}
 ```
 
 # Sensitivity analysis
@@ -109,9 +154,14 @@ free parameters of the two descriptors. For the scar pattern descriptor
 (SP-SPHARM), we varied the von Mises–Fisher kernel bandwidth ($h$) and
 the scar minimum-size inclusion threshold. For the core morphology
 descriptor (M-SPHARM), we varied the mesh decimation target and the
-number of Laplacian smoothing iterations. In each parameter sweep, all
-settings other than the focal parameter were held at the values used in
-the main analysis. At the main analysis setting, the recomputed
+number of Laplacian smoothing iterations. We additionally varied the
+truncation degree at which the power spectra enter the statistical
+comparison. This last parameter differs in kind from the other four: it
+does not change how either descriptor is computed, since coefficients
+were calculated to the same maximum degree throughout, but only which
+degrees are retained for the statistical comparison. In each parameter
+sweep, all settings other than the focal parameter were held at the
+values used in the main analysis. At the main analysis setting, the recomputed
 descriptors reproduced the previously saved descriptor values,
 confirming that each sensitivity sweep was anchored to the results
 reported in the main analysis. As in the main text, we interpret the
@@ -358,6 +408,112 @@ mesh$metrics |>
 
 {{< pagebreak >}}
 
+## Truncation degree
+
+The truncation degree differs from the parameters above in that it does not
+alter how the descriptors are computed: coefficients were calculated to
+$l_{\max}$ = 20 in every case, and this sweep varies only which degrees are
+retained for statistical comparison. We recomputed all analyses over SP-SPHARM
+truncations $l$ = `r tspan("SP")` (holding M-SPHARM at $l$ = 1–`r thold("SP")`)
+and over M-SPHARM truncations $l$ = `r tspan("M")` (holding SP-SPHARM at $l$ =
+1–`r thold("M")`), perturbing one descriptor at a time; varying both
+simultaneously would confound the two effects and would additionally change the
+relative dimensionality of the two blocks. At the main analysis settings the
+recomputed statistics reproduced the values reported in the main text.
+
+Because the ILR transform maps $D$ parts onto $D - 1$ coordinates, the retained
+dimensionality changes with the truncation degree and the resulting PERMANOVA
+models differ in their degrees of freedom. Comparisons across truncation
+settings are therefore not nested, and $R^2$ is not directly comparable between
+them: lower truncations return mechanically higher $R^2$ through the reduction
+in dimensionality alone, which is why the lowest truncations return $R^2$ values
+at or above the main analysis setting in both assemblages. We accordingly judge
+stability on the Holm-corrected pairwise resolution count, the median
+$-\log_{10}$ of the uncorrected pairwise $p$ values, and the Mantel and RV
+estimates, and report $R^2$ only for completeness.
+
+For SP-SPHARM, cumulative power is already above 99% at the fifth degree
+(`r tv("SP","EXP",5,"SP_cumpower_at_lmax",2)`% EXP,
+`r tv("SP","SDG",5,"SP_cumpower_at_lmax",2)`% SDG) and reaches
+`r tv("SP","EXP",6,"SP_cumpower_at_lmax",2)`% and
+`r tv("SP","SDG",6,"SP_cumpower_at_lmax",2)`% at the sixth, so the power
+criterion alone does not discriminate between these two settings; the CV
+criterion places the onset of noise-dominated degrees at $l$ ≈
+`r tint("SP","EXP",6,"SP_cv_cross_l")`. The two diagnostics therefore delimit an
+acceptable interval of $l$ = 5–8 rather than a single value, and the sweep
+resolves the choice within it. Truncating at $l$ = 1–5 costs discrimination: the
+experimental pairwise resolution falls from `r tint("SP","EXP",6,"SP_nsig05")`
+of `r tint("SP","EXP",6,"n_pairs")` to `r tint("SP","EXP",5,"SP_nsig05")` of
+`r tint("SP","EXP",5,"n_pairs")` typology pairs, the pair lost being
+`r tlost("SP","EXP",5)`, and the SDG core type PERMANOVA rises from $p$ =
+`r tv("SP","SDG",6,"SP_p")` to $p$ = `r tv("SP","SDG",5,"SP_p")`, crossing the
+conventional threshold. Extending to $l$ = 1–8 reverses the decoupling result in
+the experimental assemblage (RV = `r tv("SP","EXP",8,"RV")`, $p$ =
+`r tv("SP","EXP",8,"RV_p")`), with $l$ = 1–7 already marginal ($p$ =
+`r tv("SP","EXP",7,"RV_p")`); this reversal does not appear in the SDG
+assemblage. Given that the CV diagnostic identifies the high degrees as
+noise-dominated and that the reversal is confined to one of the two assemblages,
+we interpret it as shared computational noise in the high-degree coefficients
+rather than as a technological signal, and note that it is precisely why an
+upper-bound criterion is required alongside a power criterion. The conclusions
+are stable over $l$ = `r tstab("SP","EXP")` in the experimental assemblage and
+$l$ = `r tstab("SP","SDG")` in SDG.
+
+For M-SPHARM the descriptor is insensitive to the truncation degree across the
+range tested, with the core type effect ($R^2$ = `r trng("M","EXP","M_R2")` EXP;
+`r trng("M","SDG","M_R2")` SDG) and the morphology–scar association (Mantel $r$
+≈ 0: EXP `r trng("M","EXP","mantel_r", sep = " to ")`; SDG
+`r trng("M","SDG","mantel_r", sep = " to ")`. RV ≈ 0.10: EXP
+`r trng("M","EXP","RV")`; SDG `r trng("M","SDG","RV")`) essentially unchanged
+from $l$ = 1–`r min(trn$summary$varied_lmax[trn$summary$scan == "M"])` to $l$ =
+1–`r max(trn$summary$varied_lmax[trn$summary$scan == "M"])`. The conclusions are
+stable over $l$ = `r tstab("M","EXP")` in the experimental assemblage and $l$ =
+`r tstab("M","SDG")` in SDG.
+
+The main analysis settings, $l$ = 1–`r tanchor("SP")` for SP-SPHARM and $l$ =
+1–`r tanchor("M")` for M-SPHARM, both fall within these stable intervals. For
+SP-SPHARM, $l$ = 1–`r tanchor("SP")` is the lowest-dimensional setting in the
+interval common to both assemblages, consistent with the principle applied to
+M-SPHARM, where reliable but very low-energy higher degrees were excluded to
+avoid inflating dimensionality without materially improving discrimination.
+
+```{r}
+#| label: tbl-si-truncation
+#| tbl-cap: "Per truncation sensitivity metrics for both sweeps. The asterisk marks the main analysis setting of each sweep ($l$ = 1–6 for SP-SPHARM, $l$ = 1–8 for M-SPHARM). Because the ILR transform maps the retained degrees onto one fewer coordinate, the number of retained coordinates (n coords) is given: models are not nested across settings and $R^2$ is therefore not directly comparable between rows (see text)."
+trn$summary |>
+  transmute(
+    scan, assemblage, varied_lmax, is_anchor, n_coords, n_pairs,
+    R2     = ifelse(scan == "SP", SP_R2, M_R2),
+    p      = ifelse(scan == "SP", SP_p, M_p),
+    nsig   = ifelse(scan == "SP", SP_nsig05, M_nsig05),
+    med    = ifelse(scan == "SP", SP_med_neglog10_p, M_med_neglog10_p),
+    mantel_r, mantel_p, RV, RV_p
+  ) |>
+  (\(d) left_join(filter(d, assemblage == "EXP"),
+                  filter(d, assemblage == "SDG"),
+                  by = c("scan", "varied_lmax"), suffix = c("_E", "_S")))() |>
+  arrange(desc(scan), varied_lmax) |>
+  transmute(
+    `sweep`            = ifelse(scan == "SP", "SP-SPHARM", "M-SPHARM"),
+    `truncation`       = ifelse(is_anchor_E, paste0("1-", varied_lmax, "*"),
+                                             paste0("1-", varied_lmax)),
+    `n coords`         = n_coords_E,
+    `EXP R2`           = sprintf("%.3f", R2_E),
+    `EXP p`            = sprintf("%.3f", p_E),
+    `EXP sig pairs`    = paste0(nsig_E, "/", n_pairs_E),
+    `EXP med -log10 p` = sprintf("%.2f", med_E),
+    `SDG type R2`      = sprintf("%.3f", R2_S),
+    `SDG p`            = sprintf("%.3f", p_S),
+    `EXP Mantel r (p)` = pm(mantel_r_E, mantel_p_E),
+    `EXP RV (p)`       = pm(RV_E, RV_p_E),
+    `SDG Mantel r (p)` = pm(mantel_r_S, mantel_p_S),
+    `SDG RV (p)`       = pm(RV_S, RV_p_S)
+  ) |>
+  knitr::kable()
+```
+
+{{< pagebreak >}}
+
 ## Summary
 
 Across both descriptors, every conclusion the analysis relies on is
@@ -366,7 +522,14 @@ the scar descriptor, $l$ = 1–8 for morphology); idealized core
 discrimination; the dominance of core type over raw material and layer
 in the archaeological morphology and scar patterning; and the decoupling
 of morphology and scar patterning, which holds under perturbation of
-either descriptor.
+either descriptor throughout the bandwidth, scar threshold and mesh
+sweeps, and across the stable truncation intervals of both descriptors.
+The truncation sweep is the one qualification: at its extreme settings
+($l$ = 1–8 for the scar descriptor, $l$ = 1–6 for morphology) the
+experimental RV coefficient becomes nominally significant
+(@tbl-si-truncation), although the association remains negligible in
+magnitude and is not corroborated by the Mantel test in either case. The
+main analysis settings sit inside the stable interval of both sweeps.
 
 # Statistical power of the morphology and scar patterning covariation test
 

@@ -516,5 +516,64 @@ list(
       })
     },
     description = "Stage 3 - Degree-selection diagnostic (power-order truncation)"
+  ),
+
+  # joint MFA discrimination: the MFA-merged M-SPHARM + SP-SPHARM PERMANOVA and
+  # the morphology-weight sweep reported in the Results.
+  # READ-ONLY. The analysis itself is run separately by
+  # analysis/robustness/joint_mfa_discrimination/joint_mfa_discrimination_stats.R;
+  # these targets only load the committed result tables and format the values
+  # quoted in the text. No statistic is recomputed here.
+  tar_target(
+    joint_mfa_csvs,
+    c(here::here("analysis/robustness/joint_mfa_discrimination",
+                 "joint_mfa_permanova_comparison.csv"),
+      here::here("analysis/robustness/joint_mfa_discrimination",
+                 "joint_mfa_weight_scan_dense.csv")),
+    format = "file",
+    description = "Stage 3 - Joint MFA committed result tables (file input)"
+  ),
+  tar_target(
+    joint_mfa,
+    {
+      rd <- function(pat)
+        readr::read_csv(grep(pat, joint_mfa_csvs, value = TRUE),
+                        show_col_types = FALSE)
+      comp  <- rd("permanova_comparison")
+      dense <- rd("weight_scan_dense")
+
+      g   <- function(m) comp[comp$scope == "global" & comp$model == m, ]
+      mfa <- g("MFA-combined")
+      sp  <- g("SP-SPHARM")
+      pairs_of <- function(x) sort(trimws(strsplit(x, ";")[[1]]))
+
+      # Widest morphology weight, counting up from w = 0, at which the Holm
+      # pairwise resolution still equals the scar-only (w = 0) value.
+      d  <- dense[order(dense$w), ]
+      n0 <- d$n_sig_pairs_holm_05[d$w == 0]
+      k  <- 1
+      while (k < nrow(d) && d$n_sig_pairs_holm_05[k + 1] == n0) k <- k + 1
+
+      list(
+        n        = mfa$n,
+        n_coords = mfa$n_coords,
+        r2       = sprintf("%.3f", mfa$R2),
+        f        = sprintf("%.3f", mfa$pseudo_F),
+        p        = sprintf("%.4f", mfa$p),
+        n_sig    = mfa$n_sig_pairs,
+        n_pairs  = mfa$n_pairs,
+        # sanity flag: does the merged model resolve exactly the SP-SPHARM set?
+        same_pairs_as_sp = identical(pairs_of(mfa$sig_pairs),
+                                     pairs_of(sp$sig_pairs)),
+        w_stable_max = format(d$w[k], trim = TRUE),
+        med_w0       = sprintf("%.2f", d$median_neglog10_p_raw[d$w == 0]),
+        med_best     = sprintf("%.2f", max(d$median_neglog10_p_raw)),
+        w_best       = format(d$w[which.max(d$median_neglog10_p_raw)],
+                              trim = TRUE),
+        comparison   = comp,
+        dense        = dense
+      )
+    },
+    description = "Stage 3 - Joint MFA discrimination (reads committed results)"
   )
 )
