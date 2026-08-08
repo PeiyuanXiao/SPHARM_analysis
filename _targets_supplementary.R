@@ -79,6 +79,75 @@ list(
     })
   }),
 
+  # ---- direction-landmark annotation error -----------------------------------
+  # READ-ONLY. The sweep itself was run separately by
+  # annotation_perturbation/perturb_spharm.py (which re-runs the whole production
+  # chain per replicate) and annotation_perturbation.R; this target only loads the
+  # committed result tables, counts the scars of the analysed EXP sample from the
+  # sweep's own input file, and derives the two interpolated crossing levels
+  # quoted in the text. No statistic is recomputed here, and the figure is the
+  # committed PNG rather than a re-drawn object.
+  tar_target(perturbation_csvs,
+             c(rob("annotation_perturbation/annotation_perturbation_summary.csv"),
+               rob("annotation_perturbation/annotation_perturbation_polarity_three_methods.csv"),
+               rob("annotation_perturbation/annotation_perturbation_angle_three_methods.csv")),
+             format = "file"),
+  tar_target(perturbation_figure_png,
+             rob("annotation_perturbation/figures/fig_S_perturbation_combined.png"),
+             format = "file"),
+  tar_target(derived_directions_svd_csv,
+             here::here("analysis/data/derived_data/directions_aligned_svd.csv"),
+             format = "file"),
+  tar_target(robustness_annotation, {
+    rd <- function(pat)
+      readr::read_csv(grep(pat, perturbation_csvs, value = TRUE),
+                      show_col_types = FALSE)
+    sm_df    <- rd("_summary\\.csv$")
+    three_df <- dplyr::bind_rows(rd("_polarity_three_methods\\.csv$"),
+                                 rd("_angle_three_methods\\.csv$"))
+
+    # Scar counts of the analysed EXP sample, read from the sweep's own input
+    # (directions_aligned_svd.csv) under the same filters the sweep applies: EXP
+    # specimens with complete unit vectors, Biface excluded. `flips` is the number
+    # of vectors actually reversed at each flip fraction, which the sweep draws
+    # per specimen as round(f * n_i) — so the smallest fractions touch only the
+    # specimens carrying enough scars for that product to reach one.
+    dirs <- readr::read_csv(derived_directions_svd_csv, show_col_types = FALSE)
+    dirs <- dirs[grepl("^EXP", dirs$ID) & dirs$Typology != "Biface" &
+                 !is.na(dirs$ux) & !is.na(dirs$uy) & !is.na(dirs$uz), ]
+    per_spec <- as.integer(table(dirs$ID))
+    lv <- sort(unique(sm_df$level[sm_df$perturbation == "polarity"]))
+    scars <- list(
+      n_spec  = length(per_spec),
+      n_scar  = sum(per_spec),
+      median  = stats::median(per_spec),
+      min     = min(per_spec),
+      max     = max(per_spec),
+      flips   = stats::setNames(vapply(lv, function(f) sum(round(f * per_spec)),
+                                       numeric(1)), lv),
+      n_touch = stats::setNames(vapply(lv, function(f) sum(round(f * per_spec) > 0),
+                                       numeric(1)), lv))
+
+    # Flip fraction at which the SP-SPHARM curve passes through the (constant)
+    # fabric curve, by linear interpolation between the swept levels. Reported
+    # for both outcome measures because they cross at different fractions.
+    cross <- function(col) {
+      d   <- three_df[three_df$perturbation == "polarity", ]
+      fab <- unique(d[[col]][d$method == "Fabric (E, I)"])
+      sp  <- d[d$method == "SP-SPHARM", ]
+      sp  <- sp[order(sp$level), ]
+      y   <- sp[[col]] - fab
+      i   <- which(y[-1] * y[-length(y)] < 0)[1]
+      if (is.na(i)) return(NA_real_)
+      sp$level[i] + (sp$level[i + 1] - sp$level[i]) * y[i] / (y[i] - y[i + 1])
+    }
+
+    list(summary = sm_df, three = three_df, scars = scars,
+         cross_count = cross("n_sig_05_med"),
+         cross_med   = cross("med_neglog10_med"),
+         fig_png     = perturbation_figure_png)
+  }),
+
   # ---- mesh decimation + smoothing sensitivity -------------------------------
   tar_target(mesh_spectra_csvs,
              spectra_files("mesh_decimation_sensitivity"), format = "file"),

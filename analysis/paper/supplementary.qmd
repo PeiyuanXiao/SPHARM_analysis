@@ -72,6 +72,7 @@ scar <- tar_read(robustness_scar_threshold)
 mesh <- tar_read(robustness_mesh_decimation)
 pwr  <- tar_read(robustness_power)
 trn  <- tar_read(robustness_truncation)
+ann  <- tar_read(robustness_annotation)
 pm <- function(r, p) sprintf("%.3f (%.3f)", r, p)
 # inline accessor: a formatted power/sensitivity metric for one assemblage
 pv <- function(asm, col, d = 3) sprintf(paste0("%.", d, "f"),
@@ -120,6 +121,47 @@ tlost <- function(scan_, asm, L) {
   lost <- setdiff(g(tanchor(scan_)), g(L))
   paste(sub("^([A-Za-z]+)-", "\\L\\1–", lost, perl = TRUE), collapse = ", ")
 }
+
+# ---- annotation-perturbation accessors (kind = "baseline" | "polarity" |
+# "angle"; level is the flip fraction or the jitter s.d. in degrees) ----------
+arow <- function(kind, lvl)
+  ann$summary[ann$summary$perturbation == kind &
+              abs(ann$summary$level - lvl) < 1e-9, ]
+# one metric from the wide per-level summary, formatted to d decimals
+av   <- function(kind, lvl, col, d = 3)
+  sprintf(paste0("%.", d, "f"), arow(kind, lvl)[[col]])
+# a resolved-pair count: a median over replicates, integral at every level here
+aint <- function(kind, lvl, col) sprintf("%.0f", arow(kind, lvl)[[col]])
+# the same metric for one of the three methods, from the tidy three-method table
+amet <- function(kind, meth, lvl, col, d = 3) {
+  x <- ann$three
+  sprintf(paste0("%.", d, "f"),
+          x[[col]][x$perturbation == kind & x$method == meth &
+                   abs(x$level - lvl) < 1e-9])
+}
+# the perturbed levels only; the unperturbed anchor is quoted separately, as in
+# the sweeps above
+apert <- function() ann$summary[ann$summary$perturbation != "baseline", ]
+# widest excursion of a summary metric across every perturbed level, as a
+# magnitude, and its min-max range
+aabs <- function(col, d = 3) sprintf(paste0("%.", d, "f"), max(abs(apert()[[col]])))
+arng <- function(col, d = 3, sep = "–") {
+  x <- apert()[[col]]
+  paste0(sprintf(paste0("%.", d, "f"), min(x)), sep,
+         sprintf(paste0("%.", d, "f"), max(x)))
+}
+# the swept levels of one perturbation, as a set for the running text
+alev <- function(kind, mult = 1, d = 0)
+  paste(sprintf(paste0("%.", d, "f"),
+                mult * sort(apert()$level[apert()$perturbation == kind])),
+        collapse = ", ")
+# total replicates run for one perturbation, across all of its levels
+arep <- function(kind) as.character(sum(apert()$R[apert()$perturbation == kind]))
+# a flip fraction as a percentage, for the interpolated crossing levels
+apct <- function(x, d = 1) sprintf(paste0("%.", d, "f"), 100 * x)
+# scars actually reversed at a flip fraction, and how many specimens they fall in
+aflip  <- function(f) as.character(ann$scars$flips[[as.character(f)]])
+atouch <- function(f) as.character(ann$scars$n_touch[[as.character(f)]])
 ```
 
 # Sensitivity analysis
@@ -331,6 +373,159 @@ scar$metrics |>
 
 {{< pagebreak >}}
 
+## Scar direction annotation error
+
+The parameters swept above are analytical settings; this subsection varies the
+quality of the input data instead. The preceding sweep asks which scars enter
+the analysis, and this one asks how accurately those scars are recorded: manual
+placement of the direction landmarks that define each scar vector is an
+analyst-defined operation, and is
+equally error-prone. We therefore
+perturbed the scar unit vectors and re-ran the entire workflow
+per replicate — vMF spherical kernel density estimation ($h$ = 0.35, $\kappa$ =
+8.16), interpolation onto the Driscoll–Healy grid, spherical harmonic expansion
+to $l_{\max}$ = 20, normalisation, the ILR transform and the statistical
+comparison at $l$ = 1–6 — rather than adding noise to the power spectra
+directly. Two error types were simulated. Polarity flips reverse a random
+fraction $f$ of the scar vectors, interchanging the proximal and distal ends, at
+$f$ ∈ {`r alev("polarity", 100)`}%. Angular jitter rotates each vector
+isotropically by a small random angle of standard deviation $\sigma$ ∈
+{`r alev("angle")`}°. Each level was repeated `r aint("polarity", 0.02, "R")`
+times under fixed seeds, and the unperturbed condition was run once as the
+anchor; at that setting the recomputed descriptors reproduced the saved
+descriptor values used in the main analysis, confirming that this sweep is
+anchored to the reported results as the sweeps above are. Polarity is treated as
+the primary case because the case for SP-SPHARM over fabric rests on its
+retaining the polarity of the scar vectors, which makes polarity at once its
+source of information and its most exposed assumption.
+
+Fabric (elongation and isotropy) and the SPI were recomputed from the same
+perturbed vectors, replicate by replicate, so that all three methods see exactly
+the same perturbed data at every level. Each method keeps the test it is given in
+the main analysis — SP-SPHARM and fabric by PERMANOVA with Holm-corrected
+pairwise contrasts, the SPI by Kruskal–Wallis with Dunn post-hoc tests — and
+nothing was harmonised in order to draw them together. Two outcome measures are
+reported for each, because neither substitutes for the other: the count of
+resolved typology pairs is bounded by the significance threshold and is
+insensitive to changes in margin, while the median $-\log_{10}$ of the
+uncorrected pairwise $p$ values is continuous but insensitive to the loss of
+individual marginal pairs. The truncation sweep met the same gap from the other
+side, where the median statistic moved only slightly between $l$ = 1–5 and $l$ =
+1–6 and yet a typology pair was lost (@tbl-si-truncation).
+
+```{r}
+#| label: fig-si-perturbation
+#| fig-cap: "Degradation of SP-SPHARM, fabric (elongation and isotropy) and the SPI under simulated annotation error, in the experimental assemblage. Columns are the two error types and rows the two outcome measures, the count of resolved typology pairs of 10 and the median $-\\log_{10}$ of the uncorrected pairwise $p$ values. Each method keeps the test used in the main analysis: SP-SPHARM and fabric by PERMANOVA (adonis2) with Holm-corrected pairwise contrasts, the SPI by Kruskal–Wallis with Holm-corrected Dunn post-hoc tests; nothing was harmonised to draw them together. Every level is 100 replicates, lines are medians and bands are 2.5–97.5% percentile intervals. The fabric band has zero width throughout the polarity column because the orientation tensor is unchanged by $u$ → $-u$ [@markAnalysisAxialOrientation1973], so all polarity replicates return bit-identical fabric results; this is an identity, not a plotting fault. No ranking of the three methods is claimed in the angular jitter column: the two outcome measures order them oppositely and every percentile band spans the method's own baseline at every level."
+#| out-width: "100%"
+knitr::include_graphics(ann$fig_png)
+```
+
+SP-SPHARM degrades as the flip fraction rises, from
+`r aint("baseline", 0, "n_sig_05_med")` of 10 resolved typology pairs at the
+anchor to `r aint("polarity", 0.1, "n_sig_05_med")` at $f$ = 10% and
+`r aint("polarity", 0.2, "n_sig_05_med")` at $f$ = 20%, with the continuous
+statistic falling from `r av("baseline", 0, "med_neglog10_p_med", 2)` to
+`r av("polarity", 0.2, "med_neglog10_p_med", 2)`. The SPI degrades likewise,
+from `r amet("polarity", "SPI", 0, "n_sig_05_med", 0)` pairs to
+`r amet("polarity", "SPI", 0.2, "n_sig_05_med", 0)`. Fabric does not degrade at
+all: all `r arep("polarity")` polarity replicates return bit-identical results,
+holding at `r amet("polarity", "Fabric (E, I)", 0.2, "n_sig_05_med", 0)` of 10
+pairs and a median $-\log_{10}$ $p$ of
+`r amet("polarity", "Fabric (E, I)", 0.2, "med_neglog10_med", 2)` at every level.
+This is a mathematical necessity and not a computational or plotting error:
+reversing a vector leaves the orientation tensor $\sum u u^{\top}$ unchanged, so
+indices built on its eigenvalues cannot respond to polarity at all
+[@markAnalysisAxialOrientation1973]. The zero-width percentile band on the fabric
+line in the polarity column of @fig-si-perturbation is exactly this identity.
+
+A descriptor can only degrade when information it encodes is destroyed, so
+SP-SPHARM's sensitivity to polarity error is itself evidence that it encodes what
+fabric discards. This turns the theoretical argument the main text makes from
+@markAnalysisAxialOrientation1973 into a measured result. The consequence for
+practice is visible where the curves cross: SP-SPHARM falls below fabric between
+the 5% and 10% flip levels, the crossing interpolating to $f$ =
+`r apct(ann$cross_count)`% on the resolved-pair count and
+`r apct(ann$cross_med)`% on the continuous statistic. Fabric is the more reliable
+descriptor where polarity annotation is poor and SP-SPHARM the stronger one where
+it is good, which states the condition under which the recommendation to combine
+the three methods, rather than to replace one of them with another, applies.
+
+Under angular jitter none of the three methods degrades materially at $\sigma$ ≤
+20°, and we make no ranking of them there. The two outcome measures order them
+oppositely: SP-SPHARM's continuous statistic is unchanged at $\sigma$ = 20°
+(`r av("angle", 20, "med_neglog10_p_med", 2)`, against
+`r av("baseline", 0, "med_neglog10_p_med", 2)` at the anchor) while its resolved
+count falls from `r aint("baseline", 0, "n_sig_05_med")` to
+`r aint("angle", 20, "n_sig_05_med")`, whereas fabric gives up only one pair
+(`r amet("angle", "Fabric (E, I)", 0, "n_sig_05_med", 0)` to
+`r amet("angle", "Fabric (E, I)", 20, "n_sig_05_med", 0)`) but loses far more of
+its continuous statistic (`r amet("angle", "Fabric (E, I)", 0, "med_neglog10_med", 2)`
+to `r amet("angle", "Fabric (E, I)", 20, "med_neglog10_med", 2)`). Every
+percentile band also spans the method's own baseline at every level, so these
+differences are not resolvable at the precision of the measurement.
+
+Across both error types and every level, the association between morphology and
+scar patterning remains negligible. The median Mantel $r$ stays within |$r$| ≤
+`r aabs("decoup_mantel_med")` and the median RV within `r arng("decoup_rv_med")`,
+against anchor values of `r av("baseline", 0, "decoup_mantel_med")` and
+`r av("baseline", 0, "decoup_rv_med")`. The decoupling result is therefore immune
+to annotation error, as it is to the parameter sweeps above (@tbl-si-bandwidth,
+@tbl-si-scar, @tbl-si-mesh).
+
+For practice this places quality control where it does the most good. The
+proximal–distal judgement is what has to be right: polarity error should be held
+below the crossing identified above, and a rate under 5% keeps SP-SPHARM
+resolving more pairs than either of the other two methods. Angular precision is a
+much weaker requirement, since jitter within 10° changes little. The type of
+annotation error therefore matters more than the choice of method. To give that
+tolerance an absolute scale, the analysed experimental assemblage carries
+`r ann$scars$n_scar` scars over `r ann$scars$n_spec` specimens, a median of
+`r ann$scars$median` scars per specimen (range `r ann$scars$min`–`r ann$scars$max`).
+Because the flip fraction is applied within each specimen as the rounded product
+$f n_i$, $f$ = 2% reverses `r aflip(0.02)` scars in total, falling in
+`r atouch(0.02)` of the `r ann$scars$n_spec` specimens — those carrying enough
+scars for that product to reach one. Readers can weigh their own proximal–distal
+error rate against these counts.
+
+```{r}
+#| label: tbl-si-perturbation
+#| tbl-cap: "Per level annotation-error sensitivity metrics for all three scar pattern methods. The asterisk marks the unperturbed anchor, which is the main analysis setting and is shared by both sweeps. Each cell gives the median over the 100 replicates of that level with the 2.5–97.5% percentile interval in brackets; pairs are the Holm-corrected typology pairs resolved of 10, and med -log10 p is the median $-\\log_{10}$ of the uncorrected pairwise $p$ values. Each method keeps its main analysis test (SP-SPHARM and fabric, PERMANOVA; SPI, Kruskal–Wallis with Dunn post-hoc). The fabric columns are constant across the polarity sweep by the orientation tensor identity (see text). Mantel $r$ and RV are the morphology and scar patterning association, recomputed against the unperturbed morphology block."
+key <- function(pert, lvl) sprintf("%s_%.4f", pert, lvl)
+dec <- ann$summary |>
+  transmute(
+    k        = ifelse(perturbation == "baseline", "anchor", key(perturbation, level)),
+    `EXP Mantel r` = sprintf("%.3f [%.3f, %.3f]",
+                             decoup_mantel_med, decoup_mantel_lo, decoup_mantel_hi),
+    `EXP RV`       = sprintf("%.3f [%.3f, %.3f]",
+                             decoup_rv_med, decoup_rv_lo, decoup_rv_hi))
+ann$three |>
+  filter(!(perturbation == "angle" & level == 0)) |>
+  transmute(
+    k     = ifelse(level == 0, "anchor", key(perturbation, level)),
+    ord   = ifelse(level == 0, 0, ifelse(perturbation == "polarity", 1, 2)),
+    level, perturbation,
+    method = recode(method, "SP-SPHARM" = "SP", "Fabric (E, I)" = "fabric"),
+    pairs = sprintf("%.0f/10 [%.0f, %.0f]", n_sig_05_med, n_sig_05_lo, n_sig_05_hi),
+    med   = sprintf("%.2f [%.2f, %.2f]", med_neglog10_med,
+                    med_neglog10_lo, med_neglog10_hi)) |>
+  pivot_wider(names_from = method, values_from = c(pairs, med),
+              names_glue = "{method} {.value}") |>
+  left_join(dec, by = "k") |>
+  arrange(ord, level) |>
+  transmute(
+    `sweep` = c("anchor", "polarity (f)", "angle (σ)")[ord + 1],
+    `level` = ifelse(ord == 0, "0*",
+              ifelse(ord == 1, sprintf("%.0f%%", 100 * level),
+                                sprintf("%.0f°", level))),
+    `SP pairs`, `SP med -log10 p` = `SP med`,
+    `fabric pairs`, `fabric med -log10 p` = `fabric med`,
+    `SPI pairs`, `SPI med -log10 p` = `SPI med`,
+    `EXP Mantel r`, `EXP RV`) |>
+  knitr::kable()
+```
+
+{{< pagebreak >}}
+
 ## Mesh decimation and Laplacian smoothing
 
 Core morphology is decimated by quadric edge collapse to a fixed target
@@ -530,6 +725,18 @@ experimental RV coefficient becomes nominally significant
 (@tbl-si-truncation), although the association remains negligible in
 magnitude and is not corroborated by the Mantel test in either case. The
 main analysis settings sit inside the stable interval of both sweeps.
+
+Robustness extends beyond the analytical parameters to the quality of the input
+data, but not uniformly. Perturbing the scar direction landmarks themselves
+leaves the decoupling result unchanged at every error type and level, and leaves
+type discrimination intact under angular jitter to $\sigma$ = 20°. Polarity
+annotation error is the one factor tested anywhere in this section that has a
+material effect on a reported result, taking SP-SPHARM's pairwise resolution from
+`r aint("baseline", 0, "n_sig_05_med")` of 10 typology pairs to
+`r aint("polarity", 0.1, "n_sig_05_med")` at a 10% flip rate
+(@tbl-si-perturbation). The conclusions are therefore robust to the analytical
+parameters and to angular imprecision, and are conditional on proximal–distal
+judgements being largely correct.
 
 # Statistical power of the morphology and scar patterning covariation test
 
