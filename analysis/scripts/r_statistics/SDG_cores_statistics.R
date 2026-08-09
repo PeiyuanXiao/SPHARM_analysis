@@ -1435,9 +1435,9 @@ if (length(rows_valid) > 0) {
     p_rose <- make_rose_for_composite(res_circ)
     if (is.null(p_coia) || is.null(p_len) || is.null(p_rose)) return(NULL)
     
-    p1 <- strip_margin(p_coia)    + labs(tag = tags[1]) + theme(plot.tag = element_text(size = 9, face = "plain"))
-    p2 <- get_len_plot(p_len)     + labs(tag = tags[2]) + theme(plot.tag = element_text(size = 9, face = "plain"))
-    p3 <- p_rose                  + labs(tag = tags[3]) + theme(plot.tag = element_text(size = 9, face = "plain"))
+    p1 <- strip_margin(p_coia)    + labs(tag = tags[1]) + theme(plot.tag = element_text(size = 9, face = "bold"))
+    p2 <- get_len_plot(p_len)     + labs(tag = tags[2]) + theme(plot.tag = element_text(size = 9, face = "bold"))
+    p3 <- p_rose                  + labs(tag = tags[3]) + theme(plot.tag = element_text(size = 9, face = "bold"))
     
     (p1 | p2 | p3) + plot_layout(widths = c(5, 2, 2))
   }
@@ -1470,7 +1470,7 @@ if (length(rows_valid) > 0) {
   p_external   <- wrap_elements(full = grob_img) +
     labs(tag = next_tag) +
     theme(
-      plot.tag    = element_text(size = 9, face = "plain"),
+      plot.tag    = element_text(size = 9, face = "bold"),
       plot.margin = margin(0, 0, 0, 0)
     )
   

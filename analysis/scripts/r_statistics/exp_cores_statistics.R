@@ -1310,15 +1310,15 @@ cat("\n[Sankey] EXP_L1_CIA_Sankey.png\n")
 # Step 1: tag each subplot
 p_cia_biplot_tagged <- p_cia_biplot +
   labs(tag = "a") +
-  theme(plot.tag = element_text(size = 9, face = "plain"))
+  theme(plot.tag = element_text(size = 9, face = "bold"))
 
 p_len_tagged <- res_len_typology$p +
   labs(tag = "b") +
-  theme(plot.tag = element_text(size = 9, face = "plain"))
+  theme(plot.tag = element_text(size = 9, face = "bold"))
 
 p_rose_tagged <- res_circ_typology$p_rose +
   labs(tag = "c") +
-  theme(plot.tag = element_text(size = 9, face = "plain"))
+  theme(plot.tag = element_text(size = 9, face = "bold"))
 
 # Step 2: recompose p_composite (no plot_annotation)
 p_composite <- (
@@ -1335,7 +1335,7 @@ grob_img     <- grid::rasterGrob(external_img, interpolate = TRUE,
 p_external   <- wrap_elements(full = grob_img) +
   labs(tag = "d") +
   theme(
-    plot.tag    = element_text(size = 9, face = "plain"),
+    plot.tag    = element_text(size = 9, face = "bold"),
     plot.margin = margin(0, 0, 0, 0)
   )
 

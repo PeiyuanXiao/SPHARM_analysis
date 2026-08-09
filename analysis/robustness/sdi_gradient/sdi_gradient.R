@@ -534,8 +534,8 @@ MT <- list(
   legend_title   = 7,
   legend_key_cm  = 0.30,
   tag_size       = 9,
-  # Deliberate deviation: the repo's composite figures use face = "plain" for
-  # panel tags. Bold is requested here.
+  # Bold, matching the repo-wide panel-tag convention (all article figures use
+  # lower-case bold letters at 9 pt on the page).
   tag_face       = "bold",
   # Unstroked solid points, as in Figure 7's ordination panels
   # (spharm_analysis.R run_lda_plot(): shape 16, size 2.0, alpha 0.88). The

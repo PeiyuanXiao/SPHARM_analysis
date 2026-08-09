@@ -203,14 +203,15 @@ does not change how either descriptor is computed, since coefficients
 were calculated to the same maximum degree throughout, but only which
 degrees are retained for the statistical comparison. In each parameter
 sweep, all settings other than the focal parameter were held at the
-values used in the main analysis. At the main analysis setting, the recomputed
-descriptors reproduced the previously saved descriptor values,
-confirming that each sensitivity sweep was anchored to the results
-reported in the main analysis. As in the main text, we interpret the
-results primarily in terms of effect magnitudes rather than significance
-thresholds. The analyses below show repeatedly that parameter
-perturbation affects the significance of small-to-modest effects near
-the 0.05 threshold, but not the magnitude of the effects themselves.
+values used in the main analysis. At the main analysis setting, the
+recomputed descriptors reproduced the previously saved descriptor
+values, confirming that each sensitivity sweep was anchored to the
+results reported in the main analysis. As in the main text, we interpret
+the results primarily in terms of effect magnitudes rather than
+significance thresholds. The analyses below show repeatedly that
+parameter perturbation affects the significance of small-to-modest
+effects near the 0.05 threshold, but not the magnitude of the effects
+themselves.
 
 ## Bandwidth of the von Mises–Fisher kernel
 
@@ -375,121 +376,157 @@ scar$metrics |>
 
 ## Scar direction annotation error
 
-The parameters swept above are analytical settings; this subsection varies the
-quality of the input data instead. The preceding sweep asks which scars enter
-the analysis, and this one asks how accurately those scars are recorded: manual
-placement of the direction landmarks that define each scar vector is an
-analyst-defined operation, and is
-equally error-prone. We therefore
-perturbed the scar unit vectors and re-ran the entire workflow
-per replicate — vMF spherical kernel density estimation ($h$ = 0.35, $\kappa$ =
-8.16), interpolation onto the Driscoll–Healy grid, spherical harmonic expansion
-to $l_{\max}$ = 20, normalisation, the ILR transform and the statistical
-comparison at $l$ = 1–6 — rather than adding noise to the power spectra
-directly. Two error types were simulated. Polarity flips reverse a random
-fraction $f$ of the scar vectors, interchanging the proximal and distal ends, at
-$f$ ∈ {`r alev("polarity", 100)`}%. Angular jitter rotates each vector
-isotropically by a small random angle of standard deviation $\sigma$ ∈
-{`r alev("angle")`}°. Each level was repeated `r aint("polarity", 0.02, "R")`
-times under fixed seeds, and the unperturbed condition was run once as the
-anchor; at that setting the recomputed descriptors reproduced the saved
-descriptor values used in the main analysis, confirming that this sweep is
-anchored to the reported results as the sweeps above are. Polarity is treated as
-the primary case because the case for SP-SPHARM over fabric rests on its
-retaining the polarity of the scar vectors, which makes polarity at once its
-source of information and its most exposed assumption.
+The sensitivity analyses above examine changes in analytical parameters;
+this subsection instead examines the quality of the input data. The
+preceding analysis asks which scars are included, whereas this one asks
+how accurately their directions are recorded. The direction vector of
+each scar is defined by manually placing proximal and distal landmarks,
+making this step subject to analyst error. To assess its effect, we
+directly perturbed the scar unit vectors and reran the complete workflow
+for each replicate, including vMF spherical kernel density estimation
+($h$ = 0.35, $\kappa$ = 8.16), interpolation onto the Driscoll–Healy
+grid, spherical harmonic expansion to $l_{\max}$ = 20, normalisation,
+the ILR transform, and statistical comparison at $l$ = 1–6. Thus,
+annotation error was simulated in the original scar-direction data
+rather than by adding noise directly to the final power spectra.
 
-Fabric (elongation and isotropy) and the SPI were recomputed from the same
-perturbed vectors, replicate by replicate, so that all three methods see exactly
-the same perturbed data at every level. Each method keeps the test it is given in
-the main analysis — SP-SPHARM and fabric by PERMANOVA with Holm-corrected
-pairwise contrasts, the SPI by Kruskal–Wallis with Dunn post-hoc tests — and
-nothing was harmonised in order to draw them together. Two outcome measures are
-reported for each, because neither substitutes for the other: the count of
-resolved typology pairs is bounded by the significance threshold and is
-insensitive to changes in margin, while the median $-\log_{10}$ of the
-uncorrected pairwise $p$ values is continuous but insensitive to the loss of
-individual marginal pairs. The truncation sweep met the same gap from the other
-side, where the median statistic moved only slightly between $l$ = 1–5 and $l$ =
-1–6 and yet a typology pair was lost (@tbl-si-truncation).
+We simulated two types of direction-annotation error. The first was a
+polarity flip, in which a random fraction $f$ of scar directions was
+reversed, exchanging the proximal and distal ends, with $f$ ∈
+{`r alev("polarity", 100)`}%. The second was angular jitter, in which
+each scar direction was rotated by a small random angle with standard
+deviation $\sigma$ ∈ {`r alev("angle")`}°. Each level was repeated
+`r aint("polarity", 0.02, "R")` times under fixed random seeds, while
+the unperturbed condition was run once as the baseline. The descriptors
+recomputed under this baseline condition were identical to those saved
+from the main analysis, confirming that this sensitivity analysis
+follows the same workflow and results as the main analysis.
+
+We focus on polarity error because a key difference between SP-SPHARM
+and fabric is whether scar-direction polarity is retained. SP-SPHARM
+preserves the proximal-to-distal direction of each scar, whereas fabric
+considers the orientation axis without distinguishing its two ends.
+Polarity is therefore an important source of information for SP-SPHARM,
+but also a potential source of sensitivity to annotation error.
+
+To ensure a fair comparison, fabric (elongation and isotropy) and the
+SPI were recomputed from the same perturbed scar directions for every
+replicate. Each method retained the statistical test used in the main
+analysis: SP-SPHARM and fabric were evaluated using PERMANOVA with
+Holm-corrected pairwise contrasts, while the SPI was evaluated using
+Kruskal–Wallis tests with Dunn post-hoc comparisons. We report two
+outcome measures: the number of the 10 possible typology pairs that
+remained significantly distinguishable, and the median $-\log_{10}(p)$
+across all typology pairs. The first indicates how many typological
+distinctions remain detectable, whereas the second captures changes in
+overall separation. Using both measures avoids relying solely on whether
+individual comparisons cross the significance threshold. The truncation
+sensitivity analysis illustrates the same point: although the median
+statistic changed little between $l$ = 1–5 and $l$ = 1–6, one typology
+pair was nevertheless lost (@tbl-si-truncation).
 
 ```{r}
 #| label: fig-si-perturbation
-#| fig-cap: "Degradation of SP-SPHARM, fabric (elongation and isotropy) and the SPI under simulated annotation error, in the experimental assemblage. Columns are the two error types and rows the two outcome measures, the count of resolved typology pairs of 10 and the median $-\\log_{10}$ of the uncorrected pairwise $p$ values. Each method keeps the test used in the main analysis: SP-SPHARM and fabric by PERMANOVA (adonis2) with Holm-corrected pairwise contrasts, the SPI by Kruskal–Wallis with Holm-corrected Dunn post-hoc tests; nothing was harmonised to draw them together. Every level is 100 replicates, lines are medians and bands are 2.5–97.5% percentile intervals. The fabric band has zero width throughout the polarity column because the orientation tensor is unchanged by $u$ → $-u$ [@markAnalysisAxialOrientation1973], so all polarity replicates return bit-identical fabric results; this is an identity, not a plotting fault. No ranking of the three methods is claimed in the angular jitter column: the two outcome measures order them oppositely and every percentile band spans the method's own baseline at every level."
+#| fig-cap: "Degradation of SP-SPHARM, fabric (elongation and isotropy) and the SPI under simulated annotation error, in the experimental assemblage. Columns are the two error types and rows the two outcome measures, the count of resolved typology pairs of 10 and the median $-\\log_{10}$ of the uncorrected pairwise $p$ values. Each method keeps the test used in the main analysis: SP-SPHARM and fabric by PERMANOVA (adonis2) with Holm-corrected pairwise contrasts, the SPI by Kruskal–Wallis with Holm-corrected Dunn post-hoc tests; nothing was harmonised to draw them together. Every level is 100 replicates, lines are medians and bands are 2.5–97.5% percentile intervals."
 #| out-width: "100%"
 knitr::include_graphics(ann$fig_png)
 ```
 
-SP-SPHARM degrades as the flip fraction rises, from
-`r aint("baseline", 0, "n_sig_05_med")` of 10 resolved typology pairs at the
-anchor to `r aint("polarity", 0.1, "n_sig_05_med")` at $f$ = 10% and
-`r aint("polarity", 0.2, "n_sig_05_med")` at $f$ = 20%, with the continuous
-statistic falling from `r av("baseline", 0, "med_neglog10_p_med", 2)` to
-`r av("polarity", 0.2, "med_neglog10_p_med", 2)`. The SPI degrades likewise,
-from `r amet("polarity", "SPI", 0, "n_sig_05_med", 0)` pairs to
-`r amet("polarity", "SPI", 0.2, "n_sig_05_med", 0)`. Fabric does not degrade at
-all: all `r arep("polarity")` polarity replicates return bit-identical results,
-holding at `r amet("polarity", "Fabric (E, I)", 0.2, "n_sig_05_med", 0)` of 10
-pairs and a median $-\log_{10}$ $p$ of
-`r amet("polarity", "Fabric (E, I)", 0.2, "med_neglog10_med", 2)` at every level.
-This is a mathematical necessity and not a computational or plotting error:
-reversing a vector leaves the orientation tensor $\sum u u^{\top}$ unchanged, so
-indices built on its eigenvalues cannot respond to polarity at all
-[@markAnalysisAxialOrientation1973]. The zero-width percentile band on the fabric
-line in the polarity column of @fig-si-perturbation is exactly this identity.
+As the proportion of incorrectly reversed scar directions increased,
+SP-SPHARM progressively lost discriminatory power. Under the baseline
+condition, `r aint("baseline", 0, "n_sig_05_med")` of the 10 typology
+pairs were distinguishable; this decreased to
+`r aint("polarity", 0.1, "n_sig_05_med")` at a flip fraction of 10% and
+to `r aint("polarity", 0.2, "n_sig_05_med")` at 20%. The continuous
+measure also declined from
+`r av("baseline", 0, "med_neglog10_p_med", 2)` to
+`r av("polarity", 0.2, "med_neglog10_p_med", 2)`. The SPI showed a
+similar decline, from `r amet("polarity", "SPI", 0, "n_sig_05_med", 0)`
+typology pairs.
 
-A descriptor can only degrade when information it encodes is destroyed, so
-SP-SPHARM's sensitivity to polarity error is itself evidence that it encodes what
-fabric discards. This turns the theoretical argument the main text makes from
-@markAnalysisAxialOrientation1973 into a measured result. The consequence for
-practice is visible where the curves cross: SP-SPHARM falls below fabric between
-the 5% and 10% flip levels, the crossing interpolating to $f$ =
-`r apct(ann$cross_count)`% on the resolved-pair count and
-`r apct(ann$cross_med)`% on the continuous statistic. Fabric is the more reliable
-descriptor where polarity annotation is poor and SP-SPHARM the stronger one where
-it is good, which states the condition under which the recommendation to combine
-the three methods, rather than to replace one of them with another, applies.
+In contrast, fabric was completely unaffected by polarity flips. All
+`r arep("polarity")` polarity replicates returned bit-identical results,
+maintaining
+`r amet("polarity", "Fabric (E, I)", 0.2, "n_sig_05_med", 0)` of 10
+typology pairs and a median $-\log_{10}(p)$ of
+`r amet("polarity", "Fabric (E, I)", 0.2, "med_neglog10_med", 2)` at
+every level. This is a mathematical property of the fabric approach
+rather than a computational or plotting artefact: fabric considers the
+orientation axis but does not distinguish between the proximal-to-distal
+and distal-to-proximal directions. Thus, $\mathbf{u}$ and $-\mathbf{u}$
+are equivalent in the fabric calculation, because
+$\mathbf{u}\mathbf{u}^{\top}=(-\mathbf{u})(-\mathbf{u})^{\top}$
+[@markAnalysisAxialOrientation1973]. The zero-width percentile band for
+fabric under polarity error in @fig-si-perturbation is a direct
+consequence of this property.
 
-Under angular jitter none of the three methods degrades materially at $\sigma$ ≤
-20°, and we make no ranking of them there. The two outcome measures order them
-oppositely: SP-SPHARM's continuous statistic is unchanged at $\sigma$ = 20°
-(`r av("angle", 20, "med_neglog10_p_med", 2)`, against
-`r av("baseline", 0, "med_neglog10_p_med", 2)` at the anchor) while its resolved
-count falls from `r aint("baseline", 0, "n_sig_05_med")` to
-`r aint("angle", 20, "n_sig_05_med")`, whereas fabric gives up only one pair
-(`r amet("angle", "Fabric (E, I)", 0, "n_sig_05_med", 0)` to
-`r amet("angle", "Fabric (E, I)", 20, "n_sig_05_med", 0)`) but loses far more of
-its continuous statistic (`r amet("angle", "Fabric (E, I)", 0, "med_neglog10_med", 2)`
-to `r amet("angle", "Fabric (E, I)", 20, "med_neglog10_med", 2)`). Every
-percentile band also spans the method's own baseline at every level, so these
-differences are not resolvable at the precision of the measurement.
+The sensitivity of SP-SPHARM to polarity error also demonstrates that it
+retains proximal–distal information that fabric discards. The
+performance of the two methods crossed between 5% and 10% polarity
+flips: the estimated crossing point was $f$ = `r apct(ann$cross_count)`%
+based on the number of resolved typology pairs and
+`r apct(ann$cross_med)`% based on the continuous measure. Thus, when
+proximal–distal directions are reliably annotated, SP-SPHARM can provide
+greater typological discrimination; when polarity errors become more
+frequent, fabric is more stable. This result supports combining the
+three approaches rather than treating any one of them as a complete
+replacement for the others.
 
-Across both error types and every level, the association between morphology and
-scar patterning remains negligible. The median Mantel $r$ stays within |$r$| ≤
-`r aabs("decoup_mantel_med")` and the median RV within `r arng("decoup_rv_med")`,
-against anchor values of `r av("baseline", 0, "decoup_mantel_med")` and
-`r av("baseline", 0, "decoup_rv_med")`. The decoupling result is therefore immune
-to annotation error, as it is to the parameter sweeps above (@tbl-si-bandwidth,
+Angular jitter had a different effect. None of the three methods showed
+substantial overall degradation at $\sigma$ ≤ 20°, and we therefore do
+not rank them within this range. The two outcome measures also showed
+somewhat different patterns. At $\sigma$ = 20°, the continuous measure
+for SP-SPHARM remained largely unchanged
+(`r av("angle", 20, "med_neglog10_p_med", 2)`, compared with
+`r av("baseline", 0, "med_neglog10_p_med", 2)` at baseline), whereas the
+number of resolved typology pairs decreased from
+`r aint("baseline", 0, "n_sig_05_med")` to
+`r aint("angle", 20, "n_sig_05_med")`. Fabric lost only one typology
+pair (from `r amet("angle", "Fabric (E, I)", 0, "n_sig_05_med", 0)` to
+`r amet("angle", "Fabric (E, I)", 20, "n_sig_05_med", 0)`), but showed a
+larger decline in the continuous measure (from
+`r amet("angle", "Fabric (E, I)", 0, "med_neglog10_med", 2)` to
+`r amet("angle", "Fabric (E, I)", 20, "med_neglog10_med", 2)`).
+Moreover, the percentile intervals for all methods overlapped their
+respective baselines at every level, so these differences do not support
+a clear ranking of the methods. Overall, small angular errors do not
+substantially affect the ability of any of the three methods to
+distinguish core types.
+
+Across both polarity flips and angular jitter, the decoupling between
+core morphology and scar patterning remained stable. The median Mantel
+$r$ remained within \|$r$\| ≤ `r aabs("decoup_mantel_med")`, while the
+median RV remained within `r arng("decoup_rv_med")`; the corresponding
+baseline values were `r av("baseline", 0, "decoup_mantel_med")` and
+`r av("baseline", 0, "decoup_rv_med")`. Thus, the observed decoupling
+between morphology and scar patterning is robust to direction-annotation
+error, consistent with the sensitivity analyses of bandwidth, scar
+selection, and mesh resolution reported above (@tbl-si-bandwidth,
 @tbl-si-scar, @tbl-si-mesh).
 
-For practice this places quality control where it does the most good. The
-proximal–distal judgement is what has to be right: polarity error should be held
-below the crossing identified above, and a rate under 5% keeps SP-SPHARM
-resolving more pairs than either of the other two methods. Angular precision is a
-much weaker requirement, since jitter within 10° changes little. The type of
-annotation error therefore matters more than the choice of method. To give that
-tolerance an absolute scale, the analysed experimental assemblage carries
-`r ann$scars$n_scar` scars over `r ann$scars$n_spec` specimens, a median of
-`r ann$scars$median` scars per specimen (range `r ann$scars$min`–`r ann$scars$max`).
-Because the flip fraction is applied within each specimen as the rounded product
-$f n_i$, $f$ = 2% reverses `r aflip(0.02)` scars in total, falling in
-`r atouch(0.02)` of the `r ann$scars$n_spec` specimens — those carrying enough
-scars for that product to reach one. Readers can weigh their own proximal–distal
-error rate against these counts.
+These results suggest that, when recording scar directions, correctly
+identifying the proximal and distal ends is more important than
+achieving very high angular precision. Keeping polarity errors below the
+crossing point identified above, and particularly below 5%, allows
+SP-SPHARM to retain strong typological discrimination. By contrast,
+angular errors of around 10° have relatively little effect on the
+overall results. Thus, the type of annotation error may matter more than
+the magnitude of the error itself.
+
+To place this tolerance in the context of the archaeological dataset,
+the experimental assemblage analysed here contains `r ann$scars$n_scar`
+scars from `r ann$scars$n_spec` specimens, with a median of
+`r ann$scars$median` scars per specimen (range =
+`r ann$scars$min`–`r ann$scars$max`). Because the flip fraction is
+applied within each specimen using the rounded product $fn_i$, a flip
+fraction of $f$ = 2% reverses `r aflip(0.02)` scars in total, affecting
+`r atouch(0.02)` of the `r ann$scars$n_spec` specimens. These counts
+provide a practical reference against which readers can assess the
+expected proximal–distal annotation error rate in their own datasets.
 
 ```{r}
 #| label: tbl-si-perturbation
-#| tbl-cap: "Per level annotation-error sensitivity metrics for all three scar pattern methods. The asterisk marks the unperturbed anchor, which is the main analysis setting and is shared by both sweeps. Each cell gives the median over the 100 replicates of that level with the 2.5–97.5% percentile interval in brackets; pairs are the Holm-corrected typology pairs resolved of 10, and med -log10 p is the median $-\\log_{10}$ of the uncorrected pairwise $p$ values. Each method keeps its main analysis test (SP-SPHARM and fabric, PERMANOVA; SPI, Kruskal–Wallis with Dunn post-hoc). The fabric columns are constant across the polarity sweep by the orientation tensor identity (see text). Mantel $r$ and RV are the morphology and scar patterning association, recomputed against the unperturbed morphology block."
+#| tbl-cap: "Per level annotation-error sensitivity metrics for all three scar pattern methods. The asterisk marks the unperturbed anchor, which is the main analysis setting and is shared by both sweeps. Each cell gives the median over the 100 replicates of that level with the 2.5–97.5% percentile interval in brackets; pairs are the Holm-corrected typology pairs resolved of 10, and med -log10 p is the median $-\\log_{10}$ of the uncorrected pairwise $p$ values. Each method keeps its main analysis test (SP-SPHARM and fabric, PERMANOVA; SPI, Kruskal–Wallis with Dunn post-hoc)."
 key <- function(pert, lvl) sprintf("%s_%.4f", pert, lvl)
 dec <- ann$summary |>
   transmute(
@@ -605,72 +642,48 @@ mesh$metrics |>
 
 ## Truncation degree
 
-The truncation degree differs from the parameters above in that it does not
-alter how the descriptors are computed: coefficients were calculated to
-$l_{\max}$ = 20 in every case, and this sweep varies only which degrees are
-retained for statistical comparison. We recomputed all analyses over SP-SPHARM
-truncations $l$ = `r tspan("SP")` (holding M-SPHARM at $l$ = 1–`r thold("SP")`)
-and over M-SPHARM truncations $l$ = `r tspan("M")` (holding SP-SPHARM at $l$ =
-1–`r thold("M")`), perturbing one descriptor at a time; varying both
-simultaneously would confound the two effects and would additionally change the
-relative dimensionality of the two blocks. At the main analysis settings the
-recomputed statistics reproduced the values reported in the main text.
-
-Because the ILR transform maps $D$ parts onto $D - 1$ coordinates, the retained
-dimensionality changes with the truncation degree and the resulting PERMANOVA
-models differ in their degrees of freedom. Comparisons across truncation
-settings are therefore not nested, and $R^2$ is not directly comparable between
-them: lower truncations return mechanically higher $R^2$ through the reduction
-in dimensionality alone, which is why the lowest truncations return $R^2$ values
-at or above the main analysis setting in both assemblages. We accordingly judge
-stability on the Holm-corrected pairwise resolution count, the median
-$-\log_{10}$ of the uncorrected pairwise $p$ values, and the Mantel and RV
-estimates, and report $R^2$ only for completeness.
-
-For SP-SPHARM, cumulative power is already above 99% at the fifth degree
-(`r tv("SP","EXP",5,"SP_cumpower_at_lmax",2)`% EXP,
-`r tv("SP","SDG",5,"SP_cumpower_at_lmax",2)`% SDG) and reaches
+For SP-SPHARM, the truncation range was defined a priori using two
+criteria: cumulative power ≥ 99% and the onset of noise indicated by the
+cross-specimen CV (approximately $l$ = 9). At the fifth degree,
+cumulative power had already exceeded 99% (EXP:
+`r tv("SP","EXP",5,"SP_cumpower_at_lmax",2)`%; SDG:
+`r tv("SP","SDG",5,"SP_cumpower_at_lmax",2)`%), and reached
 `r tv("SP","EXP",6,"SP_cumpower_at_lmax",2)`% and
-`r tv("SP","SDG",6,"SP_cumpower_at_lmax",2)`% at the sixth, so the power
-criterion alone does not discriminate between these two settings; the CV
-criterion places the onset of noise-dominated degrees at $l$ ≈
-`r tint("SP","EXP",6,"SP_cv_cross_l")`. The two diagnostics therefore delimit an
-acceptable interval of $l$ = 5–8 rather than a single value, and the sweep
-resolves the choice within it. Truncating at $l$ = 1–5 costs discrimination: the
-experimental pairwise resolution falls from `r tint("SP","EXP",6,"SP_nsig05")`
-of `r tint("SP","EXP",6,"n_pairs")` to `r tint("SP","EXP",5,"SP_nsig05")` of
-`r tint("SP","EXP",5,"n_pairs")` typology pairs, the pair lost being
-`r tlost("SP","EXP",5)`, and the SDG core type PERMANOVA rises from $p$ =
-`r tv("SP","SDG",6,"SP_p")` to $p$ = `r tv("SP","SDG",5,"SP_p")`, crossing the
-conventional threshold. Extending to $l$ = 1–8 reverses the decoupling result in
-the experimental assemblage (RV = `r tv("SP","EXP",8,"RV")`, $p$ =
-`r tv("SP","EXP",8,"RV_p")`), with $l$ = 1–7 already marginal ($p$ =
-`r tv("SP","EXP",7,"RV_p")`); this reversal does not appear in the SDG
-assemblage. Given that the CV diagnostic identifies the high degrees as
-noise-dominated and that the reversal is confined to one of the two assemblages,
-we interpret it as shared computational noise in the high-degree coefficients
-rather than as a technological signal, and note that it is precisely why an
-upper-bound criterion is required alongside a power criterion. The conclusions
-are stable over $l$ = `r tstab("SP","EXP")` in the experimental assemblage and
-$l$ = `r tstab("SP","SDG")` in SDG.
+`r tv("SP","SDG",6,"SP_cumpower_at_lmax",2)`% at the sixth degree. The
+two criteria therefore defined an acceptable truncation range of $l$ =
+5–8 rather than a single optimal value. The subsequent sensitivity sweep
+was used to test whether the conclusions were stable within this
+pre-defined range, not to select the truncation degree.
 
-For M-SPHARM the descriptor is insensitive to the truncation degree across the
-range tested, with the core type effect ($R^2$ = `r trng("M","EXP","M_R2")` EXP;
-`r trng("M","SDG","M_R2")` SDG) and the morphology–scar association (Mantel $r$
-≈ 0: EXP `r trng("M","EXP","mantel_r", sep = " to ")`; SDG
-`r trng("M","SDG","mantel_r", sep = " to ")`. RV ≈ 0.10: EXP
-`r trng("M","EXP","RV")`; SDG `r trng("M","SDG","RV")`) essentially unchanged
-from $l$ = 1–`r min(trn$summary$varied_lmax[trn$summary$scan == "M"])` to $l$ =
-1–`r max(trn$summary$varied_lmax[trn$summary$scan == "M"])`. The conclusions are
-stable over $l$ = `r tstab("M","EXP")` in the experimental assemblage and $l$ =
-`r tstab("M","SDG")` in SDG.
+The sensitivity analysis showed that truncation at $l$ = 1–5 reduced
+discrimination. In the experimental assemblage, the number of resolved
+typology pairs decreased from `r tint("SP","EXP",6,"SP_nsig05")` of
+`r tint("SP","EXP",6,"n_pairs")` to `r tint("SP","EXP",5,"SP_nsig05")`
+of `r tint("SP","EXP",5,"n_pairs")`, with `r tlost("SP","EXP",5)` being
+the pair lost; in SDG, the core-type PERMANOVA $p$ value increased from
+`r tv("SP","SDG",6,"SP_p")` to `r tv("SP","SDG",5,"SP_p")`, crossing the
+conventional significance threshold. By contrast, $l$ = 1–6 and $l$ =
+1–7 produced consistent conclusions. At $l$ = 1–8, the morphology–scar
+association in the experimental assemblage became significant (RV =
+`r tv("SP","EXP",8,"RV")`, $p$ = `r tv("SP","EXP",8,"RV_p")`), with the
+result already marginal at $l$ = 1–7 ($p$ =
+`r tv("SP","EXP",7,"RV_p")`). This reversal was not observed in SDG.
+Because the CV diagnostic indicates increasing noise in the
+higher-degree coefficients, and the reversal occurs only in one of the
+two assemblages, we interpret this isolated high-degree association as
+more consistent with computational noise than with a technological
+signal. This also illustrates why the upper-bound CV criterion is needed
+alongside the cumulative-power criterion.
 
-The main analysis settings, $l$ = 1–`r tanchor("SP")` for SP-SPHARM and $l$ =
-1–`r tanchor("M")` for M-SPHARM, both fall within these stable intervals. For
-SP-SPHARM, $l$ = 1–`r tanchor("SP")` is the lowest-dimensional setting in the
-interval common to both assemblages, consistent with the principle applied to
-M-SPHARM, where reliable but very low-energy higher degrees were excluded to
-avoid inflating dimensionality without materially improving discrimination.
+Overall, the main conclusions remain stable across $l$ =
+`r tstab("SP","EXP")` in the experimental assemblage and $l$ =
+`r tstab("SP","SDG")` in SDG. We therefore use $l$ = 1–`r tanchor("SP")`
+for SP-SPHARM: it lies within the pre-defined stable range and, among
+the settings that preserve the conclusions, uses the lowest
+dimensionality. This choice follows the same principle applied to
+M-SPHARM, namely to retain sufficient information for discrimination
+while avoiding additional higher-degree dimensions that do not provide a
+consistent improvement in the results.
 
 ```{r}
 #| label: tbl-si-truncation
@@ -726,17 +739,18 @@ experimental RV coefficient becomes nominally significant
 magnitude and is not corroborated by the Mantel test in either case. The
 main analysis settings sit inside the stable interval of both sweeps.
 
-Robustness extends beyond the analytical parameters to the quality of the input
-data, but not uniformly. Perturbing the scar direction landmarks themselves
-leaves the decoupling result unchanged at every error type and level, and leaves
-type discrimination intact under angular jitter to $\sigma$ = 20°. Polarity
-annotation error is the one factor tested anywhere in this section that has a
-material effect on a reported result, taking SP-SPHARM's pairwise resolution from
+Robustness extends beyond the analytical parameters to the quality of
+the input data, but not uniformly. Perturbing the scar direction
+landmarks themselves leaves the decoupling result unchanged at every
+error type and level, and leaves type discrimination intact under
+angular jitter to $\sigma$ = 20°. Polarity annotation error is the one
+factor tested anywhere in this section that has a material effect on a
+reported result, taking SP-SPHARM's pairwise resolution from
 `r aint("baseline", 0, "n_sig_05_med")` of 10 typology pairs to
 `r aint("polarity", 0.1, "n_sig_05_med")` at a 10% flip rate
-(@tbl-si-perturbation). The conclusions are therefore robust to the analytical
-parameters and to angular imprecision, and are conditional on proximal–distal
-judgements being largely correct.
+(@tbl-si-perturbation). The conclusions are therefore robust to the
+analytical parameters and to angular imprecision, and are conditional on
+proximal–distal judgements being largely correct.
 
 # Statistical power of the morphology and scar patterning covariation test
 

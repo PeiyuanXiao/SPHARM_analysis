@@ -560,13 +560,21 @@ group_pal <- if (ASSEMBLAGE == "EXP")
 # This figure goes in the main text, so its typography follows the manuscript's
 # existing main-text panels rather than the looser SI settings this script used
 # while it was an SI-only analysis.
-#   theme / point / legend sizes  <- SDG_cores_statistics.R make_coia_biplot()
+#   theme / legend / zero-line    <- SDG_cores_statistics.R make_coia_biplot()
 #                                    (manuscript Fig. 9, fig-coia-composite)
+#   point size                    <- spharm_analysis.R p_dir_plot (Fig. 7c), the
+#                                    closest analogue: one point per core inside
+#                                    convex hulls, in a panel of similar width.
+#                                    NOT Fig. 8a's 2.0 -- that is a 5.14 in panel,
+#                                    this one is 3.71 in (widths 1.18 : 1), so a
+#                                    2.0 dot reads nearly twice the area of the
+#                                    dots in the equally sized Fig. 9 panels.
 #   export geometry               <- manuscript.qmd fig-width 6.85 / out-width
 #                                    174mm / fig-dpi 800
 MT <- list(base_size = 8, axis_text = 5, legend_text = 6.5, legend_title = 7,
            legend_key_cm = 0.30, tag_size = 9, tag_face = "bold",
-           pt_shape = 16, pt_size = 2.0, pt_alpha = 0.90,
+           pt_shape = 16, pt_size = 1.4, pt_stroke = 0.25, pt_alpha = 0.90,
+           zero_col = "grey70", zero_lwd = 0.25,
            fig_width_in = 6.85, dpi = 800)
 
 mt_theme <- function() {
@@ -599,14 +607,17 @@ hull_df <- scores_df %>%
   dplyr::ungroup()
 
 p_biplot <- ggplot() +
-  geom_hline(yintercept = 0, color = "grey50", linewidth = 0.35, linetype = "dashed") +
-  geom_vline(xintercept = 0, color = "grey50", linewidth = 0.35, linetype = "dashed") +
+  geom_hline(yintercept = 0, color = MT$zero_col, linewidth = MT$zero_lwd,
+             linetype = "dashed") +
+  geom_vline(xintercept = 0, color = MT$zero_col, linewidth = MT$zero_lwd,
+             linetype = "dashed") +
   geom_polygon(data = hull_df, aes(Axis1, Axis2, fill = group, group = group),
                alpha = 0.25, color = NA) +
   geom_polygon(data = hull_df, aes(Axis1, Axis2, color = group, group = group),
                fill = NA, linewidth = 0.01) +
   geom_point(data = scores_df, aes(Axis1, Axis2, color = group),
-             shape = 16, size = 2.0, stroke = 0.3, alpha = 0.88) +
+             shape = MT$pt_shape, size = MT$pt_size, stroke = MT$pt_stroke,
+             alpha = MT$pt_alpha) +
   # Thin shafts with small open heads: at main-text scale a 0.4 linewidth with a
   # filled 0.16 cm head reads as a blob and competes with the hulls for
   # attention. The arrows are a secondary layer here.
@@ -637,15 +648,21 @@ p_biplot <- ggplot() +
          linetype = guide_legend(order = 2, title = NULL,
                                  override.aes = list(color = "grey30"))) +
   mt_theme() +
-  # Inset transparent legend: main-text ordination convention. Anchored bottom
-  # LEFT, not bottom right -- the M-SPHARM l1 arrow points into the lower-right
+  # Inset legend, boxed on a 75% white ground with a grey80 hairline border --
+  # the main-text ordination convention (Fig. 8a, Fig. 9). The translucent fill
+  # is what lets the hull polygon underneath still read. Anchored bottom LEFT,
+  # not bottom right -- the M-SPHARM l1 arrow points into the lower-right
   # quadrant and its repel label landed on top of the legend there.
   theme(legend.position       = c(0.01, 0.01),
         legend.justification  = c(0, 0),
-        legend.background     = element_rect(fill = "transparent", colour = NA),
+        legend.background     = element_rect(fill = scales::alpha("white", 0.75),
+                                             colour = "grey80", linewidth = 0.25),
         legend.box.background = element_rect(fill = "transparent", colour = NA),
         legend.key            = element_rect(fill = "transparent", colour = NA),
-        legend.spacing.y      = grid::unit(0.02, "cm"))
+        legend.margin         = margin(2, 4, 2, 4),
+        # 0.02 cm was fine while the two legends were unboxed; now that each
+        # carries a border they need a visible hairline gap between them.
+        legend.spacing.y      = grid::unit(0.10, "cm"))
 
 ggsave(file.path(FIG_DIR, "fig_S_joint_mfa_biplot.png"), p_biplot,
        width = 3.7, height = 3.9, dpi = MT$dpi)
@@ -702,7 +719,9 @@ p_scan <- ggplot(scan_res, aes(w, n_sig_pairs)) +
   geom_vline(xintercept = W_REF, linetype = "dashed",
              color = "#802520", linewidth = 0.4) +
   geom_line(linewidth = 0.6, color = "#4A6E8A") +
-  geom_point(size = 1.3, color = "#4A6E8A") +
+  # Same marker size as panel c: the two sit stacked at identical physical size,
+  # so unequal dots read as an inconsistency rather than as denser sampling.
+  geom_point(size = 1.1, color = "#4A6E8A") +
   scale_x_continuous(breaks = seq(0, 1, 0.2), limits = c(0, 1)) +
   scale_y_continuous(breaks = seq(0, n_pairs, 2), limits = c(0, n_pairs)) +
   labs(x = "w", y = "Pairs resolved") +
@@ -1006,7 +1025,7 @@ p_cont <- ggplot(dense_res, aes(w, median_neglog10_p_raw)) +
   geom_vline(xintercept = W_PEAK, linetype = "dashed",
              color = "#788C4A", linewidth = 0.4) +
   geom_line(linewidth = 0.6, color = "#4A6E8A") +
-  geom_point(size = 0.9, color = "#4A6E8A") +
+  geom_point(size = 1.1, color = "#4A6E8A") +
   scale_x_continuous(breaks = seq(0, 1, 0.2), limits = c(0, 1)) +
   labs(x = "w", y = expression("Median" ~ -log[10] * "(" * italic(p) * ")")) +
   mt_theme()

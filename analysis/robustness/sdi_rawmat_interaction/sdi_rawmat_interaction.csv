@@ -1,0 +1,145 @@
+version,version_label,space,space_label,n,n_perm,seed,term,df,SumOfSqs,R2,pseudo_F,p,permutation
+A,"A raw SDI, full sample",scar,"D_scar (SP-SPHARM, l = 1-6)",50,9999,42,Raw_mat,1,1.3213156005416964,0.017650717941227773,1.0444512152678715,0.365,free
+A,"A raw SDI, full sample",scar,"D_scar (SP-SPHARM, l = 1-6)",50,9999,42,core_type,5,16.98209044351528,0.2268542718696591,2.6847431445215455,0.003,free
+A,"A raw SDI, full sample",scar,"D_scar (SP-SPHARM, l = 1-6)",50,9999,42,SDI,1,2.0494521834445116,0.027377488322382775,1.6200163100734268,0.1771,free
+A,"A raw SDI, full sample",scar,"D_scar (SP-SPHARM, l = 1-6)",50,9999,42,Raw_mat:SDI,1,2.6378411013037173,0.03523744761191161,2.0851160334523473,0.0998,free
+A,"A raw SDI, full sample",scar,"D_scar (SP-SPHARM, l = 1-6)",50,9999,42,Residual,41,51.868329348743686,0.6928800742548189,NA,NA,free
+A,"A raw SDI, full sample",scar,"D_scar (SP-SPHARM, l = 1-6)",50,9999,42,Total,49,74.85902867754888,1,NA,NA,free
+A,"A raw SDI, full sample",scar,"D_scar (SP-SPHARM, l = 1-6)",50,9999,42,Raw_mat,1,1.3213156005416964,0.017650717941227773,1.0444512152678715,0.0015,restricted_within_rawmat
+A,"A raw SDI, full sample",scar,"D_scar (SP-SPHARM, l = 1-6)",50,9999,42,core_type,5,16.98209044351528,0.2268542718696591,2.6847431445215455,0.0022,restricted_within_rawmat
+A,"A raw SDI, full sample",scar,"D_scar (SP-SPHARM, l = 1-6)",50,9999,42,SDI,1,2.0494521834445116,0.027377488322382775,1.6200163100734268,0.1931,restricted_within_rawmat
+A,"A raw SDI, full sample",scar,"D_scar (SP-SPHARM, l = 1-6)",50,9999,42,Raw_mat:SDI,1,2.6378411013037173,0.03523744761191161,2.0851160334523473,0.0307,restricted_within_rawmat
+A,"A raw SDI, full sample",scar,"D_scar (SP-SPHARM, l = 1-6)",50,9999,42,Residual,41,51.868329348743686,0.6928800742548189,NA,NA,restricted_within_rawmat
+A,"A raw SDI, full sample",scar,"D_scar (SP-SPHARM, l = 1-6)",50,9999,42,Total,49,74.85902867754888,1,NA,NA,restricted_within_rawmat
+A,"A raw SDI, full sample",morph,"D_morph (M-SPHARM, l = 1-8)",50,9999,42,Raw_mat,1,3.8807142815719184,0.04181275024112994,2.38745616668427,0.0523,free
+A,"A raw SDI, full sample",morph,"D_morph (M-SPHARM, l = 1-8)",50,9999,42,core_type,5,19.626522910338057,0.21146594183671072,2.414888587668797,0.0024,free
+A,"A raw SDI, full sample",morph,"D_morph (M-SPHARM, l = 1-8)",50,9999,42,SDI,1,1.5351540299649002,0.016540514807131368,0.9444428756464192,0.4094,free
+A,"A raw SDI, full sample",morph,"D_morph (M-SPHARM, l = 1-8)",50,9999,42,Raw_mat:SDI,1,1.1254967864971093,0.012126663448136113,0.69241743878589,0.5952,free
+A,"A raw SDI, full sample",morph,"D_morph (M-SPHARM, l = 1-8)",50,9999,42,Residual,41,66.6438562369175,0.7180541296668919,NA,NA,free
+A,"A raw SDI, full sample",morph,"D_morph (M-SPHARM, l = 1-8)",50,9999,42,Total,49,92.81174424528949,1,NA,NA,free
+A,"A raw SDI, full sample",morph,"D_morph (M-SPHARM, l = 1-8)",50,9999,42,Raw_mat,1,3.8807142815719184,0.04181275024112994,2.38745616668427,0.0037,restricted_within_rawmat
+A,"A raw SDI, full sample",morph,"D_morph (M-SPHARM, l = 1-8)",50,9999,42,core_type,5,19.626522910338057,0.21146594183671072,2.414888587668797,0.001,restricted_within_rawmat
+A,"A raw SDI, full sample",morph,"D_morph (M-SPHARM, l = 1-8)",50,9999,42,SDI,1,1.5351540299649002,0.016540514807131368,0.9444428756464192,0.4135,restricted_within_rawmat
+A,"A raw SDI, full sample",morph,"D_morph (M-SPHARM, l = 1-8)",50,9999,42,Raw_mat:SDI,1,1.1254967864971093,0.012126663448136113,0.69241743878589,0.688,restricted_within_rawmat
+A,"A raw SDI, full sample",morph,"D_morph (M-SPHARM, l = 1-8)",50,9999,42,Residual,41,66.6438562369175,0.7180541296668919,NA,NA,restricted_within_rawmat
+A,"A raw SDI, full sample",morph,"D_morph (M-SPHARM, l = 1-8)",50,9999,42,Total,49,92.81174424528949,1,NA,NA,restricted_within_rawmat
+A,"A raw SDI, full sample",combined,D_comb (MFA-normalised join),50,9999,42,Raw_mat,1,0.13015464596970014,0.029797634464081273,1.731596154095243,0.098,free
+A,"A raw SDI, full sample",combined,D_comb (MFA-normalised join),50,9999,42,core_type,5,0.9570975667488896,0.21911813618304712,2.5466727727293135,1e-4,free
+A,"A raw SDI, full sample",combined,D_comb (MFA-normalised join),50,9999,42,SDI,1,0.09578676719205648,0.021929444423746582,1.27436094537566,0.2437,free
+A,"A raw SDI, full sample",combined,D_comb (MFA-normalised join),50,9999,42,Raw_mat:SDI,1,0.10316676305884642,0.023619022368096196,1.3725454732114715,0.2031,free
+A,"A raw SDI, full sample",combined,D_comb (MFA-normalised join),50,9999,42,Residual,41,3.081746556284042,0.705535762561029,NA,NA,free
+A,"A raw SDI, full sample",combined,D_comb (MFA-normalised join),50,9999,42,Total,49,4.367952299253534,1,NA,NA,free
+A,"A raw SDI, full sample",combined,D_comb (MFA-normalised join),50,9999,42,Raw_mat,1,0.13015464596970014,0.029797634464081273,1.731596154095243,2e-4,restricted_within_rawmat
+A,"A raw SDI, full sample",combined,D_comb (MFA-normalised join),50,9999,42,core_type,5,0.9570975667488896,0.21911813618304712,2.5466727727293135,1e-4,restricted_within_rawmat
+A,"A raw SDI, full sample",combined,D_comb (MFA-normalised join),50,9999,42,SDI,1,0.09578676719205648,0.021929444423746582,1.27436094537566,0.2488,restricted_within_rawmat
+A,"A raw SDI, full sample",combined,D_comb (MFA-normalised join),50,9999,42,Raw_mat:SDI,1,0.10316676305884642,0.023619022368096196,1.3725454732114715,0.1414,restricted_within_rawmat
+A,"A raw SDI, full sample",combined,D_comb (MFA-normalised join),50,9999,42,Residual,41,3.081746556284042,0.705535762561029,NA,NA,restricted_within_rawmat
+A,"A raw SDI, full sample",combined,D_comb (MFA-normalised join),50,9999,42,Total,49,4.367952299253534,1,NA,NA,restricted_within_rawmat
+B,"B log(SDI), full sample",scar,"D_scar (SP-SPHARM, l = 1-6)",50,9999,42,Raw_mat,1,1.3213156005416964,0.017650717941227773,1.0423181635548604,0.3674,free
+B,"B log(SDI), full sample",scar,"D_scar (SP-SPHARM, l = 1-6)",50,9999,42,core_type,5,16.98209044351528,0.2268542718696591,2.679260173292537,0.0029,free
+B,"B log(SDI), full sample",scar,"D_scar (SP-SPHARM, l = 1-6)",50,9999,42,SDI,1,1.9894631263745062,0.026576127977080873,1.569385506000728,0.1885,free
+B,"B log(SDI), full sample",scar,"D_scar (SP-SPHARM, l = 1-6)",50,9999,42,Raw_mat:SDI,1,2.5916842303482177,0.03462086372389033,2.0444468727858633,0.0985,free
+B,"B log(SDI), full sample",scar,"D_scar (SP-SPHARM, l = 1-6)",50,9999,42,Residual,41,51.97447527676919,0.6942980184881421,NA,NA,free
+B,"B log(SDI), full sample",scar,"D_scar (SP-SPHARM, l = 1-6)",50,9999,42,Total,49,74.85902867754888,1,NA,NA,free
+B,"B log(SDI), full sample",scar,"D_scar (SP-SPHARM, l = 1-6)",50,9999,42,Raw_mat,1,1.3213156005416964,0.017650717941227773,1.0423181635548604,0.0017,restricted_within_rawmat
+B,"B log(SDI), full sample",scar,"D_scar (SP-SPHARM, l = 1-6)",50,9999,42,core_type,5,16.98209044351528,0.2268542718696591,2.679260173292537,0.0022,restricted_within_rawmat
+B,"B log(SDI), full sample",scar,"D_scar (SP-SPHARM, l = 1-6)",50,9999,42,SDI,1,1.9894631263745062,0.026576127977080873,1.569385506000728,0.1508,restricted_within_rawmat
+B,"B log(SDI), full sample",scar,"D_scar (SP-SPHARM, l = 1-6)",50,9999,42,Raw_mat:SDI,1,2.5916842303482177,0.03462086372389033,2.0444468727858633,0.0638,restricted_within_rawmat
+B,"B log(SDI), full sample",scar,"D_scar (SP-SPHARM, l = 1-6)",50,9999,42,Residual,41,51.97447527676919,0.6942980184881421,NA,NA,restricted_within_rawmat
+B,"B log(SDI), full sample",scar,"D_scar (SP-SPHARM, l = 1-6)",50,9999,42,Total,49,74.85902867754888,1,NA,NA,restricted_within_rawmat
+B,"B log(SDI), full sample",morph,"D_morph (M-SPHARM, l = 1-8)",50,9999,42,Raw_mat,1,3.8807142815719184,0.04181275024112994,2.4223008511172064,0.0495,free
+B,"B log(SDI), full sample",morph,"D_morph (M-SPHARM, l = 1-8)",50,9999,42,core_type,5,19.626522910338057,0.21146594183671072,2.450133645547653,0.0022,free
+B,"B log(SDI), full sample",morph,"D_morph (M-SPHARM, l = 1-8)",50,9999,42,SDI,1,1.8517605634727055,0.019951791430389894,1.1558493781068344,0.2983,free
+B,"B log(SDI), full sample",morph,"D_morph (M-SPHARM, l = 1-8)",50,9999,42,Raw_mat:SDI,1,1.767559007491176,0.01904456189100105,1.1032916565327442,0.3304,free
+B,"B log(SDI), full sample",morph,"D_morph (M-SPHARM, l = 1-8)",50,9999,42,Residual,41,65.68518748241563,0.7077249546007683,NA,NA,free
+B,"B log(SDI), full sample",morph,"D_morph (M-SPHARM, l = 1-8)",50,9999,42,Total,49,92.81174424528949,1,NA,NA,free
+B,"B log(SDI), full sample",morph,"D_morph (M-SPHARM, l = 1-8)",50,9999,42,Raw_mat,1,3.8807142815719184,0.04181275024112994,2.4223008511172064,0.0025,restricted_within_rawmat
+B,"B log(SDI), full sample",morph,"D_morph (M-SPHARM, l = 1-8)",50,9999,42,core_type,5,19.626522910338057,0.21146594183671072,2.450133645547653,8e-4,restricted_within_rawmat
+B,"B log(SDI), full sample",morph,"D_morph (M-SPHARM, l = 1-8)",50,9999,42,SDI,1,1.8517605634727055,0.019951791430389894,1.1558493781068344,0.3253,restricted_within_rawmat
+B,"B log(SDI), full sample",morph,"D_morph (M-SPHARM, l = 1-8)",50,9999,42,Raw_mat:SDI,1,1.767559007491176,0.01904456189100105,1.1032916565327442,0.3588,restricted_within_rawmat
+B,"B log(SDI), full sample",morph,"D_morph (M-SPHARM, l = 1-8)",50,9999,42,Residual,41,65.68518748241563,0.7077249546007683,NA,NA,restricted_within_rawmat
+B,"B log(SDI), full sample",morph,"D_morph (M-SPHARM, l = 1-8)",50,9999,42,Total,49,92.81174424528949,1,NA,NA,restricted_within_rawmat
+B,"B log(SDI), full sample",combined,D_comb (MFA-normalised join),50,9999,42,Raw_mat,1,0.13015464596970014,0.029797634464081273,1.7426807086603757,0.0959,free
+B,"B log(SDI), full sample",combined,D_comb (MFA-normalised join),50,9999,42,core_type,5,0.9570975667488896,0.21911813618304712,2.5629749187245534,2e-4,free
+B,"B log(SDI), full sample",combined,D_comb (MFA-normalised join),50,9999,42,SDI,1,0.10153694852907869,0.023245892256293862,1.3595095288343366,0.2085,free
+B,"B log(SDI), full sample",combined,D_comb (MFA-normalised join),50,9999,42,Raw_mat:SDI,1,0.11701844435178343,0.02679022945643922,1.5667960525725253,0.1354,free
+B,"B log(SDI), full sample",combined,D_comb (MFA-normalised join),50,9999,42,Residual,41,3.0621446936540826,0.7010481076401387,NA,NA,free
+B,"B log(SDI), full sample",combined,D_comb (MFA-normalised join),50,9999,42,Total,49,4.367952299253534,1,NA,NA,free
+B,"B log(SDI), full sample",combined,D_comb (MFA-normalised join),50,9999,42,Raw_mat,1,0.13015464596970014,0.029797634464081273,1.7426807086603757,2e-4,restricted_within_rawmat
+B,"B log(SDI), full sample",combined,D_comb (MFA-normalised join),50,9999,42,core_type,5,0.9570975667488896,0.21911813618304712,2.5629749187245534,1e-4,restricted_within_rawmat
+B,"B log(SDI), full sample",combined,D_comb (MFA-normalised join),50,9999,42,SDI,1,0.10153694852907869,0.023245892256293862,1.3595095288343366,0.1901,restricted_within_rawmat
+B,"B log(SDI), full sample",combined,D_comb (MFA-normalised join),50,9999,42,Raw_mat:SDI,1,0.11701844435178343,0.02679022945643922,1.5667960525725253,0.1097,restricted_within_rawmat
+B,"B log(SDI), full sample",combined,D_comb (MFA-normalised join),50,9999,42,Residual,41,3.0621446936540826,0.7010481076401387,NA,NA,restricted_within_rawmat
+B,"B log(SDI), full sample",combined,D_comb (MFA-normalised join),50,9999,42,Total,49,4.367952299253534,1,NA,NA,restricted_within_rawmat
+C,"C raw SDI, common support",scar,"D_scar (SP-SPHARM, l = 1-6)",20,9999,42,Raw_mat,1,3.308564385794572,0.1517056719294096,5.473468568503234,0.0039,free
+C,"C raw SDI, common support",scar,"D_scar (SP-SPHARM, l = 1-6)",20,9999,42,core_type,5,11.074771901031411,0.5078050528272937,3.6642730100040404,0.001,free
+C,"C raw SDI, common support",scar,"D_scar (SP-SPHARM, l = 1-6)",20,9999,42,SDI,1,0.4454858897874825,0.020426604522326846,0.7369821865739197,0.5386,free
+C,"C raw SDI, common support",scar,"D_scar (SP-SPHARM, l = 1-6)",20,9999,42,Raw_mat:SDI,1,0.3310754043387707,0.015180607302116048,0.5477090992193481,0.666,free
+C,"C raw SDI, common support",scar,"D_scar (SP-SPHARM, l = 1-6)",20,9999,42,Residual,11,6.649203843641071,0.30488206341885377,NA,NA,free
+C,"C raw SDI, common support",scar,"D_scar (SP-SPHARM, l = 1-6)",20,9999,42,Total,19,21.809101424593308,1,NA,NA,free
+C,"C raw SDI, common support",scar,"D_scar (SP-SPHARM, l = 1-6)",20,9999,42,Raw_mat,1,3.308564385794572,0.1517056719294096,5.473468568503234,0.0028,restricted_within_rawmat
+C,"C raw SDI, common support",scar,"D_scar (SP-SPHARM, l = 1-6)",20,9999,42,core_type,5,11.074771901031411,0.5078050528272937,3.6642730100040404,9e-4,restricted_within_rawmat
+C,"C raw SDI, common support",scar,"D_scar (SP-SPHARM, l = 1-6)",20,9999,42,SDI,1,0.4454858897874825,0.020426604522326846,0.7369821865739197,0.5114,restricted_within_rawmat
+C,"C raw SDI, common support",scar,"D_scar (SP-SPHARM, l = 1-6)",20,9999,42,Raw_mat:SDI,1,0.3310754043387707,0.015180607302116048,0.5477090992193481,0.6317,restricted_within_rawmat
+C,"C raw SDI, common support",scar,"D_scar (SP-SPHARM, l = 1-6)",20,9999,42,Residual,11,6.649203843641071,0.30488206341885377,NA,NA,restricted_within_rawmat
+C,"C raw SDI, common support",scar,"D_scar (SP-SPHARM, l = 1-6)",20,9999,42,Total,19,21.809101424593308,1,NA,NA,restricted_within_rawmat
+C,"C raw SDI, common support",morph,"D_morph (M-SPHARM, l = 1-8)",20,9999,42,Raw_mat,1,4.435231882250289,0.09521972334939613,2.276574765983872,0.069,free
+C,"C raw SDI, common support",morph,"D_morph (M-SPHARM, l = 1-8)",20,9999,42,core_type,5,17.719090733366645,0.38041008056110653,1.8190180766510269,0.0499,free
+C,"C raw SDI, common support",morph,"D_morph (M-SPHARM, l = 1-8)",20,9999,42,SDI,1,1.411058048334592,0.030293919361931675,0.724286628402195,0.5744,free
+C,"C raw SDI, common support",morph,"D_morph (M-SPHARM, l = 1-8)",20,9999,42,Raw_mat:SDI,1,1.5832962832877335,0.033991691545627596,0.8126953587328803,0.5102,free
+C,"C raw SDI, common support",morph,"D_morph (M-SPHARM, l = 1-8)",20,9999,42,Residual,11,21.430243115107427,0.460084585181938,NA,NA,free
+C,"C raw SDI, common support",morph,"D_morph (M-SPHARM, l = 1-8)",20,9999,42,Total,19,46.57892006234669,1,NA,NA,free
+C,"C raw SDI, common support",morph,"D_morph (M-SPHARM, l = 1-8)",20,9999,42,Raw_mat,1,4.435231882250289,0.09521972334939613,2.276574765983872,0.0904,restricted_within_rawmat
+C,"C raw SDI, common support",morph,"D_morph (M-SPHARM, l = 1-8)",20,9999,42,core_type,5,17.719090733366645,0.38041008056110653,1.8190180766510269,0.0495,restricted_within_rawmat
+C,"C raw SDI, common support",morph,"D_morph (M-SPHARM, l = 1-8)",20,9999,42,SDI,1,1.411058048334592,0.030293919361931675,0.724286628402195,0.5685,restricted_within_rawmat
+C,"C raw SDI, common support",morph,"D_morph (M-SPHARM, l = 1-8)",20,9999,42,Raw_mat:SDI,1,1.5832962832877335,0.033991691545627596,0.8126953587328803,0.4831,restricted_within_rawmat
+C,"C raw SDI, common support",morph,"D_morph (M-SPHARM, l = 1-8)",20,9999,42,Residual,11,21.430243115107427,0.460084585181938,NA,NA,restricted_within_rawmat
+C,"C raw SDI, common support",morph,"D_morph (M-SPHARM, l = 1-8)",20,9999,42,Total,19,46.57892006234669,1,NA,NA,restricted_within_rawmat
+C,"C raw SDI, common support",combined,D_comb (MFA-normalised join),20,9999,42,Raw_mat,1,0.4946702117771745,0.12218540432208731,3.4820319386288046,0.004,free
+C,"C raw SDI, common support",combined,D_comb (MFA-normalised join),20,9999,42,core_type,5,1.7863162473020946,0.4412268370468136,2.5148109093738045,6e-4,free
+C,"C raw SDI, common support",combined,D_comb (MFA-normalised join),20,9999,42,SDI,1,0.10357488893459754,0.02558338743831561,0.7290737601007113,0.6416,free
+C,"C raw SDI, common support",combined,D_comb (MFA-normalised join),20,9999,42,Raw_mat:SDI,1,0.10125965793492009,0.025011516666517353,0.712776622949037,0.6539,free
+C,"C raw SDI, common support",combined,D_comb (MFA-normalised join),20,9999,42,Residual,11,1.5627002926606375,0.3859928545262661,NA,NA,free
+C,"C raw SDI, common support",combined,D_comb (MFA-normalised join),20,9999,42,Total,19,4.048521298609424,1,NA,NA,free
+C,"C raw SDI, common support",combined,D_comb (MFA-normalised join),20,9999,42,Raw_mat,1,0.4946702117771745,0.12218540432208731,3.4820319386288046,0.0019,restricted_within_rawmat
+C,"C raw SDI, common support",combined,D_comb (MFA-normalised join),20,9999,42,core_type,5,1.7863162473020946,0.4412268370468136,2.5148109093738045,5e-4,restricted_within_rawmat
+C,"C raw SDI, common support",combined,D_comb (MFA-normalised join),20,9999,42,SDI,1,0.10357488893459754,0.02558338743831561,0.7290737601007113,0.6031,restricted_within_rawmat
+C,"C raw SDI, common support",combined,D_comb (MFA-normalised join),20,9999,42,Raw_mat:SDI,1,0.10125965793492009,0.025011516666517353,0.712776622949037,0.5907,restricted_within_rawmat
+C,"C raw SDI, common support",combined,D_comb (MFA-normalised join),20,9999,42,Residual,11,1.5627002926606375,0.3859928545262661,NA,NA,restricted_within_rawmat
+C,"C raw SDI, common support",combined,D_comb (MFA-normalised join),20,9999,42,Total,19,4.048521298609424,1,NA,NA,restricted_within_rawmat
+D,"D log(SDI), common support",scar,"D_scar (SP-SPHARM, l = 1-6)",20,9999,42,Raw_mat,1,3.308564385794572,0.1517056719294096,5.387873100997019,0.0041,free
+D,"D log(SDI), common support",scar,"D_scar (SP-SPHARM, l = 1-6)",20,9999,42,core_type,5,11.074771901031411,0.5078050528272937,3.6069701941686567,0.0012,free
+D,"D log(SDI), common support",scar,"D_scar (SP-SPHARM, l = 1-6)",20,9999,42,SDI,1,0.36846674952056624,0.016895090831438843,0.6000342918751737,0.6264,free
+D,"D log(SDI), common support",scar,"D_scar (SP-SPHARM, l = 1-6)",20,9999,42,Raw_mat:SDI,1,0.30246070712067485,0.013868554289889323,0.4925459256591309,0.7107,free
+D,"D log(SDI), common support",scar,"D_scar (SP-SPHARM, l = 1-6)",20,9999,42,Residual,11,6.754837681126082,0.30972563012196846,NA,NA,free
+D,"D log(SDI), common support",scar,"D_scar (SP-SPHARM, l = 1-6)",20,9999,42,Total,19,21.809101424593308,1,NA,NA,free
+D,"D log(SDI), common support",scar,"D_scar (SP-SPHARM, l = 1-6)",20,9999,42,Raw_mat,1,3.308564385794572,0.1517056719294096,5.387873100997019,0.0029,restricted_within_rawmat
+D,"D log(SDI), common support",scar,"D_scar (SP-SPHARM, l = 1-6)",20,9999,42,core_type,5,11.074771901031411,0.5078050528272937,3.6069701941686567,0.0011,restricted_within_rawmat
+D,"D log(SDI), common support",scar,"D_scar (SP-SPHARM, l = 1-6)",20,9999,42,SDI,1,0.36846674952056624,0.016895090831438843,0.6000342918751737,0.609,restricted_within_rawmat
+D,"D log(SDI), common support",scar,"D_scar (SP-SPHARM, l = 1-6)",20,9999,42,Raw_mat:SDI,1,0.30246070712067485,0.013868554289889323,0.4925459256591309,0.676,restricted_within_rawmat
+D,"D log(SDI), common support",scar,"D_scar (SP-SPHARM, l = 1-6)",20,9999,42,Residual,11,6.754837681126082,0.30972563012196846,NA,NA,restricted_within_rawmat
+D,"D log(SDI), common support",scar,"D_scar (SP-SPHARM, l = 1-6)",20,9999,42,Total,19,21.809101424593308,1,NA,NA,restricted_within_rawmat
+D,"D log(SDI), common support",morph,"D_morph (M-SPHARM, l = 1-8)",20,9999,42,Raw_mat,1,4.435231882250289,0.09521972334939613,2.255424825152582,0.0706,free
+D,"D log(SDI), common support",morph,"D_morph (M-SPHARM, l = 1-8)",20,9999,42,core_type,5,17.719090733366645,0.38041008056110653,1.8021189502673651,0.0516,free
+D,"D log(SDI), common support",morph,"D_morph (M-SPHARM, l = 1-8)",20,9999,42,SDI,1,1.3770447562838797,0.029563690064962466,0.700261228978418,0.5937,free
+D,"D log(SDI), common support",morph,"D_morph (M-SPHARM, l = 1-8)",20,9999,42,Raw_mat:SDI,1,1.4163503729611193,0.03040753995724482,0.7202491046916488,0.5709,free
+D,"D log(SDI), common support",morph,"D_morph (M-SPHARM, l = 1-8)",20,9999,42,Residual,11,21.631202317484753,0.46439896606729,NA,NA,free
+D,"D log(SDI), common support",morph,"D_morph (M-SPHARM, l = 1-8)",20,9999,42,Total,19,46.57892006234669,1,NA,NA,free
+D,"D log(SDI), common support",morph,"D_morph (M-SPHARM, l = 1-8)",20,9999,42,Raw_mat,1,4.435231882250289,0.09521972334939613,2.255424825152582,0.101,restricted_within_rawmat
+D,"D log(SDI), common support",morph,"D_morph (M-SPHARM, l = 1-8)",20,9999,42,core_type,5,17.719090733366645,0.38041008056110653,1.8021189502673651,0.0535,restricted_within_rawmat
+D,"D log(SDI), common support",morph,"D_morph (M-SPHARM, l = 1-8)",20,9999,42,SDI,1,1.3770447562838797,0.029563690064962466,0.700261228978418,0.5905,restricted_within_rawmat
+D,"D log(SDI), common support",morph,"D_morph (M-SPHARM, l = 1-8)",20,9999,42,Raw_mat:SDI,1,1.4163503729611193,0.03040753995724482,0.7202491046916488,0.5647,restricted_within_rawmat
+D,"D log(SDI), common support",morph,"D_morph (M-SPHARM, l = 1-8)",20,9999,42,Residual,11,21.631202317484753,0.46439896606729,NA,NA,restricted_within_rawmat
+D,"D log(SDI), common support",morph,"D_morph (M-SPHARM, l = 1-8)",20,9999,42,Total,19,46.57892006234669,1,NA,NA,restricted_within_rawmat
+D,"D log(SDI), common support",combined,D_comb (MFA-normalised join),20,9999,42,Raw_mat,1,0.4946702117771745,0.12218540432208731,3.44131483570737,0.0044,free
+D,"D log(SDI), common support",combined,D_comb (MFA-normalised join),20,9999,42,core_type,5,1.7863162473020946,0.4412268370468136,2.485403995126705,6e-4,free
+D,"D log(SDI), common support",combined,D_comb (MFA-normalised join),20,9999,42,SDI,1,0.09520446098024271,0.02351586022603939,0.6623170674049275,0.7006,free
+D,"D log(SDI), common support",combined,D_comb (MFA-normalised join),20,9999,42,Raw_mat:SDI,1,0.09114045861326892,0.022512036343880323,0.6340446723731511,0.727,free
+D,"D log(SDI), common support",combined,D_comb (MFA-normalised join),20,9999,42,Residual,11,1.5811899199366435,0.3905598620611794,NA,NA,free
+D,"D log(SDI), common support",combined,D_comb (MFA-normalised join),20,9999,42,Total,19,4.048521298609424,1,NA,NA,free
+D,"D log(SDI), common support",combined,D_comb (MFA-normalised join),20,9999,42,Raw_mat,1,0.4946702117771745,0.12218540432208731,3.44131483570737,0.0024,restricted_within_rawmat
+D,"D log(SDI), common support",combined,D_comb (MFA-normalised join),20,9999,42,core_type,5,1.7863162473020946,0.4412268370468136,2.485403995126705,5e-4,restricted_within_rawmat
+D,"D log(SDI), common support",combined,D_comb (MFA-normalised join),20,9999,42,SDI,1,0.09520446098024271,0.02351586022603939,0.6623170674049275,0.6705,restricted_within_rawmat
+D,"D log(SDI), common support",combined,D_comb (MFA-normalised join),20,9999,42,Raw_mat:SDI,1,0.09114045861326892,0.022512036343880323,0.6340446723731511,0.6847,restricted_within_rawmat
+D,"D log(SDI), common support",combined,D_comb (MFA-normalised join),20,9999,42,Residual,11,1.5811899199366435,0.3905598620611794,NA,NA,restricted_within_rawmat
+D,"D log(SDI), common support",combined,D_comb (MFA-normalised join),20,9999,42,Total,19,4.048521298609424,1,NA,NA,restricted_within_rawmat
