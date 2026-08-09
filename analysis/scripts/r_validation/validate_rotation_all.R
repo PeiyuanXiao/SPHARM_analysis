@@ -507,9 +507,8 @@ cat("\nUpdated: validation_ba_summary.csv\n")
 
 p_rotational_invariance_validity <- p_rei / p_rot_spharm +
   plot_layout(heights = c(3, 1)) +
-  plot_annotation(
-    tag_levels = "a",
-    theme = theme(
-      plot.tag = element_text(face = "bold", size = 9)
-    )
-  )
+  plot_annotation(tag_levels = "a") &
+  # patchwork attaches the tags to the subplots with labs(tag = ), so plot.tag
+  # has to be set on the subplots with `&`; the plot_annotation() theme only
+  # styles the tag of the composite itself and never reaches the panels.
+  theme(plot.tag = element_text(face = "bold", size = 9))

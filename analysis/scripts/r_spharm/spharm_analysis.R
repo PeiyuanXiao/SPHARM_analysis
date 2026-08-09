@@ -520,9 +520,10 @@ cat("Saved: SPHARM_morphology_filter.rds\n")
 # 7. Combined panel: three left plots + bubble plot
 # ==============================================================================
 benn_grob <- ggplotGrob(p_benn)
-# wrap_elements() holds a raw grob, so the global plot.tag size from
-# plot_annotation() does not reach it (it falls back to the ggtern-modified
-# default theme, making tag "b" oversized). Set the tag size explicitly here.
+# wrap_elements() holds a raw grob, so unset tag properties fall back to the
+# ggtern-modified default theme (which made tag "b" oversized and picked up a
+# stray font family). Pin them here; the `&` on the composite below repeats the
+# size and face for every panel.
 p_benn_wrap <- wrap_elements(full = benn_grob) +
   theme(plot.tag = element_text(size = 9, face = "bold", family = ""))
 
@@ -559,7 +560,9 @@ left_col <- (p_SPI_box / p_benn_wrap / p_dir_plot) +
 
 exp_method_compare_combined <- (left_col | p_bubble) +
   plot_layout(ncol = 2, widths = c(1, 0.5)) +
-  plot_annotation(
-    tag_levels = "a",
-    theme = theme(plot.tag = element_text(face = "bold", size = 9))
-  )
+  plot_annotation(tag_levels = "a") &
+  # patchwork attaches the tags to the subplots with labs(tag = ), so plot.tag
+  # has to be set on the subplots with `&`; the plot_annotation() theme only
+  # styles the tag of the composite itself and never reaches the panels. This is
+  # why only "b", which sets plot.tag on its own, used to come out bold.
+  theme(plot.tag = element_text(face = "bold", size = 9))
