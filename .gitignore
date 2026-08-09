@@ -26,10 +26,22 @@ analysis/paper/_targets/
 analysis/robustness/_targets_store/
 # Quarto/SI render log (generated artifact)
 analysis/robustness/_si_render.log
-# Robustness sensitivity — regenerated outputs (recomputed by the SI tar_make and
-# read by nothing; the figures duplicate analysis/figures Fig S1-S5). The required
-# INPUTS (spectra/ and scar_attrition*.csv) are intentionally NOT ignored.
-analysis/robustness/*/figures/
+# Robustness sensitivity — regenerated outputs (recomputed by the SI tar_make).
+# The required INPUTS (spectra/ and scar_attrition*.csv) are intentionally NOT
+# ignored.
+#
+# The figures are ignored as CONTENTS (`figures/*`), not as a directory: a
+# trailing-slash rule would exclude the directory itself, and git does not
+# descend into an excluded directory, so the two `!` exceptions below could
+# never take effect. Those two are inputs, not regenerated outputs — nothing in
+# CI redraws them, so ignoring them broke the reproducibility workflow:
+#   * fig_S_perturbation_combined.png — the `perturbation_figure_png` file
+#     target in _targets_supplementary.R (the sweep that produces it is run
+#     offline, so the pipeline consumes the committed PNG), and supplementary.qmd
+#   * fig_joint_mfa_main.png — included by manuscript.qmd (@fig-exp-joint-mfa)
+analysis/robustness/*/figures/*
+!analysis/robustness/annotation_perturbation/figures/fig_S_perturbation_combined.png
+!analysis/robustness/joint_mfa_discrimination/figures/fig_joint_mfa_main.png
 analysis/robustness/*/sweep_manifest.csv
 analysis/robustness/*/*_metrics.csv
 analysis/robustness/*/*_orderselection_by_degree.csv
