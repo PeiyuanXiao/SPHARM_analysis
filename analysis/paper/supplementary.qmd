@@ -233,7 +233,7 @@ $h$ (at the smallest $h$ a little reliable signal persists beyond $l$ =
 
 ```{r}
 #| label: fig-si-bandwidth-order
-#| fig-cap: "SP-SPHARM cumulative power (top) and cross specimen CV (bottom) by spherical harmonic degree $l$, overlaid across bandwidths $h$, for the experimental (EXP) and archaeological (SDG) assemblages. Dashed lines mark the 95%/99% power and 100% CV references."
+#| fig-cap: "SP-SPHARM cumulative power (top) and cross specimen CV (bottom) by spherical harmonic degree $l$, overlaid across bandwidths $h$, for the experimental (EXP) and archaeological (SDG) assemblages. Dashed lines mark the 95%/99% power and 100% CV references"
 #| fig-width: 9
 #| fig-height: 8
 bw$fig_orderselection
@@ -246,7 +246,7 @@ discoidal vs Levallois).
 
 ```{r}
 #| label: fig-si-bandwidth-im
-#| fig-cap: "Idealized core standardised Euclidean distance matrices at $h$ = 0.20, 0.35 and 0.50."
+#| fig-cap: "Idealized core standardised Euclidean distance matrices at $h$ = 0.20, 0.35 and 0.50"
 #| fig-width: 11
 #| fig-height: 4.5
 bw$fig_im_heatmaps
@@ -274,7 +274,7 @@ significant throughout ($R^2$ = 0.166–0.177; $p$ \< 0.05).
 
 ```{r}
 #| label: tbl-si-bandwidth
-#| tbl-cap: "Per bandwidth sensitivity metrics. The asterisk marks the main analysis setting ($h$ = 0.35). Reported metrics include cumulative power, coefficient of variation (CV), idealized-model (IM) correlation, $R^2$, and Mantel/RV estimates."
+#| tbl-cap: "Per bandwidth sensitivity metrics. The asterisk marks the main analysis setting ($h$ = 0.35). Reported metrics include cumulative power, coefficient of variation (CV), idealized-model (IM) correlation, $R^2$, and Mantel/RV estimates"
 bw$metrics |>
   arrange(h) |>
   transmute(
@@ -315,7 +315,7 @@ their discriminability is unchanged by construction.
 
 ```{r}
 #| label: fig-si-scar-counts
-#| fig-cap: "Per specimen scar retention by size threshold $T$; the dashed line is the three-scar advisory floor, below which no specimen falls."
+#| fig-cap: "Per specimen scar retention by size threshold $T$; the dashed line is the three-scar advisory floor, below which no specimen falls"
 #| fig-width: 9
 #| fig-height: 4.5
 scar$fig_scarcounts
@@ -328,7 +328,7 @@ robust to the inclusion rule.
 
 ```{r}
 #| label: fig-si-scar-order
-#| fig-cap: "SP-SPHARM power saturation and CV by degree across scar size thresholds $T$, for experimentally knapped cores and SDG cores."
+#| fig-cap: "SP-SPHARM power saturation and CV by degree across scar size thresholds $T$, for experimentally knapped cores and SDG cores"
 #| fig-width: 9
 #| fig-height: 8
 scar$fig_orderselection
@@ -350,7 +350,7 @@ throughout ($R^2$ = 0.168–0.171).
 
 ```{r}
 #| label: tbl-si-scar
-#| tbl-cap: "Per threshold sensitivity metrics. The asterisk marks the main analysis baseline, in which > 2 mm scars are retained. The EXP and SDG scar columns report the total number of retained scars."
+#| tbl-cap: "Per threshold sensitivity metrics. The asterisk marks the main analysis baseline, in which > 2 mm scars are retained. The EXP and SDG scar columns report the total number of retained scars"
 scar$metrics |>
   arrange(threshold_mm) |>
   transmute(
@@ -427,7 +427,7 @@ pair was nevertheless lost (@tbl-si-truncation).
 
 ```{r}
 #| label: fig-si-perturbation
-#| fig-cap: "Degradation of SP-SPHARM, fabric (elongation and isotropy) and the SPI under simulated annotation error, in the experimental assemblage. Columns are the two error types and rows the two outcome measures, the count of resolved typology pairs of 10 and the median $-\\log_{10}$ of the uncorrected pairwise $p$ values. Each method keeps the test used in the main analysis: SP-SPHARM and fabric by PERMANOVA (adonis2) with Holm-corrected pairwise contrasts, the SPI by Kruskal–Wallis with Holm-corrected Dunn post-hoc tests; nothing was harmonised to draw them together. Every level is 100 replicates, lines are medians and bands are 2.5–97.5% percentile intervals."
+#| fig-cap: "Degradation of SP-SPHARM, fabric (elongation and isotropy) and the SPI under simulated annotation error, in the experimental assemblage. Columns are the two error types and rows the two outcome measures, the count of resolved typology pairs of 10 and the median $-\\log_{10}$ of the uncorrected pairwise $p$ values. Each method keeps the test used in the main analysis: SP-SPHARM and fabric by PERMANOVA (adonis2) with Holm-corrected pairwise contrasts, the SPI by Kruskal–Wallis with Holm-corrected Dunn post-hoc tests; nothing was harmonised to draw them together. Every level is 100 replicates, lines are medians and bands are 2.5–97.5% percentile intervals"
 #| out-width: "100%"
 knitr::include_graphics(ann$fig_png)
 ```
@@ -526,7 +526,7 @@ expected proximal–distal annotation error rate in their own datasets.
 
 ```{r}
 #| label: tbl-si-perturbation
-#| tbl-cap: "Per level annotation-error sensitivity metrics for all three scar pattern methods. The asterisk marks the unperturbed anchor, which is the main analysis setting and is shared by both sweeps. Each cell gives the median over the 100 replicates of that level with the 2.5–97.5% percentile interval in brackets; pairs are the Holm-corrected typology pairs resolved of 10, and med -log10 p is the median $-\\log_{10}$ of the uncorrected pairwise $p$ values. Each method keeps its main analysis test (SP-SPHARM and fabric, PERMANOVA; SPI, Kruskal–Wallis with Dunn post-hoc)."
+#| tbl-cap: "Per level annotation-error sensitivity metrics for all three scar pattern methods. The asterisk marks the unperturbed anchor, which is the main analysis setting and is shared by both sweeps. Each cell gives the median over the 100 replicates of that level with the 2.5–97.5% percentile interval in brackets; pairs are the Holm-corrected typology pairs resolved of 10, and med -log10 p is the median $-\\log_{10}$ of the uncorrected pairwise $p$ values. Each method keeps its main analysis test (SP-SPHARM and fabric, PERMANOVA; SPI, Kruskal–Wallis with Dunn post-hoc)"
 key <- function(pert, lvl) sprintf("%s_%.4f", pert, lvl)
 dec <- ann$summary |>
   transmute(
@@ -583,7 +583,7 @@ SDG). The $l$ = 1–8 truncation is robust to decimation and smoothing.
 
 ```{r}
 #| label: fig-si-mesh-order
-#| fig-cap: "M-SPHARM power concentration and CV by degree across mesh-preprocessing settings, for EXP and SDG; dashed line = 90% reliability."
+#| fig-cap: "M-SPHARM power concentration and CV by degree across mesh-preprocessing settings, for EXP and SDG; dashed line = 90% reliability"
 #| fig-width: 9
 #| fig-height: 8
 mesh$fig_orderselection
@@ -617,7 +617,7 @@ the morphology descriptor as well as the scar descriptor
 
 ```{r}
 #| label: tbl-si-mesh
-#| tbl-cap: "Per setting sensitivity metrics. The asterisk marks the main analysis setting, defined as 20,000 faces and three Laplacian smoothing iterations."
+#| tbl-cap: "Per setting sensitivity metrics. The asterisk marks the main analysis setting, defined as 20,000 faces and three Laplacian smoothing iterations"
 mesh$metrics |>
   arrange(desc(smooth_iters == 3), face_target, smooth_iters) |>
   transmute(
@@ -687,7 +687,7 @@ consistent improvement in the results.
 
 ```{r}
 #| label: tbl-si-truncation
-#| tbl-cap: "Per truncation sensitivity metrics for both sweeps. The asterisk marks the main analysis setting of each sweep ($l$ = 1–6 for SP-SPHARM, $l$ = 1–8 for M-SPHARM). Because the ILR transform maps the retained degrees onto one fewer coordinate, the number of retained coordinates (n coords) is given: models are not nested across settings and $R^2$ is therefore not directly comparable between rows (see text)."
+#| tbl-cap: "Per truncation sensitivity metrics for both sweeps. The asterisk marks the main analysis setting of each sweep ($l$ = 1–6 for SP-SPHARM, $l$ = 1–8 for M-SPHARM). Because the ILR transform maps the retained degrees onto one fewer coordinate, the number of retained coordinates (n coords) is given: models are not nested across settings and $R^2$ is therefore not directly comparable between rows (see text)"
 trn$summary |>
   transmute(
     scan, assemblage, varied_lmax, is_anchor, n_coords, n_pairs,
@@ -724,23 +724,15 @@ trn$summary |>
 
 ## Summary
 
-Across both descriptors, every conclusion the analysis relies on is
-robust to its principal free parameters: early truncation ($l$ = 1–6 for
-the scar descriptor, $l$ = 1–8 for morphology); idealized core
-discrimination; the dominance of core type over raw material and layer
-in the archaeological morphology and scar patterning; and the decoupling
-of morphology and scar patterning, which holds under perturbation of
-either descriptor throughout the bandwidth, scar threshold and mesh
-sweeps, and across the stable truncation intervals of both descriptors.
-The truncation sweep is the one qualification: at its extreme settings
+Across both descriptors, the main conclusions remain stable across the principal free parameters. These include the early truncation ranges ($l$ = 1–6 for
+the scar descriptor, $l$ = 1–8 for morphology), the idealized-core discrimination, the stronger contribution of core type than raw material or layer in the archaeological morphology and scar-patterning analyses, and the decoupling between morphology and scar patterning. The latter remains unchanged when either descriptor is perturbed across the bandwidth, scar-threshold, and mesh sweeps, as well as across the stable truncation intervals of both descriptors. The truncation sweep provides the only qualification. At the extreme settings
 ($l$ = 1–8 for the scar descriptor, $l$ = 1–6 for morphology) the
 experimental RV coefficient becomes nominally significant
 (@tbl-si-truncation), although the association remains negligible in
 magnitude and is not corroborated by the Mantel test in either case. The
 main analysis settings sit inside the stable interval of both sweeps.
 
-Robustness extends beyond the analytical parameters to the quality of
-the input data, but not uniformly. Perturbing the scar direction
+The perturbation tests also show that the results are not uniformly sensitive to input-data quality. Perturbing the scar direction
 landmarks themselves leaves the decoupling result unchanged at every
 error type and level, and leaves type discrimination intact under
 angular jitter to $\sigma$ = 20°. Polarity annotation error is the one
@@ -748,9 +740,9 @@ factor tested anywhere in this section that has a material effect on a
 reported result, taking SP-SPHARM's pairwise resolution from
 `r aint("baseline", 0, "n_sig_05_med")` of 10 typology pairs to
 `r aint("polarity", 0.1, "n_sig_05_med")` at a 10% flip rate
-(@tbl-si-perturbation). The conclusions are therefore robust to the
-analytical parameters and to angular imprecision, and are conditional on
-proximal–distal judgements being largely correct.
+(@tbl-si-perturbation). Thus, the results are insensitive to the analytical parameter choices and to angular imprecision, but they depend on the proximal–distal judgements being largely correct.
+
+{{< pagebreak >}}
 
 # Statistical power of the morphology and scar patterning covariation test
 
@@ -832,7 +824,7 @@ within-type analyses are treated as exploratory in the main text.
 
 ```{r}
 #| label: tbl-si-power
-#| tbl-cap: "Power and sensitivity metrics for the morphology and scar patterning covariation test, by assemblage. Raw RV and Mantel $r$ are the values reported in the main text (anchor). RV2 is the bias-corrected modified RV coefficient. The 95% confidence intervals are percentile bootstrap intervals (2,000 resamples) and are interpreted as upper bounds on the association (see text). MDES is the minimum population effect detectable at 80% power, estimated by Monte Carlo simulation, and is a lower bound. Values in parentheses are permutation p values."
+#| tbl-cap: "Power and sensitivity metrics for the morphology and scar patterning covariation test, by assemblage. Raw RV and Mantel $r$ are the values reported in the main text (anchor). RV2 is the bias-corrected modified RV coefficient. The 95% confidence intervals are percentile bootstrap intervals (2,000 resamples) and are interpreted as upper bounds on the association (see text). MDES is the minimum population effect detectable at 80% power, estimated by Monte Carlo simulation, and is a lower bound. Values in parentheses are permutation p values"
 pwr$metrics |>
   transmute(
     Assemblage        = assemblage,
@@ -850,7 +842,7 @@ pwr$metrics |>
 
 ```{r}
 #| label: fig-si-power
-#| fig-cap: "Monte Carlo power of the RV permutation test and the Mantel test as a function of the population RV coefficient, at the realized sample sizes of the experimental and Sandinggai assemblages. The dashed horizontal line marks 80% power and the dotted vertical line marks the observed raw RV."
+#| fig-cap: "Monte Carlo power of the RV permutation test and the Mantel test as a function of the population RV coefficient, at the realized sample sizes of the experimental and Sandinggai assemblages. The dashed horizontal line marks 80% power and the dotted vertical line marks the observed raw RV"
 #| fig-width: 9
 #| fig-height: 4.5
 pwr$fig_power

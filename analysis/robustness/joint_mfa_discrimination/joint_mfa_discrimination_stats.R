@@ -596,6 +596,12 @@ mt_theme <- function() {
 # stated in the caption, since the panel no longer says so.
 W_REF <- 0.5
 
+# Horizontal reference on panel (c): the conventional alpha, on the panel's
+# -log10 scale. Computed, not hard-coded at 1.3, so the drawn line and the value
+# printed to the console cannot drift apart from the caption.
+ALPHA_REF  <- 0.05
+ALPHA_LINE <- -log10(ALPHA_REF)
+
 # Convex hulls, not normal ellipses: the main-text ordination panels
 # (spharm_analysis.R run_lda_plot(), Figure 7c) draw group extents as filled
 # chull polygons. An ellipse is a parametric summary that extends well beyond
@@ -1024,6 +1030,13 @@ p_cont <- ggplot(dense_res, aes(w, median_neglog10_p_raw)) +
              color = "#802520", linewidth = 0.4) +
   geom_vline(xintercept = W_PEAK, linetype = "dashed",
              color = "#788C4A", linewidth = 0.4) +
+  # Horizontal alpha reference at -log10(0.05) = 1.30. Black, so it reads as a
+  # threshold rather than as a third weight marker, and unlabelled like the other
+  # two -- the caption states the value. Note this is a reference for the MEDIAN
+  # of the RAW pairwise p, so crossing it is not a Holm-corrected significance
+  # claim about any individual pair.
+  geom_hline(yintercept = ALPHA_LINE, linetype = "dashed",
+             color = "black", linewidth = 0.35) +
   geom_line(linewidth = 0.6, color = "#4A6E8A") +
   geom_point(size = 1.1, color = "#4A6E8A") +
   scale_x_continuous(breaks = seq(0, 1, 0.2), limits = c(0, 1)) +
@@ -1069,7 +1082,13 @@ cat(sprintf("    the s1 normalisation lands at w_mfa = %.4f, i.e. %.4f away.\n",
             w_mfa, abs(w_mfa - W_REF)))
 cat(sprintf("  second line on (c) at the curve's peak, w = %.2f, UNLABELLED (olive).\n",
             W_PEAK))
-cat("  Neither line is annotated in-panel, so the caption must name both.\n")
+cat(sprintf("  horizontal line on (c) at -log10(%.2f) = %.2f, UNLABELLED (black);\n",
+            ALPHA_REF, ALPHA_LINE))
+cat(sprintf("    %d of %d grid points sit above it; the curve's range is %.2f-%.2f.\n",
+            sum(dense_res$median_neglog10_p_raw >= ALPHA_LINE), nrow(dense_res),
+            min(dense_res$median_neglog10_p_raw),
+            max(dense_res$median_neglog10_p_raw)))
+cat("  None of the three lines is annotated in-panel, so the caption must name all.\n")
 
 # =============================================================================
 # D4. PERMDISP group dispersions
