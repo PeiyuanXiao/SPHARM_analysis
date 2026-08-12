@@ -39,8 +39,10 @@
 #
 # ABSOLUTE AXES — AND WHAT THEY DO NOT SHOW. Both rows plot raw values: resolved
 # pairs out of 10 on top, median -log10(raw p) below. The three methods do not
-# start level (baselines 8/10, 6/10, 4/10 pairs and 2.841 / 2.430 / 1.559 median
-# -log10 p), so the vertical offsets between the lines are baseline differences,
+# start level (baselines 8/10, 5/10, 4/10 pairs, the main text's Figure 6d counts;
+# the median -log10 p baselines are in annotation_perturbation_summary.csv and are
+# floored at 3 by the 999 permutations), so the vertical offsets between the lines
+# are baseline differences,
 # not degradation differences, and SPI's flatness on the top row is partly just
 # having least to lose. Slopes are comparable within a method across levels; they
 # are NOT comparable between methods without dividing by each method's own

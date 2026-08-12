@@ -55,7 +55,8 @@
 #   method's own baseline):  SPI fastest > fabric > SP-SPHARM slowest.
 #
 # WHY RETENTION RATIOS. Baseline resolved-pair counts differ by method (SP-SPHARM
-# 8/10, fabric 6/10, SPI 4/10), so absolute counts cannot rank degradation rates —
+# 8/10, fabric 5/10, SPI 4/10 — the main text's Figure 6d counts, anchored below),
+# so absolute counts cannot rank degradation rates —
 # a drop of one pair means something different at each baseline. Every three-method
 # panel therefore reports (i) the absolute count, (ii) the continuous median
 # -log10(p), and (iii) retention = value / that method's own baseline. Verdicts are
@@ -88,7 +89,7 @@
 
 suppressPackageStartupMessages({
   library(here); library(tidyverse); library(vegan); library(compositions)
-  library(FSA); library(conflicted)
+  library(FSA); library(conflicted)   # RVAideMemoire is called namespaced, not attached
 })
 suppressMessages({
   conflicts_prefer(dplyr::filter, dplyr::select, dplyr::lag,
@@ -102,7 +103,15 @@ set.seed(42)
 # =============================================================================
 ASSEMBLAGE <- "EXP"     # SDG interface kept below; this run is EXP only
 SEED       <- 42
-N_PERM     <- 9999
+# Matches the main analysis (spharm_analysis.R:330). This sweep is anchored on the
+# main-text EXP result, so it has to randomise exactly as the main text does: two
+# of the ten typology pairs sit on the Holm 0.05 boundary (fabric
+# Bidirectional-Unidirectional, raw p ~= 0.012 x 4 = 0.046; SP-SPHARM
+# Unidirectional-Levallois, raw p ~= 0.016 x 3 = 0.049), so a different permutation
+# count moves the resolved-pair count without anything about the data changing.
+# Running this sweep at 9999 while the main text ran at 999 is what put fabric at
+# 6/10 here against 5/10 in Figure 6d.
+N_PERM     <- 999
 ALPHA_1    <- 0.05
 ALPHA_2    <- 0.01
 QLO        <- 0.025
@@ -144,6 +153,12 @@ BW_REF <- list(h_lo = 0.35, h_hi = 0.50, R2_lo = 0.30174, R2_hi = 0.32879,
 # scripts use. R2 / pseudo-F are deterministic and CHECKED; p is permutation noise.
 REF <- list(R2 = 0.30174, F = 5.72568, n_sig = 8L, n = 58L, n_pairs = 10L)
 
+# Resolved-pair counts of the other two methods in the main text, read off Figure 6d
+# (spharm_analysis.R:451-464). These were never anchored before, which is how this
+# sweep came to report fabric 6/10 against the main text's 5/10. Checked now.
+REF_FAB_N_SIG <- 5L
+REF_SPI_N_SIG <- 4L
+
 # =============================================================================
 # Helper import — verbatim, without running the source analyses
 # =============================================================================
@@ -172,6 +187,47 @@ h2 <- import_helpers(
   c("rv_std"))
 cat(sprintf("Imported helpers verbatim: %s | %s\n",
             paste(sort(h1), collapse = ", "), paste(sort(h2), collapse = ", ")))
+
+# Pairwise contrasts, drawn from the SAME random stream as the main analysis.
+#
+# permanova_pairwise (imported above) and spharm_analysis.R:351 run the identical
+# test -- RVAideMemoire::pairwise.perm.manova on a dist input just loops the pairs
+# through vegan::adonis2 on the two-group subset -- but they seed it differently:
+# the helper calls set.seed(SEED + k) once per pair, the main analysis calls
+# set.seed(SEED) once for the whole family and lets pairwise.table walk the pairs
+# through one stream. At 9999 permutations that difference is invisible; at 999 it
+# is not, because the two boundary pairs noted at N_PERM above are decided by a
+# handful of permutations either way. Since the baseline anchor of this sweep IS
+# the main-text result, the p values have to come from the main text's stream.
+#
+# Two further details are load-bearing for that:
+#   - the pair iteration order, hence the RNG consumption order, follows the factor
+#     level order, so the call has to use the main analysis's alphabetical levels
+#     (droplevels(as.factor(Typology)), spharm_analysis.R:266) and not TYPOLOGY_ORDER;
+#   - p.method = "none" leaves the raw p values untouched (it changes nothing about
+#     the permutations) so Holm is applied here over the same ten-pair family.
+# R2 and pseudo-F are deterministic and still come from the imported helper.
+permanova_pairwise_main <- function(Z, group, seed = SEED, nperm = N_PERM) {
+  pw_det <- permanova_pairwise(Z, group, seed = seed, nperm = nperm)
+  d      <- stats::dist(as.matrix(Z), method = "euclidean")
+  set.seed(seed)
+  pm  <- RVAideMemoire::pairwise.perm.manova(d, factor(as.character(group)),
+                                             nperm = nperm, p.method = "none",
+                                             progress = FALSE)$p.value
+  cell <- function(a, b) {
+    v <- if (a %in% rownames(pm) && b %in% colnames(pm)) pm[a, b] else NA_real_
+    if (is.na(v) && b %in% rownames(pm) && a %in% colnames(pm)) v <- pm[b, a]
+    v
+  }
+  out <- pw_det %>%
+    mutate(p = map2_dbl(group1, group2, cell),
+           p_holm = p.adjust(p, method = "holm"),
+           significant_holm = p_holm < ALPHA_1)
+  if (any(is.na(out$p)))
+    stop("permanova_pairwise_main: pairwise.perm.manova returned no p value for ",
+         paste(out$comparison[is.na(out$p)], collapse = ", "))
+  out
+}
 
 # Mantel statistic = Spearman correlation of the two distance vectors. Identical to
 # vegan::mantel()$statistic but without the permutation cost, which we do not need
@@ -226,7 +282,7 @@ D_base <- stats::dist(Z_base)
 eval_spharm <- function(df) {
   Z  <- ilr_of(df)
   gl <- permanova_global(Z, grp, nperm = N_PERM)
-  pw <- permanova_pairwise(Z, grp, nperm = N_PERM)
+  pw <- permanova_pairwise_main(Z, grp, nperm = N_PERM)
   list(R2 = gl$R2, F = gl$F, p = gl$p,
        n_sig_05 = sum(pw$p_holm < ALPHA_1),
        n_sig_01 = sum(pw$p_holm < ALPHA_2),
@@ -247,7 +303,7 @@ eval_fabric <- function(df) {
     return(list(R2 = NA_real_, F = NA_real_, p = NA_real_,
                 n_sig_05 = NA_integer_, n_sig_01 = NA_integer_, med_neglog10 = NA_real_))
   gl <- permanova_global(X, grp, nperm = N_PERM)
-  pw <- permanova_pairwise(X, grp, nperm = N_PERM)
+  pw <- permanova_pairwise_main(X, grp, nperm = N_PERM)
   list(R2 = gl$R2, F = gl$F, p = gl$p,
        n_sig_05 = sum(pw$p_holm < ALPHA_1),
        n_sig_01 = sum(pw$p_holm < ALPHA_2),
@@ -300,10 +356,16 @@ chk("n specimens",      n_spec,     REF$n,     0)
 chk("PERMANOVA R2",     b$R2,       REF$R2,    1e-3)
 chk("PERMANOVA pseudo-F", b$F,      REF$F,     1e-3)
 chk("resolved pairs",   b$n_sig_05, REF$n_sig, 0)
+# The other two methods are anchored on Figure 6d as well, so a permutation-count or
+# seeding change can never again leave this sweep reporting a different number of
+# resolved pairs from the main text without stopping here.
+chk("fabric resolved pairs", bf$n_sig_05, REF_FAB_N_SIG, 0)
+chk("SPI resolved pairs",    bs$n_sig_05, REF_SPI_N_SIG, 0)
 if (!anchor_ok)
   stop("BASELINE ANCHOR FAILED — the re-run chain does not reproduce the committed ",
-       "SP-SPHARM PERMANOVA. Stopping before the perturbation results.")
-cat(sprintf("\n  => Baseline reproduces the committed EXP SP-SPHARM PERMANOVA.\n"))
+       "main-text EXP result. Stopping before the perturbation results.")
+cat("\n  => Baseline reproduces the committed EXP main-text result",
+    " (SP-SPHARM, fabric and SPI).\n", sep = "")
 cat(sprintf("     baseline median -log10(raw p) = %.3f | fabric %d/%d | SPI %d/%d resolved\n",
             b$med_neglog10, bf$n_sig_05, n_pairs, bs$n_sig_05, n_pairs))
 
