@@ -656,11 +656,12 @@ p_biplot <- ggplot() +
   mt_theme() +
   # Inset legend, boxed on a 75% white ground with a grey80 hairline border --
   # the main-text ordination convention (Fig. 8a, Fig. 9). The translucent fill
-  # is what lets the hull polygon underneath still read. Anchored bottom LEFT,
-  # not bottom right -- the M-SPHARM l1 arrow points into the lower-right
-  # quadrant and its repel label landed on top of the legend there.
-  theme(legend.position       = c(0.01, 0.01),
-        legend.justification  = c(0, 0),
+  # is what lets the hull polygon underneath still read. Anchored bottom RIGHT.
+  # The M-SPHARM l1 arrow points into the lower-right quadrant, but its head and
+  # repel label sit above the legend box, not inside it -- check the rendered
+  # panel if the loadings ever change.
+  theme(legend.position       = c(0.99, 0.01),
+        legend.justification  = c(1, 0),
         legend.background     = element_rect(fill = scales::alpha("white", 0.75),
                                              colour = "grey80", linewidth = 0.25),
         legend.box.background = element_rect(fill = "transparent", colour = NA),
@@ -717,13 +718,18 @@ end_ok <- isTRUE(all.equal(scan_res$R2[scan_res$w == 0],
 cat(sprintf("\n  Endpoint identity (R2 at w = 0 / 1 vs SP / M alone): %s\n",
             ifelse(end_ok, "OK", "<-- CHECK")))
 
-# The reference line carries no in-panel label: the annotation repeated a value
-# the caption states, and at 2.6 pt inside a half-width main-text panel it
-# collided with the curve. Axis titles are shortened for the same reason -- the
-# Holm correction and the alpha level belong in the caption, not on the axis.
+# The reference line carries an in-panel label, set in the line's own colour and
+# at the panel-a repel-label size (1.9). It is parked at the very top of the
+# panel: the resolved-pair step never reaches n_pairs, so that band is the only
+# strip of the panel guaranteed to be empty whatever the scan does. Axis titles
+# stay short -- the Holm correction and the alpha level belong in the caption.
+ANN_SIZE <- 1.9
 p_scan <- ggplot(scan_res, aes(w, n_sig_pairs)) +
   geom_vline(xintercept = W_REF, linetype = "dashed",
              color = "#802520", linewidth = 0.4) +
+  annotate("text", x = W_REF + 0.02, y = n_pairs, hjust = 0, vjust = 1,
+           label = sprintf("w = %.1f", W_REF),
+           size = ANN_SIZE, color = "#802520") +
   geom_line(linewidth = 0.6, color = "#4A6E8A") +
   # Same marker size as panel c: the two sit stacked at identical physical size,
   # so unequal dots read as an inconsistency rather than as denser sampling.
@@ -1022,21 +1028,41 @@ cat(sprintf("\n  Continuous-curve peak: w = %.2f (median -log10 p = %.4f) vs %.4
 cat(sprintf("    grid spacing at the peak = %.2f, so the maximum is located to +/- that.\n",
             min(diff(sort(dense_res$w[dense_res$w >= 0.15 & dense_res$w <= 0.40])))))
 
+# Label anchors, derived from the curve rather than hard-coded so they follow the
+# data if the scan changes. The curve descends monotonically from the left, so the
+# lower-left / lower-middle of the panel is dead space: the two weight labels sit
+# there at 45% of the plotted range, which is clear of the curve on the left and
+# comfortably above the alpha line (whose own label sits just on top of it).
+C_RNG   <- range(dense_res$median_neglog10_p_raw)
+ANN_Y_W <- C_RNG[1] + 0.45 * diff(C_RNG)
+
 p_cont <- ggplot(dense_res, aes(w, median_neglog10_p_raw)) +
   # Two markers, deliberately different colours: dark red = equal weighting
-  # (as in panel b), olive = the interior peak. Both unlabelled; the caption
-  # names them.
+  # (as in panel b), olive = the interior peak. Each is labelled in its own
+  # colour; the caption still explains what they mean.
   geom_vline(xintercept = W_REF, linetype = "dashed",
              color = "#802520", linewidth = 0.4) +
   geom_vline(xintercept = W_PEAK, linetype = "dashed",
              color = "#788C4A", linewidth = 0.4) +
+  annotate("text", x = W_REF + 0.02, y = ANN_Y_W, hjust = 0, vjust = 0.5,
+           label = sprintf("w = %.1f", W_REF),
+           size = ANN_SIZE, color = "#802520") +
+  # W_PEAK is data-derived, so the label text is formatted from it -- a hard-coded
+  # "w = 0.25" would silently go stale if the peak moved.
+  annotate("text", x = W_PEAK - 0.02, y = ANN_Y_W, hjust = 1, vjust = 0.5,
+           label = sprintf("w = %.2f", W_PEAK),
+           size = ANN_SIZE, color = "#788C4A") +
   # Horizontal alpha reference at -log10(0.05) = 1.30. Black, so it reads as a
-  # threshold rather than as a third weight marker, and unlabelled like the other
-  # two -- the caption states the value. Note this is a reference for the MEDIAN
-  # of the RAW pairwise p, so crossing it is not a Holm-corrected significance
-  # claim about any individual pair.
+  # threshold rather than as a third weight marker. Labelled on the p scale
+  # ("p = 0.05"), not on the -log10 scale, since that is the quantity the reader
+  # is being pointed at; italic p matches the y-axis title. Note this is a
+  # reference for the MEDIAN of the RAW pairwise p, so crossing it is not a
+  # Holm-corrected significance claim about any individual pair.
   geom_hline(yintercept = ALPHA_LINE, linetype = "dashed",
              color = "black", linewidth = 0.35) +
+  annotate("text", x = 0.02, y = ALPHA_LINE, hjust = 0, vjust = -0.6,
+           label = sprintf("italic(p) == %s", format(ALPHA_REF)), parse = TRUE,
+           size = ANN_SIZE, color = "black") +
   geom_line(linewidth = 0.6, color = "#4A6E8A") +
   geom_point(size = 1.1, color = "#4A6E8A") +
   scale_x_continuous(breaks = seq(0, 1, 0.2), limits = c(0, 1)) +
@@ -1077,18 +1103,19 @@ cat(sprintf("  canvas   : %.2f x %.2f in (%.1f x %.1f mm) at %d dpi = %d x %d px
             MT$dpi, round(MT$fig_width_in * MT$dpi), round(COMP_H * MT$dpi)))
 cat(sprintf("  placed at 174 mm (full text width): scale %.3f, so %.1f pt axis text\n",
             174 / (MT$fig_width_in * 25.4), MT$axis_text))
-cat(sprintf("  reference line on (b) and (c) at w = %.2f, UNLABELLED (dark red);\n", W_REF))
+cat(sprintf("  reference line on (b) and (c) at w = %.2f, labelled \"w = %.1f\" (dark red);\n",
+            W_REF, W_REF))
 cat(sprintf("    the s1 normalisation lands at w_mfa = %.4f, i.e. %.4f away.\n",
             w_mfa, abs(w_mfa - W_REF)))
-cat(sprintf("  second line on (c) at the curve's peak, w = %.2f, UNLABELLED (olive).\n",
-            W_PEAK))
-cat(sprintf("  horizontal line on (c) at -log10(%.2f) = %.2f, UNLABELLED (black);\n",
-            ALPHA_REF, ALPHA_LINE))
+cat(sprintf("  second line on (c) at the curve's peak, w = %.2f, labelled \"w = %.2f\" (olive).\n",
+            W_PEAK, W_PEAK))
+cat(sprintf("  horizontal line on (c) at -log10(%.2f) = %.2f, labelled \"p = %s\" (black);\n",
+            ALPHA_REF, ALPHA_LINE, format(ALPHA_REF)))
 cat(sprintf("    %d of %d grid points sit above it; the curve's range is %.2f-%.2f.\n",
             sum(dense_res$median_neglog10_p_raw >= ALPHA_LINE), nrow(dense_res),
             min(dense_res$median_neglog10_p_raw),
             max(dense_res$median_neglog10_p_raw)))
-cat("  None of the three lines is annotated in-panel, so the caption must name all.\n")
+cat("  All three lines are annotated in-panel; the caption still states what they mean.\n")
 
 # =============================================================================
 # D4. PERMDISP group dispersions

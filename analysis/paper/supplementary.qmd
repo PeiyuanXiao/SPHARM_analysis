@@ -177,7 +177,7 @@ empirical structure of the data, but also by analyst-defined parameters
 [@hambyReviewTechniquesParameter1994;
 @saltelliSensitivityAnalysisImportance2002].
 
-In computational modelling, sensitivity analysis is commonly used to
+In computational modeling, sensitivity analysis is commonly used to
 examine how changes in model inputs or assumptions affect model outputs
 and the resulting inferences
 [@saltelliSensitivityAnalysisImportance2002]. In our study, the tested
@@ -220,7 +220,7 @@ The spherical kernel density bandwidth was fixed at $h$ = 0.35
 recomputed the SP-SPHARM power spectra over $h$ ∈ {0.20, 0.25, 0.30,
 0.35, 0.40, 0.45, 0.50} ($\kappa$ = 4.0–25.0), holding everything else
 fixed (alignment, the spherical evaluation grid and Driscoll–Healy
-transform, $l_{\max}$ = 20, normalisation, and seeds). Morphology
+transform, $l_{\max}$ = 20, normalization, and seeds). Morphology
 (M-SPHARM) is independent of $h$ and was reused unchanged. At $h$ = 0.35
 the recomputed spectra reproduce the cached values.
 
@@ -239,14 +239,14 @@ $h$ (at the smallest $h$ a little reliable signal persists beyond $l$ =
 bw$fig_orderselection
 ```
 
-The pairwise standardised Euclidean distance structure is highly stable:
+The pairwise standardized Euclidean distance structure is highly stable:
 each $h$'s distance matrix correlates with the $h$ = 0.35 matrix at
 Pearson $r$ ≥ 0.961, and key separations persist at every $h$ (e.g.
 discoidal vs Levallois).
 
 ```{r}
 #| label: fig-si-bandwidth-im
-#| fig-cap: "Idealized core standardised Euclidean distance matrices at $h$ = 0.20, 0.35 and 0.50"
+#| fig-cap: "Idealized core standardized Euclidean distance matrices at $h$ = 0.20, 0.35 and 0.50"
 #| fig-width: 11
 #| fig-height: 4.5
 bw$fig_im_heatmaps
@@ -305,7 +305,7 @@ particular whether they are driven by small, less reliably measured
 scars, we recomputed the SP-SPHARM power spectra after dropping scars at
 or below increasing cutoffs $T$ ∈ {2, 5, 10} mm (retaining length \>
 $T$), holding everything else fixed (alignment, $h$ = 0.35, the
-evaluation and transform grids, $l_{\max}$ = 20, normalisation, seeds).
+evaluation and transform grids, $l_{\max}$ = 20, normalization, seeds).
 The cutoff $T$ = 2 was used as the main analysis, at which the
 recomputed descriptors reproduced the saved descriptor values used in
 the main analysis. The \>5 mm rule retains 95.9% (EXP) and 99.2% (SDG)
@@ -385,7 +385,7 @@ making this step subject to analyst error. To assess its effect, we
 directly perturbed the scar unit vectors and reran the complete workflow
 for each replicate, including vMF spherical kernel density estimation
 ($h$ = 0.35, $\kappa$ = 8.16), interpolation onto the Driscoll–Healy
-grid, spherical harmonic expansion to $l_{\max}$ = 20, normalisation,
+grid, spherical harmonic expansion to $l_{\max}$ = 20, normalization,
 the ILR transform, and statistical comparison at $l$ = 1–6. Thus,
 annotation error was simulated in the original scar-direction data
 rather than by adding noise directly to the final power spectra.
@@ -427,7 +427,7 @@ pair was nevertheless lost (@tbl-si-truncation).
 
 ```{r}
 #| label: fig-si-perturbation
-#| fig-cap: "Degradation of SP-SPHARM, fabric (elongation and isotropy) and the SPI under simulated annotation error, in the experimental assemblage. Columns are the two error types and rows the two outcome measures, the count of resolved typology pairs of 10 and the median $-\\log_{10}$ of the uncorrected pairwise $p$ values. Each method keeps the test used in the main analysis: SP-SPHARM and fabric by PERMANOVA (adonis2) with Holm-corrected pairwise contrasts, the SPI by Kruskal–Wallis with Holm-corrected Dunn post-hoc tests; nothing was harmonised to draw them together. Every level is 100 replicates, lines are medians and bands are 2.5–97.5% percentile intervals"
+#| fig-cap: "Degradation of SP-SPHARM, fabric (elongation and isotropy) and the SPI under simulated annotation error, in the experimental assemblage. Columns are the two error types and rows the two outcome measures, the count of resolved typology pairs of 10 and the median $-\\log_{10}$ of the uncorrected pairwise $p$ values. Each method keeps the test used in the main analysis: SP-SPHARM and fabric by PERMANOVA (adonis2) with Holm-corrected pairwise contrasts, the SPI by Kruskal–Wallis with Holm-corrected Dunn post-hoc tests; nothing was harmonized to draw them together. Every level is 100 replicates, lines are medians and bands are 2.5–97.5% percentile intervals"
 #| out-width: "100%"
 knitr::include_graphics(ann$fig_png)
 ```
@@ -451,7 +451,7 @@ maintaining
 typology pairs and a median $-\log_{10}(p)$ of
 `r amet("polarity", "Fabric (E, I)", 0.2, "med_neglog10_med", 2)` at
 every level. This is a mathematical property of the fabric approach
-rather than a computational or plotting artefact: fabric considers the
+rather than a computational or plotting artifact: fabric considers the
 orientation axis but does not distinguish between the proximal-to-distal
 and distal-to-proximal directions. Thus, $\mathbf{u}$ and $-\mathbf{u}$
 are equivalent in the fabric calculation, because
@@ -514,7 +514,7 @@ overall results. Thus, the type of annotation error may matter more than
 the magnitude of the error itself.
 
 To place this tolerance in the context of the archaeological dataset,
-the experimental assemblage analysed here contains `r ann$scars$n_scar`
+the experimental assemblage analyzed here contains `r ann$scars$n_scar`
 scars from `r ann$scars$n_spec` specimens, with a median of
 `r ann$scars$median` scars per specimen (range =
 `r ann$scars$min`–`r ann$scars$max`). Because the flip fraction is
@@ -572,9 +572,9 @@ recomputed the M-SPHARM power spectra over two one-dimensional sweeps
 through the main analysis setting: decimation target ∈ {10000, 20000,
 50000} faces (at production smoothing) and smoothing ∈ {0, 3, 6}
 iterations (at the production target), holding everything else fixed
-(the quadric-decimation algorithm, mesh normalisation, deterministic
+(the quadric-decimation algorithm, mesh normalization, deterministic
 area-weighted PCA alignment, the spherical sampling grid, $l_{\max}$ =
-20, normalisation, seeds).
+20, normalization, seeds).
 
 M-SPHARM power concentrates by $l$ = 8 (cumulative power 97.98–98.58%
 EXP, 97.75–98.59% SDG) and the cross-specimen CV stays below the 90%
@@ -740,7 +740,7 @@ factor tested anywhere in this section that has a material effect on a
 reported result, taking SP-SPHARM's pairwise resolution from
 `r aint("baseline", 0, "n_sig_05_med")` of 10 typology pairs to
 `r aint("polarity", 0.1, "n_sig_05_med")` at a 10% flip rate
-(@tbl-si-perturbation). Thus, the results are insensitive to the analytical parameter choices and to angular imprecision, but they depend on the proximal–distal judgements being largely correct.
+(@tbl-si-perturbation). Thus, the results are insensitive to the analytical parameter choices and to angular imprecision, but they depend on the proximal–distal judgments being largely correct.
 
 {{< pagebreak >}}
 

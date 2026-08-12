@@ -317,26 +317,38 @@ p_SPI_box <- ggplot(results_typed,
   ) +
   labs(x = NULL, y = "SPI")
 
+# Permutation count for every randomisation test in this script -- global
+# PERMANOVA, PERMDISP and the Holm-corrected pairwise contrasts alike. Declared
+# once so the three cannot drift apart: the pairwise p values reported inline in
+# the manuscript and the p values drawn in Figure 7d must come from the same
+# randomisation, and they did not while this was written out three times.
+# NOTE ON THE VALUE: at N_PERM = 999 the smallest attainable raw p is 1/1000, so
+# the smallest Holm-adjusted p across the 10 typology pairs is 0.01 -- several
+# pairs sit exactly on that floor and their true separation is stronger than the
+# printed value. The floor censors the low end only; it does not affect which
+# pairs fall on either side of 0.05.
+N_PERM <- 999
+
 # --- PERMANOVA + PERMDISP helper ---
 run_permanova <- function(X, group_vec, label) {
   df_grp <- data.frame(Typology = group_vec)
   d      <- dist(X, method = "euclidean")
-  
+
   set.seed(42)
   perm_global <- adonis2(X ~ Typology, data = df_grp,
-                         method = "euclidean", permutations = 9999)
+                         method = "euclidean", permutations = N_PERM)
   cat(sprintf("\n--- PERMANOVA : %s ---\n", label)); print(perm_global)
-  
+
   set.seed(42)
   disp      <- betadisper(d, group_vec)
-  disp_test <- permutest(disp, permutations = 9999)
+  disp_test <- permutest(disp, permutations = N_PERM)
   cat(sprintf("\n--- PERMDISP : %s ---\n", label)); print(disp_test)
-  
+
   disp_tukey <- TukeyHSD(disp)
   cat(sprintf("\n--- PERMDISP TukeyHSD : %s ---\n", label)); print(disp_tukey)
-  
+
   set.seed(42)
-  pairwise_res <- pairwise.perm.manova(d, group_vec, nperm = 9999, p.method = "holm")
+  pairwise_res <- pairwise.perm.manova(d, group_vec, nperm = N_PERM, p.method = "holm")
   cat(sprintf("\n--- Pairwise PERMANOVA (Holm) : %s ---\n", label))
   print(pairwise_res$p.value)
   
