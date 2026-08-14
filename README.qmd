@@ -16,7 +16,7 @@ knitr::opts_chunk$set(
 
 <samp>RESEARCH COMPENDIUM</samp>
 
-<h1><b><i>Characterizing Core Morphology and Scar Patterning within a
+<h1><b><i>Characterizing Core Morphology and Scar Patterning Within a
 Unified Spherical Harmonic Framework</i></b></h1>
 
 <hr />
@@ -34,7 +34,7 @@ CC0](https://img.shields.io/badge/License_(data)-CC0-green.svg)](http://creative
 
 This repository is the research compendium for the following paper:
 
-> Peiyuan Xiao, Hao Li, Ben Marwick (2025). *Characterizing core
+> Peiyuan Xiao, Hao Li, Ben Marwick (2026). *Characterizing core
 > morphology and scar patterning within a unified spherical harmonic
 > framework*. Submitted to *Journal of Archaeological Method and
 > Theory*.
