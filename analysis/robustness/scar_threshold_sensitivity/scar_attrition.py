@@ -1,49 +1,4 @@
-"""
-scar_attrition.py
-====================
-Scar-RETENTION / ATTRITION report for the scar minimum-size-threshold sensitivity
-analysis (SI add-on). Self-contained; reads only committed raw data and writes new
-files under analysis/scar_threshold_sensitivity/. Does NOT touch the main pipeline.
-
-WHY THIS IS A SEPARATE, PURE-PANDAS SCRIPT
-------------------------------------------
-The SP-SPHARM recompute (01_*.py) and the downstream statistics (02_*.R) require
-the project's pyshtools / R environment (Docker). The *attrition* question — how
-many scars and which specimens survive each minimum-size cutoff — depends only on
-scar geometry, so it is computed here with pandas alone and can be run on any
-machine. Its outputs feed both the SI summary and the scar-count figure in 02_*.R.
-
-WHAT IT DOES
-------------
-Scar size is the 3D Euclidean Start->End length (mm) — identical to the `len`
-that align_svd.R computes and rotation-invariant, so it is well defined before or
-after alignment. For each threshold T in THRESHOLDS it counts, per specimen and
-per assemblage, how many scars satisfy the SAME rule the 5 mm cutoff uses in the
-manuscript: strictly *larger than* T (`length > T`).
-
-KEY FACTS THIS REPORT MAKES EXPLICIT (see README.md for the full pipeline map)
------------------------------------------------------------------------------
-1. The production pipeline applies NO size filter in code (align_svd.R keeps every
-   scar with len > 1e-10). The committed directions_aligned_svd.csv therefore holds
-   all 1877 scars, down to ~2 mm, even though the manuscript states ">5 mm". The
-   true reproducibility anchor is thus T = 0 (all recorded scars), not 5 mm.
-2. The threshold is applied only to the EXPERIMENTAL (EXP) and ARCHAEOLOGICAL (SDG)
-   assemblages, whose scars are real measurements. The IDEAL (IM) cores are
-   synthetic: several carry fixed, non-physical scar lengths (IM_discoid and
-   IM_discoid_unifacial are uniformly ~2.1 mm; IM_Multiplatform ~29.8 mm), so any
-   >=5 mm cut would erase whole specimens. IM is therefore held at production
-   values throughout (its discriminability is unchanged by construction). This
-   script writes a small IM diagnostic that documents that decision.
-
-OUTPUTS (all NEW, under analysis/scar_threshold_sensitivity/)
-    scar_attrition_summary.csv      per assemblage x threshold (EXP, SDG)
-    scar_attrition_by_specimen.csv  per specimen x threshold (EXP, SDG, IM)
-    im_threshold_diagnostic.csv     why the threshold is not applied to IM cores
-    figures/fig_S_threshold_attrition.png   (best-effort; needs matplotlib)
-
-HOW TO RUN
-    python analysis/scar_threshold_sensitivity/scar_attrition.py
-"""
+"""scar_attrition.py"""
 
 from __future__ import annotations
 
@@ -57,13 +12,9 @@ import pandas as pd
 # ---------------------------------------------------------------------------
 # PARAMETERS  (keep THRESHOLDS in sync with 01_*.py and 02_*.R)
 # ---------------------------------------------------------------------------
-# Minimum-size cutoffs in mm. T = 0 is the production anchor (all recorded scars,
-# realised minimum ~2 mm); 5 and 10 are the reviewer-facing comparison. Scars are
-# kept when length > T (strict ">", matching the manuscript's "larger than 5 mm").
 THRESHOLDS = [0.0, 5.0, 10.0]
-MIN_VIABLE_SCARS = 3        # advisory floor (align_svd.R needs >=3 scars for its SVD plane)
+MIN_VIABLE_SCARS = 3
 
-# Assemblages the threshold is actually applied to (real measured scars).
 APPLIED_GROUPS = ["EXP", "SDG"]
 
 
@@ -83,8 +34,7 @@ RAW_XLSX  = PROJ_ROOT / "analysis" / "data" / "raw_data" / "Scar_orientation_dat
 OUT_DIR   = THIS_DIR
 FIG_DIR   = OUT_DIR / "figures"
 
-# Sheets 1-3 of the workbook, in the order align_svd.R binds them.
-SHEETS = {0: "IM", 1: "SDG", 2: "EXP"}   # sheet index -> assemblage tag
+SHEETS = {0: "IM", 1: "SDG", 2: "EXP"}
 
 
 def assemblage_of(idstr: str) -> str:
@@ -106,15 +56,13 @@ def load_scars() -> pd.DataFrame:
         raise FileNotFoundError(f"Raw scar data not found: {RAW_XLSX}")
     xl = pd.ExcelFile(RAW_XLSX)
     frames = []
-    for idx in SHEETS:                       # first three sheets only
+    for idx in SHEETS:
         df = xl.parse(xl.sheet_names[idx])
         if df.empty:
             continue
         frames.append(df)
     raw = pd.concat(frames, ignore_index=True)
 
-    # Trailing-space IDs exist in the workbook (e.g. "IM_Multiplatform "); strip so
-    # the assemblage tag and any downstream join are reliable.
     raw["ID"] = raw["ID"].astype(str).str.strip()
 
     need = {"Start_X", "Start_Y", "Start_Z", "End_X", "End_Y", "End_Z"}
@@ -139,7 +87,6 @@ def load_scars() -> pd.DataFrame:
 # ---------------------------------------------------------------------------
 def per_specimen_table(raw: pd.DataFrame) -> pd.DataFrame:
     rows = []
-    # one Typology per specimen (first non-empty)
     typ = (raw.groupby("ID")["Typology"]
               .agg(lambda s: next((x for x in s if x), ""))
               .to_dict())
@@ -190,13 +137,11 @@ def summary_table(per_spec: pd.DataFrame, groups) -> pd.DataFrame:
 def im_diagnostic(per_spec: pd.DataFrame) -> pd.DataFrame:
     """Document WHY the threshold is not applied to the synthetic ideal cores."""
     im = per_spec[per_spec["group"] == "IM"].copy()
-    # For each IM specimen, show retained counts at each threshold (naive application).
     wide = im.pivot_table(index=["ID", "n_total"], columns="threshold_mm",
                           values="n_retained", aggfunc="first").reset_index()
     wide.columns = ["ID", "n_total"] + [f"n_retained_gt{int(c)}mm" for c in THRESHOLDS]
-    # min/max length to expose fixed (synthetic) lengths
-    lmin = im.groupby("ID")["L_min_retained"].min()    # min over thresholds where defined
-    raw_len = per_spec  # not used further
+    lmin = im.groupby("ID")["L_min_retained"].min()
+    raw_len = per_spec
     wide["note"] = np.where(
         wide.filter(like="n_retained_gt5mm").iloc[:, 0] == 0,
         "ERASED at >5mm (synthetic uniform length)", "")
@@ -222,7 +167,6 @@ def make_figure(per_spec: pd.DataFrame) -> bool:
     for j, grp in enumerate(APPLIED_GROUPS):
         ax = axes[0][j]
         gs = per_spec[per_spec["group"] == grp]
-        # order specimens by baseline (T=0) retained count, descending
         base = (gs[gs["threshold_mm"] == 0.0]
                 .sort_values("n_retained", ascending=False)["ID"].tolist())
         rank = {idv: r for r, idv in enumerate(base)}
@@ -275,7 +219,6 @@ def main() -> None:
     print("Wrote scar_attrition_by_specimen.csv, scar_attrition_summary.csv, "
           "im_threshold_diagnostic.csv")
 
-    # console summary
     print("\nRetention summary (EXP, SDG):")
     with pd.option_context("display.width", 200, "display.max_columns", 20):
         print(summ.to_string(index=False))

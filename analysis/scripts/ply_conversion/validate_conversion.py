@@ -1,24 +1,3 @@
-"""Validate every (.stl, .ply) pair produced by convert_stl_to_ply.py.
-
-Every pair is checked; nothing is sampled. Writes conversion_validation.csv
-into the output directory.
-
-Pass criteria
--------------
-    faces_match           must be exactly True; any difference is an error
-    volume_diff           must be <= VOL_TOL
-    unique vertex set     sorted, compared point by point
-
-Vertex COUNT is recorded but never used to pass or fail: see the note in
-convert_stl_to_ply.py on why it does not change under process=False.
-
-In practice every quantity here comes out at exactly 0.0 rather than merely
-small, because both formats store coordinates as float32 and trimesh's PLY
-writer emits float32, making the round trip bit-exact.
-
-Run inside the project container:
-    /opt/conda/envs/spharm/bin/python analysis/scripts/ply_conversion/validate_conversion.py
-"""
 import os
 import sys
 import glob

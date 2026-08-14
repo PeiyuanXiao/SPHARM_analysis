@@ -1,59 +1,18 @@
 # bandwidth_sensitivity_stats.R
-# =============================================================================
-# Bandwidth (h) SENSITIVITY ANALYSIS for the SP-SPHARM pipeline — SI add-on.
-#
-# NEW, self-contained file. Does NOT modify the main pipeline, the cached
-# _targets store, the derived_data cache, or the manuscript. It only READS the
-# committed h=0.35 outputs (for a sanity check) and the per-h SP-SPHARM power
-# spectra produced by sweep_spharm_bandwidth.py, and WRITES new outputs
-# under analysis/robustness/bandwidth_sensitivity/.
-#
-# It re-uses the project's existing statistical machinery (the same package
-# functions the main pipeline calls — vegan::adonis2 / mantel, ade4::coinertia /
-# randtest, compositions::ilr) and replicates, verbatim, the data-prep steps from:
-#   - analysis/scripts/r_spharm/power_degree_selection.R   (degree selection)
-#   - analysis/scripts/r_validation/methods_comparison_IM.R (ideal-core distance)
-#   - analysis/scripts/r_spharm/spharm_analysis.R          (EXP PERMANOVA `perm_dir`)
-#   - analysis/scripts/r_statistics/exp_cores_statistics.R (EXP Mantel + RV)
-#   - analysis/scripts/r_statistics/SDG_cores_statistics.R (SDG Mantel + RV + PERMANOVA)
-# Source line numbers are cited next to each replicated block.
-#
-# For every h it evaluates whether the paper's conclusions hold:
-#   (a) order selection : SP-SPHARM power saturation (cumulative % at l=6) and the
-#                         degree at which cross-specimen CV first exceeds 100%.
-#   (b) ideal cores     : standardised-Euclidean distance structure (power_l1:l4)
-#                         and its correlation with the h=0.35 distance matrix.
-#   (c) experimental    : PERMANOVA core-type R2 / pseudo-F / p and the set of
-#                         significant pairwise distinctions (resolution profile).
-#   (d) decoupling      : global Mantel r and RV (EXP and SDG); plus the SDG
-#                         scar~core-type PERMANOVA.
-#
-# Outputs (all NEW):
-#   bandwidth_sensitivity_metrics.csv     tidy: one row per h
-#   bandwidth_orderselection_by_degree.csv per-degree cumulative power & CV per h
-#   figures/fig_S_bandwidth_orderselection.png
-#   figures/fig_S_bandwidth_IM_heatmaps.png
-#
-# HOW TO RUN (canonical environment, R 4.4 + renv):
-#   Rscript analysis/robustness/bandwidth_sensitivity/bandwidth_sensitivity_stats.R
-#   # or in RStudio: source(here::here("analysis/robustness/bandwidth_sensitivity/bandwidth_sensitivity_stats.R"))
-# =============================================================================
 
 suppressPackageStartupMessages({
   library(here)
   library(tidyverse)
   library(readxl)
-  library(vegan)          # adonis2, betadisper, mantel
-  library(ade4)           # dudi.pca, coinertia, randtest (RV)
-  library(compositions)   # ilr
-  library(RVAideMemoire)  # pairwise.perm.manova
+  library(vegan)
+  library(ade4)
+  library(compositions)
+  library(RVAideMemoire)
   library(patchwork)
-  library(grid)           # rounded-tile heatmap geom (matches main-text IM figure)
+  library(grid)
   library(conflicted)
 })
 
-# Resolve namespace clashes exactly as the main pipeline does (_targets.R).
-# compositions masks several base/stats generics (var, cor, dist, scale, ...).
 suppressMessages({
   conflicts_prefer(dplyr::filter, dplyr::select, dplyr::lag,
                    stats::sd, stats::var, stats::dist, stats::cor, stats::cov,
@@ -73,25 +32,19 @@ SPECTRA_DIR <- file.path(OUT_DIR, "spectra")
 FIG_DIR     <- file.path(OUT_DIR, "figures")
 dir.create(FIG_DIR, recursive = TRUE, showWarnings = FALSE)
 
-# Power-column conventions (identical to the main analysis).
-POWER_COLS_ALL   <- paste0("power_l", 1:20)  # order selection
-POWER_COLS_DIR   <- paste0("power_l", 1:6)   # scar (SP-SPHARM) descriptor
-POWER_COLS_MORPH <- paste0("power_l", 1:8)   # morphology (M-SPHARM) descriptor
-POWER_COLS_IM    <- paste0("power_l", 1:4)   # ideal-core discriminability (methods_comparison_IM.R:254)
+POWER_COLS_ALL   <- paste0("power_l", 1:20)
+POWER_COLS_DIR   <- paste0("power_l", 1:6)
+POWER_COLS_MORPH <- paste0("power_l", 1:8)
+POWER_COLS_IM    <- paste0("power_l", 1:4)
 
-# Typology handling (spharm_analysis.R:46-62)
 EXCLUDE_TYPES   <- c("Biface")
 LEVALLOIS_MERGE <- c("Levallois convergent", "Levallois laminar",
                      "Levallois preferential", "Levallois recurrent")
 TYPOLOGY_ORDER  <- c("Unidirectional", "Bidirectional", "Levallois",
                      "Discoid", "Multiplatform")
 
-# SDG metadata handling (SDG_cores_statistics.R:38-49)
 EXCLUDE_CORE_TYPES <- c("Handaxe", "Pick")
 
-# Committed h=0.35 reference values used for the sanity check (from the cached
-# derived_data CSVs — see DegreeSelection_stats_direction_EXP.csv, EXP_L1_results.csv,
-# L1_results.csv, L3_permanova.csv).
 REF <- list(
   exp_cumpower_l6 = 99.92, exp_cv_cross_l = 9,
   exp_mantel_r = -0.06126, exp_RV = 0.10095,
@@ -103,7 +56,6 @@ REF <- list(
 # Helpers — copied VERBATIM from the source scripts (attribution in comments)
 # =============================================================================
 
-# exp_cores_statistics.R:65-79 / SDG_cores_statistics.R:76-90
 replace_zeros <- function(X, delta = NULL) {
   X <- as.matrix(X)
   for (i in seq_len(nrow(X))) {
@@ -120,18 +72,14 @@ replace_zeros <- function(X, delta = NULL) {
   X
 }
 
-# ILR / Aitchison helper (exp/SDG_cores_statistics.R convention): drop zero-variance
-# columns, multiplicative zero replacement, then ilr into Euclidean space.
 make_ilr <- function(power_df) {
   X    <- as.matrix(power_df)
   keep <- apply(X, 2, function(v) sd(v, na.rm = TRUE) > 0)
   as.matrix(ilr(replace_zeros(X[, keep, drop = FALSE])))
 }
 
-# exp_cores_statistics.R:81-83
 extract_subdist <- function(D_full, ids) as.dist(as.matrix(D_full)[ids, ids])
 
-# SDG_cores_statistics.R:96-110
 safe_filter_groups <- function(meta_df, group_col, min_n = 3) {
   counts <- table(meta_df[[group_col]], useNA = "no")
   valid  <- names(counts[counts >= min_n])
@@ -139,7 +87,6 @@ safe_filter_groups <- function(meta_df, group_col, min_n = 3) {
   meta_df %>% filter(!is.na(.data[[group_col]]), .data[[group_col]] %in% valid)
 }
 
-# spharm_analysis.R:82-100
 filter_spharm <- function(df, power_cols, meta = NULL) {
   result <- df %>% select(ID, Typology, all_of(power_cols))
   if (!is.null(meta)) result <- left_join(result, meta, by = "ID")
@@ -152,7 +99,6 @@ split_by_group <- function(df) {
   )
 }
 
-# spharm_analysis.R:109-118 — z-score using the non-IM EXP reference mean/sd
 scale_features <- function(df_target, cols) {
   ref_mat  <- df_target %>% filter(!str_starts(ID, "IM_")) %>%
     select(all_of(cols)) %>% as.matrix()
@@ -162,7 +108,6 @@ scale_features <- function(df_target, cols) {
   base::scale(mat, center = col_mean, scale = col_sd)
 }
 
-# power_degree_selection.R:74-124 (trimmed to the quantities used here)
 compute_order_stats <- function(df, cols) {
   mat       <- df %>% select(all_of(cols)) %>% as.matrix()
   n_orders  <- length(cols)
@@ -175,8 +120,6 @@ compute_order_stats <- function(df, cols) {
   tibble(order = seq_len(n_orders), cv_pct = col_cvs, cumul_pct = cumul_pct)
 }
 
-# spharm_analysis.R:302-329 — EXP PERMANOVA on z-scored power (trimmed: keep the
-# global test + Holm pairwise; identical calls + seeds to the original).
 run_permanova_dir <- function(X, group_vec) {
   df_grp <- data.frame(Typology = group_vec)
   d      <- stats::dist(X, method = "euclidean")
@@ -199,12 +142,10 @@ cat("Loading h-independent inputs (morphology, metadata)...\n")
 SPHARM_morphology <- read_csv(
   here("analysis/data/derived_data/SPHARM_morphology.csv"), show_col_types = FALSE)
 
-# metric_data: the small frame joined by filter_spharm (spharm_analysis.R:71-73)
 metric_data <- read_xlsx(here("analysis/data/raw_data/SDG_core_metric.xlsx")) %>%
   select(ID, Layer, Core_type_Li_merged, Raw_mat) %>%
   mutate(Layer = as.factor(Layer), Raw_mat = as.factor(Raw_mat))
 
-# core_meta: the SDG join table (SDG_cores_statistics.R:171-177)
 core_meta <- read_excel(here("analysis/data/raw_data/SDG_core_metric.xlsx")) %>%
   select(ID = ID, raw_material = Raw_mat, core_type = Core_type_Li_merged) %>%
   mutate(across(everything(), ~ str_trim(as.character(.))))
@@ -215,15 +156,15 @@ core_meta <- read_excel(here("analysis/data/raw_data/SDG_core_metric.xlsx")) %>%
 
 # ---- (a) order selection: EXP & SDG -----------------------------------------
 order_selection_block <- function(dir_df) {
-  dir_exp <- dir_df %>% filter(str_starts(ID, "EXP"))                       # power_degree_selection.R:38
-  dir_sdg <- dir_df %>% filter(str_starts(ID, "SDG"), !str_starts(ID, "IM_")) # :42-43
+  dir_exp <- dir_df %>% filter(str_starts(ID, "EXP"))
+  dir_sdg <- dir_df %>% filter(str_starts(ID, "SDG"), !str_starts(ID, "IM_"))
   cols    <- intersect(POWER_COLS_ALL, colnames(dir_df))
   list(
     EXP = compute_order_stats(dir_exp, cols),
     SDG = compute_order_stats(dir_sdg, cols)
   )
 }
-first_cv_cross <- function(os) {                 # first degree with CV > 100%
+first_cv_cross <- function(os) {
   idx <- which(os$cv_pct > 100)
   if (length(idx) == 0) NA_integer_ else os$order[idx[1]]
 }
@@ -241,19 +182,18 @@ im_distance_matrix <- function(dir_df) {
 # ---- (c) EXP PERMANOVA `perm_dir` (spharm_analysis.R:106-138, 386-388) -------
 exp_permanova_block <- function(dir_df) {
   SPHARM_direction_filter <- filter_spharm(dir_df, POWER_COLS_DIR, metric_data)
-  df_exp_dir <- split_by_group(SPHARM_direction_filter)$exp_im            # :99-107
+  df_exp_dir <- split_by_group(SPHARM_direction_filter)$exp_im
   df_exp_only <- df_exp_dir %>%
-    filter(!str_starts(ID, "IM_"), !Typology %in% EXCLUDE_TYPES) %>%      # :125-133
+    filter(!str_starts(ID, "IM_"), !Typology %in% EXCLUDE_TYPES) %>%
     mutate(Typology = case_when(Typology %in% LEVALLOIS_MERGE ~ "Levallois",
                                 TRUE ~ Typology),
            Typology = droplevels(as.factor(Typology)))
   non_im_idx <- !str_starts(df_exp_dir$ID, "IM_") &
-    !df_exp_dir$Typology %in% EXCLUDE_TYPES                               # :135-136
+    !df_exp_dir$Typology %in% EXCLUDE_TYPES
   y_typology <- df_exp_only$Typology
-  ilr_dir <- make_ilr(df_exp_dir[non_im_idx, POWER_COLS_DIR])   # ILR / Aitchison (was z-score)
+  ilr_dir <- make_ilr(df_exp_dir[non_im_idx, POWER_COLS_DIR])
   pm <- run_permanova_dir(ilr_dir, y_typology)
 
-  # Resolution profile: which typology pairs are significant (Holm, p < 0.05).
   pv  <- pm$pairwise
   sig <- which(pv < 0.05, arr.ind = TRUE)
   sig_pairs <- if (nrow(sig) == 0) character(0) else
@@ -264,14 +204,13 @@ exp_permanova_block <- function(dir_df) {
        sig_pairs = paste(sort(sig_pairs), collapse = "; "))
 }
 
-# ---- (d) EXP decoupling: global Mantel + RV (exp_cores_statistics.R:157-403) -
 exp_decoupling_block <- function(dir_df) {
   morph_typ <- SPHARM_morphology %>%
-    left_join(dir_df %>% select(ID, Typology), by = "ID")                 # :147-148
+    left_join(dir_df %>% select(ID, Typology), by = "ID")
   dir_f   <- filter_spharm(dir_df,    POWER_COLS_DIR,   metric_data)
   morph_f <- filter_spharm(morph_typ, POWER_COLS_MORPH, metric_data)
 
-  df_scar_all  <- split_by_group(dir_f)$exp_im                            # :166-169
+  df_scar_all  <- split_by_group(dir_f)$exp_im
   df_morph_all <- split_by_group(morph_f)$exp_im
   common <- intersect(df_morph_all$ID, df_scar_all$ID)
   df_morph_all <- df_morph_all %>% filter(ID %in% common) %>% arrange(ID)
@@ -286,7 +225,7 @@ exp_decoupling_block <- function(dir_df) {
   morph_power <- morph_power[, sapply(morph_power, sd, na.rm = TRUE) > 0]
   scar_power  <- scar_power[,  sapply(scar_power,  sd, na.rm = TRUE) > 0]
 
-  morph_ilr <- as.data.frame(ilr(replace_zeros(as.matrix(morph_power))))  # :196-199
+  morph_ilr <- as.data.frame(ilr(replace_zeros(as.matrix(morph_power))))
   scar_ilr  <- as.data.frame(ilr(replace_zeros(as.matrix(scar_power))))
   rownames(morph_ilr) <- rownames(morph_power)
   rownames(scar_ilr)  <- rownames(scar_power)
@@ -294,36 +233,32 @@ exp_decoupling_block <- function(dir_df) {
   D_scar_all  <- stats::dist(scar_ilr)
 
   exp_ids <- rownames(morph_power)[!str_starts(rownames(morph_power), "IM_") &
-                                     rownames(morph_power) != "EXP43_Biface"]  # :204-206
+                                     rownames(morph_power) != "EXP43_Biface"]
   D_morph_exp <- extract_subdist(D_morph_all, exp_ids)
   D_scar_exp  <- extract_subdist(D_scar_all,  exp_ids)
 
-  # SI-wide convention (truncation_sensitivity.R:538): seed immediately before
-  # mantel() so every SI table reports the same permutation draw at the anchor.
   set.seed(42)
   mantel_global <- mantel(D_morph_exp, D_scar_exp, method = "spearman",
-                          permutations = 9999)                            # :259
+                          permutations = 9999)
 
   morph_ilr_exp <- morph_ilr[exp_ids, ]; scar_ilr_exp <- scar_ilr[exp_ids, ]
   colnames(morph_ilr_exp) <- paste0("M_ilr", seq_len(ncol(morph_ilr_exp)))
   colnames(scar_ilr_exp)  <- paste0("S_ilr", seq_len(ncol(scar_ilr_exp)))
   dudi_morph <- dudi.pca(morph_ilr_exp, center = TRUE, scale = TRUE,
-                         scannf = FALSE, nf = ncol(morph_ilr_exp))        # :335-338
+                         scannf = FALSE, nf = ncol(morph_ilr_exp))
   dudi_scar  <- dudi.pca(scar_ilr_exp,  center = TRUE, scale = TRUE,
                          scannf = FALSE, nf = ncol(scar_ilr_exp))
-  coin_exp <- coinertia(dudi_morph, dudi_scar, scannf = FALSE, nf = 2)    # :396
+  coin_exp <- coinertia(dudi_morph, dudi_scar, scannf = FALSE, nf = 2)
   set.seed(42)
-  rv_test <- randtest(coin_exp, nrepet = 9999)                           # :401-402
+  rv_test <- randtest(coin_exp, nrepet = 9999)
   list(mantel_r = mantel_global$statistic, mantel_p = mantel_global$signif,
        RV = coin_exp$RV, RV_p = rv_test$pvalue, n = length(exp_ids))
 }
 
-# ---- (d) SDG decoupling + PERMANOVA (SDG_cores_statistics.R:148-254,268-409,1515-1596)
 sdg_block <- function(dir_df) {
   morph_typ <- SPHARM_morphology %>%
     left_join(dir_df %>% select(ID, Typology), by = "ID")
-  # SDG script loads the UN-split filtered frames (full EXP+SDG+IM set):
-  df_scar_raw  <- filter_spharm(dir_df,    POWER_COLS_DIR,   metric_data)  # :148-152
+  df_scar_raw  <- filter_spharm(dir_df,    POWER_COLS_DIR,   metric_data)
   df_morph_raw <- filter_spharm(morph_typ, POWER_COLS_MORPH, metric_data)
   common <- intersect(df_morph_raw$ID, df_scar_raw$ID)
   df_morph_raw <- df_morph_raw %>% filter(ID %in% common) %>% arrange(ID)
@@ -338,7 +273,7 @@ sdg_block <- function(dir_df) {
   morph_power <- morph_power[, sapply(morph_power, sd, na.rm = TRUE) > 0]
   scar_power  <- scar_power[,  sapply(scar_power,  sd, na.rm = TRUE) > 0]
 
-  morph_ilr <- as.data.frame(ilr(replace_zeros(as.matrix(morph_power))))  # :195-198
+  morph_ilr <- as.data.frame(ilr(replace_zeros(as.matrix(morph_power))))
   scar_ilr  <- as.data.frame(ilr(replace_zeros(as.matrix(scar_power))))
   rownames(morph_ilr) <- rownames(morph_power)
   rownames(scar_ilr)  <- rownames(scar_power)
@@ -346,36 +281,33 @@ sdg_block <- function(dir_df) {
   D_scar_all  <- stats::dist(scar_ilr)
 
   arch_ids <- rownames(morph_power)[!str_starts(rownames(morph_power), "IM_") &
-                                      !str_starts(rownames(morph_power), "EXP")] # :204-205
+                                      !str_starts(rownames(morph_power), "EXP")]
   meta_arch <- tibble(ID = arch_ids) %>%
     mutate(layer = case_when(str_detect(ID, "L2") ~ "Layer 2",
                              str_detect(ID, "L3") ~ "Layer 3",
                              str_detect(ID, "L4") ~ "Layer 4",
                              TRUE ~ "Other")) %>%
     left_join(core_meta, by = "ID") %>%
-    filter(!core_type %in% EXCLUDE_CORE_TYPES | is.na(core_type))         # :229-230
+    filter(!core_type %in% EXCLUDE_CORE_TYPES | is.na(core_type))
   arch_ids <- meta_arch$ID
   D_morph_arch <- extract_subdist(D_morph_all, arch_ids)
   D_scar_arch  <- extract_subdist(D_scar_all,  arch_ids)
 
-  # SI-wide convention (truncation_sensitivity.R:538): seed immediately before
-  # mantel() so every SI table reports the same permutation draw at the anchor.
   set.seed(42)
   mantel_global <- mantel(D_morph_arch, D_scar_arch, method = "spearman",
-                          permutations = 9999)                            # :268
+                          permutations = 9999)
 
   morph_ilr_arch <- morph_ilr[arch_ids, ]; scar_ilr_arch <- scar_ilr[arch_ids, ]
   colnames(morph_ilr_arch) <- paste0("M_ilr", seq_len(ncol(morph_ilr_arch)))
   colnames(scar_ilr_arch)  <- paste0("S_ilr", seq_len(ncol(scar_ilr_arch)))
   dudi_morph <- dudi.pca(morph_ilr_arch, center = TRUE, scale = TRUE,
-                         scannf = FALSE, nf = ncol(morph_ilr_arch))       # :341-344
+                         scannf = FALSE, nf = ncol(morph_ilr_arch))
   dudi_scar  <- dudi.pca(scar_ilr_arch,  center = TRUE, scale = TRUE,
                          scannf = FALSE, nf = ncol(scar_ilr_arch))
-  coin_arch <- coinertia(dudi_morph, dudi_scar, scannf = FALSE, nf = 2)   # :403
+  coin_arch <- coinertia(dudi_morph, dudi_scar, scannf = FALSE, nf = 2)
   set.seed(42)
-  rv_test <- randtest(coin_arch, nrepet = 9999)                          # :408-409
+  rv_test <- randtest(coin_arch, nrepet = 9999)
 
-  # Level-3 PERMANOVA: scar ~ core type (SDG_cores_statistics.R:1515-1534,1593-1595)
   meta_coretype <- safe_filter_groups(meta_arch, "core_type")
   perm <- list(R2 = NA_real_, F = NA_real_, p = NA_real_)
   if (!is.null(meta_coretype)) {
@@ -395,8 +327,8 @@ sdg_block <- function(dir_df) {
 # Sweep over h
 # =============================================================================
 metrics      <- list()
-order_long   <- list()     # per-degree cumul/cv for the overlay figure
-im_matrices  <- list()     # IM distance matrices, for correlation + heatmaps
+order_long   <- list()
+im_matrices  <- list()
 
 for (h in H_GRID) {
   csv <- file.path(SPECTRA_DIR, sprintf("SPHARM_direction_h%.2f.csv", h))
@@ -505,8 +437,6 @@ cat("\nWrote bandwidth_sensitivity_metrics.csv and bandwidth_orderselection_by_d
 # Figures
 # =============================================================================
 
-# Facet-label maps and the rounded-tile geom, aligned with the manuscript
-# figures (power_degree_selection.R / methods_comparison_IM.R).
 DATASET_LABS <- c(EXP = "Experimentally knapped cores", SDG = "Sandinggai cores")
 
 GeomRoundTile <- ggplot2::ggproto(

@@ -1,131 +1,15 @@
 # truncation_sensitivity.R
-# =============================================================================
-# SPHERICAL-HARMONIC TRUNCATION-DEGREE SENSITIVITY SWEEP — SI add-on.
-# NEW, self-contained file. Does NOT modify the main pipeline, the cached
-# _targets store, the derived_data cache, or the manuscript. It only READS the
-# committed main outputs and WRITES new outputs under
-# analysis/robustness/truncation_sensitivity/.
-#
-# -----------------------------------------------------------------------------
-# WHY THIS RUN EXISTS
-# -----------------------------------------------------------------------------
-# Reviewer 1 questioned why SP-SPHARM is truncated at l = 6 rather than l = 5,
-# describing the choice as "apparently based on reaching ~99% cumulative energy".
-# That premise is incomplete: the Methods use TWO diagnostics, not one
-# (manuscript.qmd:208, @fig-degree-selection):
-#
-#   SP-SPHARM : power effectively exhausted by degree 6 (cumulative ~99.9%) AND
-#               higher degrees noise-dominated (CV > 100% from l ~ 9)
-#               -> retain l = 1-6
-#   M-SPHARM  : between-specimen signal reliable throughout (CV < 90%) BUT
-#               variance strongly concentrated low (~98% of power by degree 8)
-#               -> retain l = 1-8, because reliable-but-negligible high degrees
-#                  inflate dimensionality and dilute multivariate comparisons
-#
-# The two criteria point in DIFFERENT directions here. Power saturation alone
-# says "5 or 6 both suffice"; the CV criterion says the spectrum only becomes
-# noise-dominated at l ~ 9. Judged on CV, degree 6 is not aggressive — it is
-# conservative. The reviewer saw only the power curve.
-#
-# The purpose of this analysis is therefore NOT to change the truncation to
-# l = 5. It is to show that the conclusions are insensitive to the choice, which
-# is what licenses keeping the two-criterion design. The four existing ESM
-# parameter sweeps (vMF bandwidth, scar size threshold, mesh face count,
-# smoothing iterations) do not cover the truncation degree itself — that is the
-# one genuine gap, and this script fills it.
-#
-# -----------------------------------------------------------------------------
-# WHAT IS AND IS NOT RECOMPUTED
-# -----------------------------------------------------------------------------
-# power_l1..power_lN in SPHARM_direction.csv / SPHARM_morphology.csv are the
-# per-degree powers of an lmax = 20 expansion. Truncation is not a re-expansion:
-# it is "take the first K columns, treat them as a composition, ILR, test".
-# No spherical-harmonic coefficients are recomputed here. The pipeline's own
-# make_ilr() is used unchanged, so the anchor setting reproduces the main text
-# exactly rather than approximately.
-#
-# Closure note: the brief describes the chain as "take power_l1..lK -> renormalise
-# rows to sum 1 -> replace_zeros -> ilr". make_ilr() omits the explicit
-# renormalisation because compositions::ilr closes each row internally and the
-# ILR of a composition is invariant to a per-row constant. The one place where
-# renormalising first COULD matter is replace_zeros(), whose delta is a fraction
-# of the row's non-zero minimum and therefore not scale-equivariant. That
-# pathway is inert here: the sweep touches power_l1..l8 (SP) and power_l1..l10
-# (M), and the only zero anywhere in that block of the two CSVs is a single
-# direction specimen at power_l9 — a column no SP setting reaches. The script
-# verifies this at run time (ZERO-ENTRY AUDIT below) and reports the equivalence
-# numerically instead of assuming it, so the anchor stays byte-comparable with
-# the committed results.
-#
-# -----------------------------------------------------------------------------
-# SWEEP DESIGN — one block at a time
-# -----------------------------------------------------------------------------
-#   Scan A (vary SP, hold M at l = 1-8) : SP = 1-4, 1-5, 1-6*, 1-7, 1-8
-#   Scan B (vary M,  hold SP at l = 1-6): M  = 1-6, 1-7, 1-8*, 1-9, 1-10
-#   (* main analysis setting)
-# Varying both blocks at once would confound the two effects, because any joint
-# (MFA) weighting depends on the dimension ratio of the two blocks. Both scans
-# run on EXP (n = 58, 5 groups, 10 pairs) and SDG (n = 50, 6 groups, 15 pairs).
-#
-# -----------------------------------------------------------------------------
-# TWO TRAPS THAT WOULD MAKE THE TABLE READ WRONG
-# -----------------------------------------------------------------------------
-# TRAP 1 — dimension changes with truncation, so R2 is NOT comparable across
-#   rows. K parts give K-1 ILR coordinates, and PERMANOVA R2 is mechanically
-#   inflated in lower dimensions. n_coords is therefore a mandatory column, the
-#   report states the non-nestedness explicitly, and stability is adjudicated on
-#   resolved-pair counts, median -log10(p) and Mantel/RV — NEVER on R2. This
-#   script deliberately contains no "which truncation is better by R2" logic;
-#   such a conclusion would be an error.
-#
-# TRAP 2 — median -log10(p) is blind to the tail. The annotation-perturbation
-#   analysis already exposed this: SP-SPHARM held a continuous retention ratio of
-#   1.003 (no degradation at the median) while losing 2 of 8 resolved pairs,
-#   because the median tracks the middle-ranked pair and discrimination is lost
-#   at the margin. The continuous and count metrics are therefore reported
-#   TOGETHER and neither is allowed to overrule the other: the median measures a
-#   shift in overall margin, the counts measure whether marginal pairs survive.
-#
-# -----------------------------------------------------------------------------
-# SAMPLE DEFINITIONS (see [[sdg-sample-definition]] — do not "fix" these)
-# -----------------------------------------------------------------------------
-#   EXP PERMANOVA / decoupling : n = 58 (drop IM_, drop Biface, merge Levallois)
-#   SDG PERMANOVA (core type)  : n = 50, 6 groups. ALL archaeological specimens,
-#                                drop Handaxe/Pick, safe_filter_groups(min_n = 3).
-#                                NO layer filter — a Layer 3/4 restriction gives
-#                                n = 48 and does not reproduce the published
-#                                anchors. n = 49 is the separate LAYER test.
-#   SDG decoupling (Mantel/RV) : n = 51 — all archaeological specimens minus the
-#                                excluded core types, WITHOUT the min_n = 3 group
-#                                filter. This is the committed ESM recipe
-#                                (sdg_n = 51 in threshold/bandwidth/mesh tables)
-#                                and is what reproduces the published Mantel/RV.
-#                                It is deliberately not the PERMANOVA sample.
-# The sample definitions are imported as functions and evaluated ONCE; truncation
-# cannot change which specimens are included, only which columns are used.
-#
-# Outputs (all NEW, none overwriting any existing output):
-#   truncation_sensitivity_SP.csv        (scan A; EXP and SDG row groups)
-#   truncation_sensitivity_M.csv         (scan B; EXP and SDG row groups)
-#   truncation_sensitivity_summary.csv   (both scans, incl. n_coords)
-#   figures/fig_S_truncation_SP.png
-#   figures/fig_S_truncation_M.png
-#
-# HOW TO RUN (canonical environment, Docker spharm_analysis, R 4.4 + renv):
-#   Rscript analysis/robustness/truncation_sensitivity/truncation_sensitivity.R
-# =============================================================================
 
 suppressPackageStartupMessages({
   library(here)
   library(tidyverse)
   library(readxl)
-  library(vegan)          # adonis2, betadisper, permutest, mantel
-  library(ade4)           # dudi.pca, coinertia, randtest (RV)
-  library(compositions)   # ilr
+  library(vegan)
+  library(ade4)
+  library(compositions)
   library(conflicted)
 })
 
-# Same conflict resolution as the companion robustness scripts.
 suppressMessages({
   conflicts_prefer(dplyr::filter, dplyr::select, dplyr::lag,
                    stats::sd, stats::var, stats::dist, stats::cor, stats::cov,
@@ -138,33 +22,25 @@ set.seed(42)
 # PARAMETERS
 # =============================================================================
 SEED   <- 42
-N_PERM <- 9999          # global + pairwise PERMANOVA, PERMDISP, Mantel, RV
+N_PERM <- 9999
 ALPHA_1 <- 0.05
 ALPHA_2 <- 0.01
 
-# Requested sweep ranges; clamped at run time to the degrees actually present.
-SP_GRID_REQ <- 4:8      # scan A: SP truncation, M held at the anchor
-M_GRID_REQ  <- 6:10     # scan B: M truncation,  SP held at the anchor
+SP_GRID_REQ <- 4:8
+M_GRID_REQ  <- 6:10
 
-MAX_DEGREE_COL <- 20    # power_l1..power_l20 in the committed CSVs
+MAX_DEGREE_COL <- 20
 
 OUT_DIR <- here("analysis/robustness/truncation_sensitivity")
 FIG_DIR <- file.path(OUT_DIR, "figures")
 dir.create(FIG_DIR, recursive = TRUE, showWarnings = FALSE)
 
-# Repo palette (power_degree_selection.R:30, scar_threshold_sensitivity_stats.R).
 SERIES_COLORS <- c("Resolved pairs (Holm p < 0.05)" = "#4A6E8A",
                    "Resolved pairs (Holm p < 0.01)" = "#802520",
                    "Median -log10(raw p)"           = "#BA8530")
 ASM_LABEL <- c(EXP = "Experimentally knapped cores", SDG = "Sandinggai cores")
 
 # ---- Anchors -----------------------------------------------------------------
-# Committed values for the main analysis setting (SP l = 1-6, M l = 1-8).
-# R2 and pseudo-F are deterministic and CHECKED at 1e-3; permutation p-values
-# jitter by ~+/-0.005 and are reported only.
-# Sources: EXP  - joint_mfa_permanova_comparison.csv / threshold_sensitivity_metrics.csv
-#                 (threshold 0 row) / mesh_sensitivity_metrics.csv (20000/3 row)
-#          SDG  - L3_permanova.csv core-type rows (via joint_mfa_discrimination_SDG.R)
 REF <- list(
   EXP = list(n = 58L, n_groups = 5L,
              M_R2  = 0.12334, M_F  = 1.86418, M_nsig05  = 0L,
@@ -175,9 +51,6 @@ REF <- list(
 )
 REF_TOL <- 1e-3
 
-# Decoupling anchors (deterministic statistics; reported loudly on mismatch but
-# not part of the hard stop, which is reserved for the PERMANOVA anchors above).
-# Source: threshold_sensitivity_metrics.csv, threshold 0 row.
 REF_DECOUP <- list(
   EXP = list(n = 58L, mantel_r = -0.06126, RV = 0.10095),
   SDG = list(n = 51L, mantel_r =  0.01189, RV = 0.09066)
@@ -187,16 +60,6 @@ REF_DECOUP <- list(
 # Helper import — verbatim from the committed companion scripts, WITHOUT running
 # them
 # =============================================================================
-# Both companion scripts are top-to-bottom analyses; source()ing either would
-# re-run their PERMANOVAs and rewrite their outputs. Instead they are parsed and
-# ONLY the requested top-level `name <- ...` expressions are evaluated. That
-# gives byte-identical helper bodies and byte-identical constants with zero
-# computation and zero side effects, which is what makes the truncation sweep
-# directly comparable to the published results.
-#
-# NOTE: permanova_global / permanova_pairwise / permdisp resolve `seed = SEED`
-# and `nperm = N_PERM` from the global environment at call time, so SEED and
-# N_PERM must be (and are) defined above with the companion scripts' values.
 EXP_SCRIPT <- here("analysis/robustness/joint_mfa_discrimination",
                    "joint_mfa_discrimination_stats.R")
 SDG_SCRIPT <- here("analysis/robustness/joint_mfa_discrimination",
@@ -229,8 +92,6 @@ import_from <- function(path, funs = character(0), consts = character(0)) {
   got
 }
 
-# Statistical helpers + the EXP sample definition + the constants those functions
-# resolve at call time.
 EXP_FUNS <- c("replace_zeros", "make_ilr", "ilr_parts",
               "permanova_global", "permanova_pairwise", "permdisp", "pair_p",
               "filter_spharm", "split_by_group", "safe_filter_groups",
@@ -240,7 +101,6 @@ EXP_CONSTS <- c("POWER_COLS_DIR", "POWER_COLS_MORPH",
                 "EXCLUDE_CORE_TYPES", "FOCUS_PAIRS")
 got_exp <- import_from(EXP_SCRIPT, EXP_FUNS, EXP_CONSTS)
 
-# The SDG sample definition, verbatim, plus the flag its default argument reads.
 SDG_FUNS   <- c("build_blocks_sdg")
 SDG_CONSTS <- c("RESTRICT_LAYERS")
 got_sdg <- import_from(SDG_SCRIPT, SDG_FUNS, SDG_CONSTS)
@@ -250,13 +110,8 @@ cat(sprintf("Imported %d objects from %s:\n  %s\n",
 cat(sprintf("Imported %d objects from %s:\n  %s\n",
             length(got_sdg), basename(SDG_SCRIPT), paste(sort(got_sdg), collapse = ", ")))
 
-# build_blocks() defaults to `assemblage = ASSEMBLAGE`; it is always called with
-# an explicit argument below, but the symbol must exist for the default to be
-# printable/matchable.
 ASSEMBLAGE <- "EXP"
 
-# The anchor truncations are DERIVED from the imported column definitions, so a
-# change in the main analysis surfaces here instead of silently mis-anchoring.
 ANCHOR_SP <- length(POWER_COLS_DIR)
 ANCHOR_M  <- length(POWER_COLS_MORPH)
 stopifnot(identical(POWER_COLS_DIR,   paste0("power_l", seq_len(ANCHOR_SP))),
@@ -264,16 +119,12 @@ stopifnot(identical(POWER_COLS_DIR,   paste0("power_l", seq_len(ANCHOR_SP))),
 cat(sprintf("\nAnchor truncations from the imported constants: SP l = 1-%d | M l = 1-%d\n",
             ANCHOR_SP, ANCHOR_M))
 
-P_FLOOR <- 1 / (N_PERM + 1)   # permutation floor; -log10 caps at log10(N_PERM+1)
+P_FLOOR <- 1 / (N_PERM + 1)
 
 # ---- local helpers with no equivalent in the imported set --------------------
 
-# exp_cores_statistics.R:81-83
 extract_subdist <- function(D_full, ids) as.dist(as.matrix(D_full)[ids, ids])
 
-# power_degree_selection.R:81-124, trimmed to the quantities used here. Kept
-# local (not imported) because the degree-selection diagnostic lives in the main
-# pipeline, not in the joint-MFA companions.
 compute_degree_stats <- function(df, cols) {
   mat        <- df %>% select(all_of(cols)) %>% as.matrix()
   col_means  <- colMeans(mat, na.rm = TRUE)
@@ -296,7 +147,7 @@ SPHARM_direction  <- read_csv(
   here("analysis/data/derived_data/SPHARM_direction.csv"),  show_col_types = FALSE)
 SPHARM_morphology <- read_csv(
   here("analysis/data/derived_data/SPHARM_morphology.csv"), show_col_types = FALSE)
-SPHARM_morphology <- SPHARM_morphology %>%                    # spharm_analysis.R:80-81
+SPHARM_morphology <- SPHARM_morphology %>%
   left_join(SPHARM_direction %>% select(ID, Typology), by = "ID")
 
 metric_data <- read_xlsx(here("analysis/data/raw_data/SDG_core_metric.xlsx")) %>%
@@ -316,8 +167,6 @@ cat(strrep("=", 70), "\n", sep = "")
 available_lmax <- function(df) {
   have <- paste0("power_l", 1:MAX_DEGREE_COL) %in% colnames(df)
   if (!have[1]) return(0L)
-  # highest K such that power_l1..power_lK are ALL present (never extrapolate
-  # across a hole in the sequence)
   as.integer(max(which(cumsum(!have) == 0)))
 }
 lmax_dir   <- available_lmax(SPHARM_direction)
@@ -341,7 +190,7 @@ cat(sprintf("  Scan A (SP): %s   [anchor 1-%d]\n",
 cat(sprintf("  Scan B (M) : %s   [anchor 1-%d]\n",
             paste(sprintf("1-%d", M_GRID), collapse = ", "), ANCHOR_M))
 
-# ---- ZERO-ENTRY AUDIT (see the closure note in the header) ------------------
+# ---- ZERO-ENTRY AUDIT --------------------------------------------------------
 zero_audit <- function(df, K, label) {
   cols <- power_cols_upto(K)
   X <- as.matrix(df[, cols, drop = FALSE])
@@ -356,11 +205,6 @@ nz_sp <- zero_audit(SPHARM_direction,  max(SP_GRID), "SPHARM_direction (SP sweep
 nz_m  <- zero_audit(SPHARM_morphology, max(M_GRID),  "SPHARM_morphology (M sweep)")
 CLOSURE_INERT <- (nz_sp == 0L && nz_m == 0L)
 
-# Closure equivalence, measured rather than asserted: ILR of the raw truncated
-# powers vs ILR of the same rows renormalised to sum 1 (the brief's formulation).
-# Reported at the widest truncation of each block, where any drift would be
-# largest. Anything above ~1e-12 would mean the two formulations are NOT
-# interchangeable and the anchor comparison would need rethinking.
 closure_dev <- function(df, K) {
   X  <- as.matrix(df[, power_cols_upto(K), drop = FALSE])
   Zr <- make_ilr(X)
@@ -382,8 +226,8 @@ cat("\n", strrep("=", 70), "\n", sep = "")
 cat("SAMPLE DEFINITIONS (imported verbatim, evaluated once)\n")
 cat(strrep("=", 70), "\n", sep = "")
 
-blocks_exp <- build_blocks("EXP")       # joint_mfa_discrimination_stats.R
-blocks_sdg <- build_blocks_sdg()        # joint_mfa_discrimination_SDG.R
+blocks_exp <- build_blocks("EXP")
+blocks_sdg <- build_blocks_sdg()
 
 SAMPLES <- list(
   EXP = list(ids = blocks_exp$ids, group = blocks_exp$group),
@@ -403,9 +247,6 @@ if (SAMPLES$EXP$n != REF$EXP$n || SAMPLES$SDG$n != REF$SDG$n)
   stop(sprintf("Sample sizes (EXP %d, SDG %d) do not match the published recipe (%d, %d). Stopping.",
                SAMPLES$EXP$n, SAMPLES$SDG$n, REF$EXP$n, REF$SDG$n))
 
-# Truncated power matrix for one assemblage / block / degree. Re-derived from the
-# source CSVs by ID match rather than carried through build_blocks(), so a single
-# code path serves every truncation.
 power_of <- function(asm, block, K) {
   df  <- if (identical(block, "SP")) SPHARM_direction else SPHARM_morphology
   idx <- match(SAMPLES[[asm]]$ids, df$ID)
@@ -414,8 +255,6 @@ power_of <- function(asm, block, K) {
   df[idx, power_cols_upto(K), drop = FALSE]
 }
 
-# Prove the re-extraction path is identical to what build_blocks() returned at
-# the anchor, so nothing downstream depends on an unverified alignment.
 chk_align <- function(asm, block, K, ref_df) {
   got <- as.matrix(power_of(asm, block, K))
   ref <- as.matrix(ref_df)
@@ -435,10 +274,6 @@ cat("\n  Re-extraction check: anchor power matrices identical to build_blocks() 
 # =============================================================================
 # (iii) PER-DEGREE DIAGNOSTICS (cumulative power + across-specimen CV)
 # =============================================================================
-# Computed on the canonical degree-selection specimen sets (power_degree_selection.R:44-52),
-# which are NOT the PERMANOVA samples: EXP = every ID starting "EXP" (the Biface
-# included), SDG = every ID starting "SDG". They are reported as-is because they
-# are the sets the Methods statement describes.
 cat("\n", strrep("=", 70), "\n", sep = "")
 cat("PER-DEGREE DIAGNOSTICS (cumulative power / across-specimen CV)\n")
 cat(strrep("=", 70), "\n", sep = "")
@@ -455,8 +290,6 @@ for (a in names(deg_sets))
   cat(sprintf("  %s degree-selection sets: SP n = %d, M n = %d\n",
               a, nrow(deg_sets[[a]]$SP), nrow(deg_sets[[a]]$M)))
 
-# Cross-check against the committed DegreeSelection_stats_*.csv (rounded there to
-# 2 dp for CV and 3 dp for cumulative power).
 deg_ref_file <- function(block, asm)
   here(sprintf("analysis/data/derived_data/DegreeSelection_stats_%s_%s.csv",
                ifelse(block == "SP", "direction", "morphology"), asm))
@@ -487,16 +320,11 @@ cv_argmax<- function(a, b) as.integer(DEG[[a]][[b]]$degree[which.max(DEG[[a]][[b
 # =============================================================================
 # (iv) PER-SETTING EVALUATION (memoised: each block/degree computed once)
 # =============================================================================
-# Each (assemblage, block, degree) combination is computed once and reused: the
-# two scans share the anchor configuration, and the fixed block is identical at
-# every step of a scan. Memoisation cannot change any value — every estimator
-# seeds itself — it only avoids recomputing them.
 MEMO_BLOCK  <- new.env(parent = emptyenv())
 MEMO_DECOUP <- new.env(parent = emptyenv())
 memo_get <- function(env, key)
   if (exists(key, envir = env, inherits = FALSE)) get(key, envir = env) else NULL
 
-# Single-block PERMANOVA + PERMDISP at one truncation.
 eval_block <- function(asm, block, K) {
   key <- sprintf("%s|%s|%d", asm, block, K)
   hit <- memo_get(MEMO_BLOCK, key); if (!is.null(hit)) return(hit)
@@ -523,18 +351,9 @@ eval_block <- function(asm, block, K) {
 }
 
 # ---- decoupling: Mantel + RV between the two blocks --------------------------
-# Both follow the committed ESM recipe (scar_threshold_sensitivity_stats.R:269-386,
-# itself from exp/SDG_cores_statistics.R): ILR both blocks on the frame the source
-# script uses, then subset to the decoupling sample. The two assemblages keep
-# their own frames deliberately — that is what reproduces the published values.
 rv_and_mantel <- function(Zm, Zs, ids) {
   Dm <- extract_subdist(stats::dist(Zm), ids)
   Ds <- extract_subdist(stats::dist(Zs), ids)
-  # The committed block does not re-seed immediately before mantel(); seeding here
-  # makes this sweep order-independent (memoisation must not be able to shift a
-  # result). Only the permutation p is affected, and only within its ~+/-0.005
-  # Monte-Carlo jitter — the Mantel r and the RV that the anchors check are
-  # deterministic either way.
   set.seed(SEED)
   mt <- vegan::mantel(Dm, Ds, method = "spearman", permutations = N_PERM)
   Am <- as.data.frame(Zm[ids, , drop = FALSE])
@@ -559,7 +378,7 @@ decoup_exp <- function(K_M, K_SP) {
   m_all <- m_all %>% filter(ID %in% common) %>% arrange(ID)
   Zm <- make_ilr(m_all %>% select(all_of(cM))); rownames(Zm) <- m_all$ID
   Zs <- make_ilr(d_all %>% select(all_of(cS))); rownames(Zs) <- d_all$ID
-  rv_and_mantel(Zm, Zs, SAMPLES$EXP$ids)      # 58: non-IM_, non-Biface
+  rv_and_mantel(Zm, Zs, SAMPLES$EXP$ids)
 }
 
 decoup_sdg <- function(K_M, K_SP) {
@@ -571,9 +390,6 @@ decoup_sdg <- function(K_M, K_SP) {
   m_all <- m_all %>% filter(ID %in% common) %>% arrange(ID)
   Zm <- make_ilr(m_all %>% select(all_of(cM))); rownames(Zm) <- m_all$ID
   Zs <- make_ilr(d_all %>% select(all_of(cS))); rownames(Zs) <- d_all$ID
-  # 51: all archaeological specimens minus the excluded core types, WITHOUT the
-  # min_n = 3 group filter (this is the committed decoupling sample, not the
-  # n = 50 PERMANOVA sample).
   arch <- tibble(ID = rownames(Zm)) %>%
     filter(!str_starts(ID, "IM_"), !str_starts(ID, "EXP")) %>%
     left_join(core_meta %>% select(ID, core_type), by = "ID") %>%
@@ -599,8 +415,6 @@ sweep_row <- function(scan, asm, K_SP, K_M) {
   varied  <- if (identical(scan, "SP")) "SP-SPHARM" else "M-SPHARM"
   vb      <- if (identical(scan, "SP")) bSP else bM
   varied_l<- if (identical(scan, "SP")) K_SP else K_M
-  # The two EXP pairs SP-SPHARM alone cannot separate (manuscript.qmd:319) —
-  # the tail that a median statistic cannot see (TRAP 2).
   fp <- if (identical(asm, "EXP"))
     map_dbl(FOCUS_PAIRS, ~ pair_p(vb$pw, .x, col = "p_holm")) else rep(NA_real_, 2)
 
@@ -610,7 +424,7 @@ sweep_row <- function(scan, asm, K_SP, K_M) {
     setting = sprintf("%s l = 1-%d", varied, varied_l),
     lmax_SP = K_SP, lmax_M = K_M,
     is_anchor = (K_SP == ANCHOR_SP && K_M == ANCHOR_M),
-    n_coords = vb$n_coords,                       # varied block (TRAP 1 column)
+    n_coords = vb$n_coords,
     n_permanova = s$n, n_groups = s$n_grp, n_pairs = s$n_pairs,
 
     SP_n_parts = bSP$n_parts, SP_n_coords = bSP$n_coords,
@@ -660,9 +474,6 @@ scanB <- map_dfr(c("EXP", "SDG"), function(a) {
 })
 summary_tbl <- bind_rows(scanA, scanB)
 
-# Internal consistency: the anchor configuration appears in both scans and must
-# be numerically identical (memoisation guarantees it; the check guards against a
-# future refactor that breaks the shared path).
 anchor_rows <- summary_tbl %>% filter(is_anchor)
 consistency_ok <- anchor_rows %>%
   group_by(assemblage) %>%
@@ -687,10 +498,6 @@ cat(sprintf("\nWrote truncation_sensitivity_SP.csv (%d rows), truncation_sensiti
 # =============================================================================
 # (vii) FIGURES
 # =============================================================================
-# Resolved-pair counts (alpha 0.05 and 0.01) and the continuous median -log10(raw p),
-# per assemblage, with the main analysis setting marked. R2 is deliberately NOT
-# plotted: it is not comparable across truncations (TRAP 1) and a curve invites
-# exactly the comparison the design forbids. It stays available as a CSV column.
 make_trunc_fig <- function(df, anchor_l, xlab) {
   key <- df %>% transmute(
     assemblage = factor(assemblage, levels = c("EXP", "SDG")),
@@ -714,10 +521,6 @@ make_trunc_fig <- function(df, anchor_l, xlab) {
     mutate(metric = factor("Resolved pairs (of all pairs)",
                            levels = levels(long$metric)))
 
-  # The two count series coincide exactly wherever a block resolves nothing (both
-  # sit on 0). Drawn as two solid lines the upper one would hide the lower and the
-  # panel would read as a missing series, so alpha = 0.01 is dashed with an open
-  # marker: where the series coincide both remain visible, and no value is nudged.
   ggplot(long, aes(l, value, color = series, group = series)) +
     geom_hline(data = ceil, aes(yintercept = n_pairs), inherit.aes = FALSE,
                linetype = "dashed", color = "grey60", linewidth = 0.3) +
@@ -772,7 +575,7 @@ check <- function(name, got, expect, tol, deterministic = TRUE) {
               ifelse(ok, "OK", ifelse(deterministic, "<-- MISMATCH", "<-- CHECK"))))
 }
 
-A <- summary_tbl %>% filter(is_anchor, scan == "SP")   # one row per assemblage
+A <- summary_tbl %>% filter(is_anchor, scan == "SP")
 for (a in c("EXP", "SDG")) {
   r <- A %>% filter(assemblage == a)
   R <- REF[[a]]
@@ -834,9 +637,6 @@ scan_table <- function(df, block) {
     disp_p = round(.data[[paste0(v, "_permdisp_p")]], 3))
 }
 
-# Contiguous run of truncations around the anchor over which every count-based and
-# decoupling verdict is unchanged. Deliberately ignores R2 (TRAP 1) and does not
-# threshold the median (TRAP 2).
 stable_window <- function(df, block) {
   v <- if (block == "SP") "SP" else "M"
   d <- df %>% arrange(varied_lmax)
@@ -853,7 +653,6 @@ stable_window <- function(df, block) {
   c(lo = d$varied_lmax[lo], hi = d$varied_lmax[hi])
 }
 
-# Focused comparison of two truncations for one assemblage.
 compare_two <- function(df, block, l_a, l_b, asm) {
   v <- if (block == "SP") "SP" else "M"
   ra <- df %>% filter(assemblage == asm, varied_lmax == l_a)
@@ -905,10 +704,6 @@ report_scan <- function(df, block, anchor_l, focus_lo, label) {
   cat("       pairs survive. Neither overrules the other.\n\n")
   print(as.data.frame(scan_table(df, block)), row.names = FALSE)
 
-  # Which pairs move, not just how many. A count can hold steady while the
-  # identity of the resolved set churns, and a count that drops by one says
-  # nothing about WHICH comparison was lost — this is the tail that the median
-  # cannot see (TRAP 2), so it is named explicitly.
   cat("\n  -- Identity of the pairs that move relative to the anchor (Holm p < 0.05) --\n")
   v <- if (block == "SP") "SP" else "M"
   for (a in c("EXP", "SDG")) {
@@ -950,10 +745,6 @@ report_scan <- function(df, block, anchor_l, focus_lo, label) {
     cat("    This is a null result: it says the choice does not affect the conclusions.\n")
     cat("    It does NOT say degree ", anchor_l, " is better than degree ", focus_lo, ".\n", sep = "")
   }
-  # The stable window is the contiguous run of truncations, containing the
-  # anchor, over which every count-based and decoupling verdict is unchanged.
-  # The anchor is inside it by construction; what the window reports is HOW FAR
-  # the setting can be moved before something changes, and in which direction.
   wins <- list()
   cat("\n  Stable window (contiguous run around the anchor with identical resolved-pair\n")
   cat("  counts at both alpha levels, same side of 0.05 globally, and unchanged Mantel/RV verdicts):\n")
@@ -975,7 +766,6 @@ report_scan <- function(df, block, anchor_l, focus_lo, label) {
 resA <- report_scan(scanA, "SP", ANCHOR_SP, ANCHOR_SP - 1,
                     sprintf("(1) SCAN A — SP-SPHARM truncation (M held at l = 1-%d)", ANCHOR_M))
 
-# The two EXP pairs SP-SPHARM alone cannot separate: the tail the median hides.
 cat("\n  -- Tail check (TRAP 2): the two EXP pairs SP-SPHARM alone never resolves --\n")
 print(as.data.frame(
   scanA %>% filter(assemblage == "EXP") %>%
@@ -1050,9 +840,6 @@ cat("(4) SUMMARY\n")
 cat(strrep("=", 70), "\n", sep = "")
 wA <- resA$windows
 wB <- resB$windows
-# A stable window always contains the anchor, so "is the anchor stable?" is not
-# the question — the questions are how wide the window is and whether the
-# alternative the reviewer proposed falls inside it.
 covers <- function(w, l) unname(l >= w["lo"] && l <= w["hi"])
 alt_SP <- ANCHOR_SP - 1
 alt_M  <- ANCHOR_M  - 1

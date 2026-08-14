@@ -1,46 +1,4 @@
-"""
-sweep_spharm_bandwidth.py
-============================
-Bandwidth (h) SENSITIVITY SWEEP for the SP-SPHARM (scar-patterning) pipeline.
-
-This is a NEW, self-contained add-on for the paper's Supplementary Information.
-It does NOT modify the main pipeline, the cached results, or the manuscript.
-It RE-USES the existing KDE / spherical-harmonic functions unchanged
-(`batch_spherical_kde`, `kde_vector_to_dh_grid`, `compute_spharm_features`);
-it only sweeps the von Mises-Fisher bandwidth h and writes the resulting
-SP-SPHARM power spectra to a separate folder.
-
-What it does, for each h in H_GRID:
-    directions_aligned_svd.csv
-        -> batch_spherical_kde(bandwidth = h)            (72 x 36 sphere grid)
-        -> kde_vector_to_dh_grid(dh_size = 64)           (64 x 128 Driscoll-Healy)
-        -> compute_spharm_features(lmax = 20)            (pyshtools expand + power)
-        -> spectra/SPHARM_direction_h{h}.csv             (ID, Typology, n_scars,
-                                                          power_l0 .. power_l20)
-
-Only the SCAR (SP-SPHARM) side depends on h. Morphology (M-SPHARM) is
-independent of h and is NOT recomputed here.
-
-SANITY CHECK: at h = 0.35 the recomputed power spectrum must reproduce the
-cached production file `derived_data/SPHARM_direction.csv`. The maximum absolute
-per-degree difference is reported in `sweep_manifest.csv` and printed; a large
-value (> 1e-6) is flagged loudly so it can be investigated (e.g. a BLAS / library
-mismatch — see analysis/scripts/environment.yml, which pins the numerical core).
-
-HOW TO RUN (canonical environment):
-    # inside the project's conda `spharm` env (same one the main pipeline uses):
-    python analysis/bandwidth_sensitivity/sweep_spharm_bandwidth.py
-
-    # or via the Docker image, mirroring _targets.R's PYTHONPATH:
-    #   PYTHONPATH=analysis/scripts python analysis/bandwidth_sensitivity/sweep_spharm_bandwidth.py
-
-Outputs (all NEW, under analysis/bandwidth_sensitivity/):
-    spectra/SPHARM_direction_h0.20.csv ... SPHARM_direction_h0.50.csv
-    sweep_manifest.csv      (one row per h: kappa, n_specimens, max|diff| vs cache)
-
-Then run bandwidth_sensitivity_stats.R to evaluate stability of the
-downstream conclusions across h.
-"""
+"""sweep_spharm_bandwidth.py"""
 
 # ---------------------------------------------------------------------------
 # Standard library
@@ -53,32 +11,22 @@ from pathlib import Path
 # ---------------------------------------------------------------------------
 # PARAMETERS  (edit here; coarsen H_GRID if the run is expensive)
 # ---------------------------------------------------------------------------
-# h grid. MUST include H_REF (0.35) for the sanity check.
-# kappa = 1 / h^2, so this h range corresponds to kappa in [4.0, 25.0].
 H_GRID = [0.20, 0.25, 0.30, 0.35, 0.40, 0.45, 0.50]
-H_REF  = 0.35                       # the value used in the main analysis
+H_REF  = 0.35
 
-# Fixed pipeline settings — kept IDENTICAL to kde_to_spharm_main.py so that the
-# only thing that changes across the sweep is h.
-N_BEARING = 72                      # KDE sphere-grid azimuth divisions
-N_PLUNGE  = 36                      # KDE sphere-grid elevation divisions
-LMAX      = 20                      # max spherical-harmonic degree
-DH_SIZE   = 64                      # Driscoll-Healy latitude points (longitude = 2*DH_SIZE)
-ALIGN_SRC = "svd"                   # production alignment (matches the main pipeline)
+N_BEARING = 72
+N_PLUNGE  = 36
+LMAX      = 20
+DH_SIZE   = 64
+ALIGN_SRC = "svd"
 
-ROUND_DECIMALS = 8                  # match run_spharm() rounding in kde_to_spharm_main.py
+ROUND_DECIMALS = 8
 
 
-# ---------------------------------------------------------------------------
-# Locate the project root (the folder containing _targets.R) and wire up paths
-# so the existing SPHARM_modules can be imported exactly as the main pipeline
-# imports them.
-# ---------------------------------------------------------------------------
 def find_project_root(start: Path) -> Path:
     for p in [start, *start.parents]:
         if (p / "_targets.R").exists():
             return p
-    # Fallback: this script lives at <root>/analysis/bandwidth_sensitivity/
     return start.parents[2]
 
 
@@ -90,9 +38,8 @@ DERIVED_DIR  = PROJ_ROOT / "analysis" / "data" / "derived_data"
 OUT_DIR      = THIS_DIR
 SPECTRA_DIR  = OUT_DIR / "spectra"
 INPUT_CSV    = DERIVED_DIR / f"directions_aligned_{ALIGN_SRC}.csv"
-CACHE_CSV    = DERIVED_DIR / "SPHARM_direction.csv"     # cached h=0.35 production file
+CACHE_CSV    = DERIVED_DIR / "SPHARM_direction.csv"
 
-# Make the existing modules importable (mirrors _targets.R PYTHONPATH).
 sys.path.insert(0, str(SCRIPTS_DIR))
 
 # ---------------------------------------------------------------------------
@@ -107,8 +54,6 @@ from SPHARM_modules.kde_to_spharm import (
     compute_spharm_features,
 )
 
-# Determinism: the KDE -> SH -> power path has no stochastic component, but we
-# seed anyway so the sweep is bit-for-bit identical to a single main-pipeline run.
 np.random.seed(42)
 
 POWER_COLS = [f"power_l{l}" for l in range(LMAX + 1)]
@@ -156,7 +101,7 @@ def spectra_for_bandwidth(df: pd.DataFrame, h: float) -> pd.DataFrame:
             for l, p in enumerate(feats["norm_power"]):
                 row[f"power_l{l}"] = round(float(p), ROUND_DECIMALS)
             rows.append(row)
-        except Exception as e:                       # match run_spharm() robustness
+        except Exception as e:
             print(f"    [warn] {specimen_id}: {e}")
             rows.append({"ID": specimen_id, "Typology": typology, "n_scars": n_scars})
 
@@ -241,7 +186,6 @@ def main() -> None:
     pd.DataFrame(manifest).to_csv(OUT_DIR / "sweep_manifest.csv", index=False)
     print(f"Wrote {(OUT_DIR / 'sweep_manifest.csv').relative_to(PROJ_ROOT)}")
 
-    # Record exact versions used (reproducibility).
     try:
         import scipy
         scipy_v = scipy.__version__

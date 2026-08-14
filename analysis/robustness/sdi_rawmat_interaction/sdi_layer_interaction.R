@@ -1,77 +1,4 @@
 # sdi_layer_interaction.R
-# =============================================================================
-# DOES THE REDUCTION-INTENSITY (SDI) GRADIENT RUN DIFFERENTLY BETWEEN LAYERS?
-# — the layer twin of sdi_rawmat_interaction.R, same folder, same machinery.
-#
-# NEW, self-contained. Does NOT modify the main pipeline, the cached _targets
-# store, derived_data, the manuscript, sdi_gradient.R, or its raw-material
-# sibling in this folder. Writes only sdi_layer_interaction.* here.
-#
-# THE QUESTION
-#   sdi_gradient.R found no SDI main effect once raw material and core type were
-#   removed (R2 = 0.017-0.027, p = 0.19-0.41). The raw-material twin then removed
-#   the "opposite slopes in the two materials cancel" explanation. This script
-#   asks the same question of stratigraphy: do Layer 3 and Layer 4 cores follow
-#   different techno-morphological trajectories along the reduction gradient?
-#   A layer-specific gradient would mean the two layers reached similar end forms
-#   by different reduction paths — a diachronic reading of the same reviewer-4
-#   question about what continuous quantification buys.
-#
-# TWO DIFFERENCES FROM THE RAW-MATERIAL TWIN, BOTH FORCED BY THE DATA
-#
-#   1. LAYER 2 IS DROPPED. It holds 2 cores in this sample, which cannot support
-#      a slope. This matches both the repo precedent (sdi_gradient.R's layer
-#      facets use Layers 3 and 4 only) and the published Table 2 layer test,
-#      where safe_filter_groups(min_n = 3) drops Layer 2. The analysed factor is
-#      therefore 2-level, exactly parallel to raw material.
-#
-#   2. A SECOND MODEL CONTROLS FOR RAW MATERIAL. Layer and raw material are not
-#      independent here (Layer 3 is 17% sandstone, Layer 4 is 30%), and raw
-#      material is itself strongly confounded with SDI (4x median difference).
-#      A Layer:SDI signal could therefore be a Raw_mat:SDI signal in disguise.
-#      Model 2 removes raw material first so that the layer interaction is an
-#      increment over it:
-#        M1  D ~ Layer + core_type + SDI + Layer:SDI          (direct analogue)
-#        M2  D ~ Raw_mat + Layer + core_type + SDI + Layer:SDI (material-controlled)
-#      M1 is the analogue of the raw-material twin and is reported first; M2 is
-#      what decides whether any M1 signal is about stratigraphy at all. Neither
-#      is chosen on the outcome; both are always reported.
-#
-# Term order is FIXED in both models. Sequential (Type I) SS throughout: the
-# question is what the interaction ADDS after the grouping factors and the SDI
-# main effect, not what it would explain alone.
-#
-# TWO PERMUTATION SCHEMES, as in the twin and for the same reason
-#   (i)  free permutation
-#   (ii) restricted WITHIN layer, how(blocks = Layer)
-#   Free permutation dissolves the layer/SDI association that exists in the data
-#   and can understate p; restricted permutation holds layer fixed and tests
-#   "given layer, does the SDI effect differ", which is the question asked. Both
-#   are reported; where they disagree the RESTRICTED result is the headline.
-#   Under blocking, Layer is constant within blocks and its own p is not
-#   interpretable — expected, not a failure.
-#
-# FOUR VERSIONS, as in the twin
-#   A raw SDI full | B log(SDI) full | C raw SDI common support | D log common support
-#   Unlike raw material, the two layers' SDI ranges overlap almost completely, so
-#   C and D are expected to retain nearly the whole sample and to be far less
-#   informative as an extrapolation check than they were for raw material. That
-#   is reported rather than treated as a stronger replication than it is.
-#
-# EXPECTATION MANAGEMENT, declared before the results were seen
-#   Same as the twin: interactions need far more data than main effects, the SDI
-#   main effect is R2 = 0.017-0.027, and Layer 3 has 18 cores. A null is the
-#   high-probability outcome and is informative. No term is reordered, no
-#   marginal-SS result is promoted, no specimen is dropped and no transform is
-#   picked to manufacture significance. If only some version x space combinations
-#   are significant, that instability is the finding.
-#
-# Writes: sdi_layer_interaction.csv
-#         figures/fig_sdi_layer_interaction.png
-#
-# HOW TO RUN (Docker spharm_analysis):
-#   Rscript analysis/robustness/sdi_rawmat_interaction/sdi_layer_interaction.R
-# =============================================================================
 
 suppressPackageStartupMessages({
   library(here)
@@ -113,7 +40,6 @@ REF <- list(M_R2  = 0.18770190528243877, M_F  = 2.0334613330095146,
             n = 50L, n_groups = 6L)
 REF_TOL <- 1e-3
 
-# Layer colours from the repo's earthy palette; two levels, hue plus lightness.
 LAYER_COLORS <- c("3" = "#788C4A", "4" = "#802520")
 
 # =============================================================================
@@ -443,11 +369,6 @@ if (n_sig > 0 && n_sig < nrow(head_tbl))
 # =============================================================================
 # FIGURE — presentation only, NOT the basis of any inference
 # =============================================================================
-# As in the raw-material twin: PC1 is NOT known to be the SDI-related direction.
-# sdi_gradient.R's candidate search found no generalisable linear SDI direction in
-# any of the three spaces (29 non-circular candidates, all |rho| < 0.30, LOO rho
-# all <= 0). A flat panel is the expected picture and does not contradict the
-# PERMANOVA. Fits are per layer, so each line spans only its own SDI range.
 sp_an <- build_spaces(keep0)
 pc1_tbl <- map_dfr(names(SPACE_LABELS), function(spn) {
   Z  <- switch(spn, scar = sp_an$Z_SP, morph = sp_an$Z_M, combined = sp_an$Z_comb)

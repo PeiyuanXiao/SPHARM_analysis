@@ -1,19 +1,4 @@
 # coia_power_sensitivity_stats.R
-# =============================================================================
-# Power / sensitivity check for the morphology-scar covariation null (CoIA / RV /
-# Mantel decoupling), EXP and SDG — SI add-on. Self-contained: READS the committed
-# main outputs, WRITES new outputs under analysis/robustness/coia_power_sensitivity/.
-# Replicates the EXP/SDG ILR data-prep verbatim from exp_cores_statistics.R /
-# SDG_cores_statistics.R (lines cited) so the recomputed RV / Mantel match the
-# values behind exp_cia_analysis / sdg_cia_analysis. Per assemblage: (1) bias-
-# corrected RV2 (MatrixCorrelation), (2) percentile-bootstrap 95% CI for RV2 and
-# Mantel r, (3) Monte-Carlo power + MDES@80% for RV.rtest and mantel vs a calibrated
-# population RV (rank-1 shared latent on leading PCs = best case, so MDES is a lower
-# bound). Seeds fixed throughout.
-#
-# Run (Docker spharm_analysis, R 4.4 + renv; MatrixCorrelation in the lockfile):
-#   Sys.setenv(TAR_PROJECT = "supplementary"); targets::tar_make(robustness_power)
-# =============================================================================
 
 suppressPackageStartupMessages({
   library(here); library(tidyverse); library(readxl)
@@ -30,34 +15,32 @@ set.seed(42)
 # =============================================================================
 # PARAMETERS (kept modest; this is supplementary)
 # =============================================================================
-N_BOOT     <- 2000                        # bootstrap resamples
-N_SIM      <- 500                         # simulations per effect size
-N_PERM     <- 199                         # permutations per RV.rtest / mantel
-N_POP      <- 5000                        # large-n draw for population-RV calibration
-POP_RV_GRID <- seq(0.05, 0.40, by = 0.05) # target population RV grid (x-axis)
+N_BOOT     <- 2000
+N_SIM      <- 500
+N_PERM     <- 199
+N_POP      <- 5000
+POP_RV_GRID <- seq(0.05, 0.40, by = 0.05)
 POWER_THR  <- 0.80
 ALPHA      <- 0.05
 BOOT_SEED  <- 42
-SIM_SEED   <- 2000                        # base seed; offset per effect size
-CAL_SEED   <- 100                         # base seed; offset per calibration point
+SIM_SEED   <- 2000
+CAL_SEED   <- 100
 
 OUT_DIR <- here("analysis/robustness/coia_power_sensitivity")
 FIG_DIR <- file.path(OUT_DIR, "figures")
 dir.create(FIG_DIR, recursive = TRUE, showWarnings = FALSE)
 
-POWER_COLS_DIR     <- paste0("power_l", 1:6)   # SP-SPHARM (scar)       l = 1-6
-POWER_COLS_MORPH   <- paste0("power_l", 1:8)   # M-SPHARM  (morphology) l = 1-8
-EXCLUDE_CORE_TYPES <- c("Handaxe", "Pick")     # SDG_cores_statistics.R:49
+POWER_COLS_DIR     <- paste0("power_l", 1:6)
+POWER_COLS_MORPH   <- paste0("power_l", 1:8)
+EXCLUDE_CORE_TYPES <- c("Handaxe", "Pick")
 
-# Anchor reference: the already-reported raw RV / Mantel r (same source as the
-# other robustness REF blocks).
 REF <- list(exp_RV = 0.10095, exp_mantel_r = -0.06126,
             sdg_RV = 0.09066, sdg_mantel_r = 0.01189)
 
 # =============================================================================
 # Helpers — copied VERBATIM from the source scripts (attribution in comments)
 # =============================================================================
-replace_zeros <- function(X, delta = NULL) {            # exp/SDG_cores_statistics.R
+replace_zeros <- function(X, delta = NULL) {
   X <- as.matrix(X)
   for (i in seq_len(nrow(X))) {
     row_i <- X[i, ]; zero_idx <- row_i == 0
@@ -71,12 +54,12 @@ replace_zeros <- function(X, delta = NULL) {            # exp/SDG_cores_statisti
   X
 }
 extract_subdist <- function(D_full, ids) as.dist(as.matrix(D_full)[ids, ids])
-filter_spharm <- function(df, power_cols, meta = NULL) {  # exp_cores_statistics.R:134
+filter_spharm <- function(df, power_cols, meta = NULL) {
   result <- df %>% select(ID, Typology, all_of(power_cols))
   if (!is.null(meta)) result <- left_join(result, meta, by = "ID")
   result
 }
-split_by_group <- function(df) list(                     # exp_cores_statistics.R:144
+split_by_group <- function(df) list(
   exp_im = df %>% filter(str_starts(ID, "EXP") | str_starts(ID, "IM_")),
   sdg_im = df %>% filter(str_starts(ID, "SDG") | str_starts(ID, "IM_")))
 
@@ -89,13 +72,13 @@ SPHARM_direction  <- read_csv(
   here("analysis/data/derived_data/SPHARM_direction.csv"),  show_col_types = FALSE)
 SPHARM_morphology <- read_csv(
   here("analysis/data/derived_data/SPHARM_morphology.csv"), show_col_types = FALSE)
-SPHARM_morphology <- SPHARM_morphology %>%               # exp_cores_statistics.R:131
+SPHARM_morphology <- SPHARM_morphology %>%
   left_join(SPHARM_direction %>% select(ID, Typology), by = "ID")
 
-metric_data <- read_xlsx(here("analysis/data/raw_data/SDG_core_metric.xlsx")) %>%  # :127
+metric_data <- read_xlsx(here("analysis/data/raw_data/SDG_core_metric.xlsx")) %>%
   select(ID, Layer, Core_type_Li_merged, Raw_mat) %>%
   mutate(Layer = as.factor(Layer), Raw_mat = as.factor(Raw_mat))
-core_meta <- read_excel(here("analysis/data/raw_data/SDG_core_metric.xlsx")) %>%   # SDG:157
+core_meta <- read_excel(here("analysis/data/raw_data/SDG_core_metric.xlsx")) %>%
   select(ID = ID, raw_material = Raw_mat, core_type = Core_type_Li_merged) %>%
   mutate(across(everything(), ~ str_trim(as.character(.))))
 
@@ -107,64 +90,61 @@ build_ilr_tables <- function(dir_df, morph_df) {
        morph_f = filter_spharm(morph_df, POWER_COLS_MORPH, metric_data))
 }
 
-# EXP CoIA inputs (exp_cores_statistics.R:150-199)
 exp_ilr_tables <- function() {
   bt <- build_ilr_tables(SPHARM_direction, SPHARM_morphology)
-  df_scar_all  <- split_by_group(bt$dir_f)$exp_im        # :150-153
+  df_scar_all  <- split_by_group(bt$dir_f)$exp_im
   df_morph_all <- split_by_group(bt$morph_f)$exp_im
-  common <- intersect(df_morph_all$ID, df_scar_all$ID)   # :156-159
+  common <- intersect(df_morph_all$ID, df_scar_all$ID)
   df_morph_all <- df_morph_all %>% filter(ID %in% common) %>% arrange(ID)
   df_scar_all  <- df_scar_all  %>% filter(ID %in% common) %>% arrange(ID)
 
-  morph_power <- df_morph_all %>% select(all_of(POWER_COLS_MORPH)) %>%   # :165-168
+  morph_power <- df_morph_all %>% select(all_of(POWER_COLS_MORPH)) %>%
     rename_with(~ paste0("M", seq_along(.))) %>% as.data.frame()
-  scar_power  <- df_scar_all %>% select(all_of(POWER_COLS_DIR)) %>%      # :169-172
+  scar_power  <- df_scar_all %>% select(all_of(POWER_COLS_DIR)) %>%
     rename_with(~ paste0("S", seq_along(.))) %>% as.data.frame()
   rownames(morph_power) <- df_morph_all$ID
   rownames(scar_power)  <- df_scar_all$ID
-  morph_power <- morph_power[, sapply(morph_power, sd, na.rm = TRUE) > 0] # :176-177
+  morph_power <- morph_power[, sapply(morph_power, sd, na.rm = TRUE) > 0]
   scar_power  <- scar_power[,  sapply(scar_power,  sd, na.rm = TRUE) > 0]
 
-  morph_ilr <- as.data.frame(ilr(replace_zeros(as.matrix(morph_power)))) # :180-183
+  morph_ilr <- as.data.frame(ilr(replace_zeros(as.matrix(morph_power))))
   scar_ilr  <- as.data.frame(ilr(replace_zeros(as.matrix(scar_power))))
   rownames(morph_ilr) <- rownames(morph_power)
   rownames(scar_ilr)  <- rownames(scar_power)
 
-  exp_ids <- rownames(morph_power)[                                      # :188-190
+  exp_ids <- rownames(morph_power)[
     !str_starts(rownames(morph_power), "IM_") &
       rownames(morph_power) != "EXP43_Biface"]
   list(M = morph_ilr[exp_ids, , drop = FALSE],
        S = scar_ilr[exp_ids,  , drop = FALSE], ids = exp_ids)
 }
 
-# SDG CoIA inputs (SDG_cores_statistics.R:137-225): un-split filtered frame, then
-# subset to archaeological specimens (drop IM_, EXP, Handaxe, Pick).
 sdg_ilr_tables <- function() {
   bt <- build_ilr_tables(SPHARM_direction, SPHARM_morphology)
-  df_scar_raw  <- bt$dir_f                                # :137-138 (== *_filter.rds)
+  df_scar_raw  <- bt$dir_f
   df_morph_raw <- bt$morph_f
-  common <- intersect(df_morph_raw$ID, df_scar_raw$ID)    # :140-142
+  common <- intersect(df_morph_raw$ID, df_scar_raw$ID)
   df_morph_raw <- df_morph_raw %>% filter(ID %in% common) %>% arrange(ID)
   df_scar_raw  <- df_scar_raw  %>% filter(ID %in% common) %>% arrange(ID)
 
-  morph_power <- df_morph_raw %>% select(all_of(POWER_COLS_MORPH)) %>%   # :166-169
+  morph_power <- df_morph_raw %>% select(all_of(POWER_COLS_MORPH)) %>%
     rename_with(~ paste0("M", seq_along(.))) %>% as.data.frame()
-  scar_power  <- df_scar_raw %>% select(all_of(POWER_COLS_DIR)) %>%      # :170-173
+  scar_power  <- df_scar_raw %>% select(all_of(POWER_COLS_DIR)) %>%
     rename_with(~ paste0("S", seq_along(.))) %>% as.data.frame()
   rownames(morph_power) <- df_morph_raw$ID
   rownames(scar_power)  <- df_scar_raw$ID
-  morph_power <- morph_power[, sapply(morph_power, sd, na.rm = TRUE) > 0] # :177-178
+  morph_power <- morph_power[, sapply(morph_power, sd, na.rm = TRUE) > 0]
   scar_power  <- scar_power[,  sapply(scar_power,  sd, na.rm = TRUE) > 0]
 
-  morph_ilr <- as.data.frame(ilr(replace_zeros(as.matrix(morph_power)))) # :181-184
+  morph_ilr <- as.data.frame(ilr(replace_zeros(as.matrix(morph_power))))
   scar_ilr  <- as.data.frame(ilr(replace_zeros(as.matrix(scar_power))))
   rownames(morph_ilr) <- rownames(morph_power)
   rownames(scar_ilr)  <- rownames(scar_power)
 
-  arch_ids <- rownames(morph_power)[                                     # :190-191
+  arch_ids <- rownames(morph_power)[
     !str_starts(rownames(morph_power), "IM_") &
       !str_starts(rownames(morph_power), "EXP")]
-  meta_arch <- tibble(ID = arch_ids) %>%                                 # :203-216
+  meta_arch <- tibble(ID = arch_ids) %>%
     left_join(core_meta, by = "ID") %>%
     filter(!core_type %in% EXCLUDE_CORE_TYPES | is.na(core_type))
   arch_ids <- meta_arch$ID
@@ -172,9 +152,8 @@ sdg_ilr_tables <- function() {
        S = scar_ilr[arch_ids,  , drop = FALSE], ids = arch_ids)
 }
 
-# Reported raw RV via ade4 coinertia (exp:380-386 / sdg:327-395), same calls + seed.
 raw_rv_coinertia <- function(M, S) {
-  Mi <- as.data.frame(M); Si <- as.data.frame(S)   # dudi.pca requires a data.frame
+  Mi <- as.data.frame(M); Si <- as.data.frame(S)
   colnames(Mi) <- paste0("M_ilr", seq_len(ncol(Mi)))
   colnames(Si) <- paste0("S_ilr", seq_len(ncol(Si)))
   dudi_morph <- dudi.pca(Mi, center = TRUE, scale = TRUE, scannf = FALSE, nf = ncol(Mi))
@@ -185,10 +164,7 @@ raw_rv_coinertia <- function(M, S) {
   list(RV = coin$RV, RV_p = rt$pvalue)
 }
 
-# Reported global Mantel (exp:243 / sdg:254): Euclidean ILR distance, Spearman.
 raw_mantel <- function(M, S) {
-  # SI-wide convention (truncation_sensitivity.R:538): seed immediately before
-  # mantel() so every SI table reports the same permutation draw at the anchor.
   set.seed(42)
   mt <- mantel(dist(M), dist(S), method = "spearman", permutations = 9999)
   list(r = mt$statistic, p = mt$signif)
@@ -197,24 +173,18 @@ raw_mantel <- function(M, S) {
 # =============================================================================
 # Statistical primitives
 # =============================================================================
-# Standard RV on column-standardised configs via the p x p trace identity
-# (= coinertia$RV / RV.rtest$obs); trace form is cheap at the calibration n.
 rv_std <- function(X, Y) {
   X <- base::scale(as.matrix(X)); Y <- base::scale(as.matrix(Y))
   SXY <- crossprod(X, Y); SXX <- crossprod(X); SYY <- crossprod(Y)
   sum(SXY^2) / sqrt(sum(SXX^2) * sum(SYY^2))
 }
-# Bias-corrected modified RV (Smilde et al. 2009) on standardised ILR (can be < 0).
 rv2_std <- function(X, Y) {
   Xs <- base::scale(as.matrix(X)); Ys <- base::scale(as.matrix(Y))
   if (any(!is.finite(Xs)) || any(!is.finite(Ys))) return(NA_real_)
   MatrixCorrelation::RV2(Xs, Ys, center = TRUE)
 }
-# Mantel statistic = Spearman cor of the two ILR distance vectors (= mantel$statistic).
 mantel_stat <- function(M, S) cor(as.vector(dist(M)), as.vector(dist(S)), method = "spearman")
-# n rows ~ MVN(mu, Sigma) via Cholesky (Cov(Z %*% R) = R'R = Sigma).
 mvrnorm_chol <- function(n, mu, R) sweep(matrix(rnorm(n * length(mu)), n) %*% R, 2, mu, "+")
-# Nearest-usable PD covariance: escalating ridge until chol() succeeds.
 chol_pd <- function(S) {
   eps <- 1e-8 * mean(diag(S))
   for (k in 0:8) {
@@ -245,23 +215,18 @@ bootstrap_ci <- function(M, S, B = N_BOOT, seed = BOOT_SEED) {
 # =============================================================================
 # (3) Power curve + MDES
 # =============================================================================
-# Generative params: empirical mean, PD chol factor, leading PC (unit eigenvector).
 block_params <- function(X) {
   X <- as.matrix(X); S <- stats::cov(X)
   list(mu = colMeans(X), R = chol_pd(S), u = eigen(S, symmetric = TRUE)$vectors[, 1])
 }
-# One synthetic paired data set at size n for shared-latent strength a.
 simulate_pair <- function(n, pm, ps, a) {
   s <- rnorm(n)
   list(M = mvrnorm_chol(n, pm$mu, pm$R) + a * outer(s, pm$u),
        S = mvrnorm_chol(n, ps$mu, ps$R) + a * outer(s, ps$u))
 }
-# Population RV at strength a (one large-n draw).
 pop_rv <- function(pm, ps, a, n = N_POP, seed) {
   set.seed(seed); sim <- simulate_pair(n, pm, ps, a); rv_std(sim$M, sim$S)
 }
-# Map a -> population RV on a dense monotone grid, invert to the target RV grid;
-# expand the a-ceiling until the achieved RV brackets the target max.
 calibrate_a <- function(pm, ps, target_grid = POP_RV_GRID, seed_base = CAL_SEED) {
   lead_sd <- sqrt(max(crossprod(pm$R %*% pm$u), crossprod(ps$R %*% ps$u)))
   a_max   <- 2 * as.numeric(lead_sd)
@@ -277,7 +242,6 @@ calibrate_a <- function(pm, ps, target_grid = POP_RV_GRID, seed_base = CAL_SEED)
   tibble(target_rv = target_grid,
          a = stats::approx(rv_mono[keep], a_dense[keep], xout = target_grid, rule = 2)$y)
 }
-# Monte-Carlo power of RV.rtest and mantel at size n, strength a.
 power_at_a <- function(n, pm, ps, a, nsim = N_SIM, nperm = N_PERM, seed) {
   set.seed(seed)
   rej_rv <- logical(nsim); rej_man <- logical(nsim)
@@ -292,7 +256,6 @@ power_at_a <- function(n, pm, ps, a, nsim = N_SIM, nperm = N_PERM, seed) {
   }
   c(power_rv = mean(rej_rv), power_mantel = mean(rej_man))
 }
-# Smallest population RV reaching the power threshold (linear interpolation).
 mdes <- function(rv, pow, thr = POWER_THR) {
   o <- order(rv); rv <- rv[o]; pow <- pow[o]
   if (all(pow < thr, na.rm = TRUE)) return(NA_real_)
@@ -306,7 +269,7 @@ mdes <- function(rv, pow, thr = POWER_THR) {
 power_curve <- function(M, S, label) {
   cat(sprintf("\n-- power curve: %s (n = %d) --\n", label, nrow(M)))
   pm <- block_params(M); ps <- block_params(S); n <- nrow(M)
-  grid <- bind_rows(tibble(target_rv = 0, a = 0), calibrate_a(pm, ps))  # a = 0 anchor
+  grid <- bind_rows(tibble(target_rv = 0, a = 0), calibrate_a(pm, ps))
   res <- map_dfr(seq_len(nrow(grid)), function(i) {
     a  <- grid$a[i]
     pw <- power_at_a(n, pm, ps, a, seed = SIM_SEED + i)
@@ -327,19 +290,19 @@ analyse_assemblage <- function(tabs, label) {
   cat(strrep("=", 70), "\n", sep = "")
   M <- as.matrix(tabs$M); S <- as.matrix(tabs$S)
 
-  rv  <- raw_rv_coinertia(M, S)            # reported raw RV
-  man <- raw_mantel(M, S)                  # reported Mantel
-  rv2 <- rv2_std(M, S)                     # (1) bias-corrected RV2
+  rv  <- raw_rv_coinertia(M, S)
+  man <- raw_mantel(M, S)
+  rv2 <- rv2_std(M, S)
   cat(sprintf("  raw RV (coinertia)      = %.5f (p = %.4f)\n", rv$RV, rv$RV_p))
   cat(sprintf("  rv_std (trace, check)   = %.5f  [should match raw RV]\n", rv_std(M, S)))
   cat(sprintf("  Mantel r (spearman)     = %.5f (p = %.4f)\n", man$r, man$p))
   cat(sprintf("  RV2 (bias-corrected)    = %.5f\n", rv2))
 
-  boot <- bootstrap_ci(M, S)              # (2) bootstrap CI
+  boot <- bootstrap_ci(M, S)
   cat(sprintf("  RV2 95%% CI              = [%.4f, %.4f]\n", boot$rv2[1], boot$rv2[2]))
   cat(sprintf("  Mantel r 95%% CI         = [%.4f, %.4f]\n", boot$mantel[1], boot$mantel[2]))
 
-  pc <- power_curve(M, S, label)          # (3) power + MDES
+  pc <- power_curve(M, S, label)
   cat(sprintf("  MDES@80%% (RV)           = %s\n",
               ifelse(is.na(pc$mdes_rv), ">max", sprintf("%.3f", pc$mdes_rv))))
   cat(sprintf("  MDES@80%% (Mantel)       = %s\n",

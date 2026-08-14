@@ -1,60 +1,4 @@
 # sdg_projection_explore.R
-# =============================================================================
-# EXPLORATORY: project the SANDINGGAI (SDG) cores as SUPPLEMENTARY INDIVIDUALS
-# into the techno-morphological space built from the experimental (EXP)
-# assemblage, and ask where they land.
-#
-# THIS IS AN INTERNAL PROBE, NOT A PUBLICATION ANALYSIS. The directory carries
-# the _explore suffix for that reason. Figures are deliberately plain. Nothing
-# here is written to derived_data, to any _targets store, or to the manuscript.
-#
-# -----------------------------------------------------------------------------
-# WHY STEP 0 EXISTS AND WHY IT RUNS FIRST
-# -----------------------------------------------------------------------------
-# The two assemblages were recorded on different equipment by different people:
-#     EXP  Polyga HDI Compact C210, scars recorded by Lin et al. (2024)
-#     SDG  EinScan Pro (fixed scan mode), scars recorded by the present authors
-# Any observation of the form "SDG lands somewhere else" is therefore ambiguous
-# between a technological difference and a batch effect. Step 0 measures the
-# three channels through which a batch effect could enter, and its result decides
-# whether the projection in Steps 1-3 is interpretable at all. If Step 0 says the
-# assemblages are not comparable, that verdict stands: no parameter is adjusted
-# and no specimen is dropped to make the projection look cleaner.
-#
-#   (a) scars per specimen and scar length, per assemblage. SP-SPHARM is a
-#       density over scar directions, so a systematically sparser or coarser
-#       record shifts it for reasons that have nothing to do with technology.
-#   (b) mesh vertex/face counts after the production decimation to 20,000 faces,
-#       which is what M-SPHARM actually sees.
-#   (c) mean power spectrum by degree for each assemblage and each descriptor.
-#       Systematic separation at high degree is the signature of a resolution or
-#       recording difference rather than a technological one.
-#
-# If (a) shows a clear difference in scar size distribution, Steps 1-3 are run
-# twice, at the >2 mm production threshold and again at >10 mm, where the two
-# scanners' resolution difference is immaterial. The >10 mm subset already exists
-# as a committed Table S2 output and is REUSED, never recomputed.
-#
-# -----------------------------------------------------------------------------
-# Every statistical helper and both data-preparation recipes are IMPORTED by
-# selective evaluation from the joint-MFA scripts, following the pattern those
-# scripts established, so this probe runs byte-identical code to the analyses it
-# is being compared against.
-#
-# Reads : analysis/data/derived_data/SPHARM_direction.csv
-#         analysis/data/derived_data/SPHARM_morphology.csv
-#         analysis/data/raw_data/SDG_core_metric.xlsx
-#         analysis/data/raw_data/Scar_orientation_data.xlsx
-#         analysis/robustness/scar_threshold_sensitivity/spectra/SPHARM_direction_t10.0.csv
-#         analysis/robustness/sdg_projection_explore/mesh_resolution.csv
-#           (written by the mesh_resolution_check.py companion in this folder)
-# Writes: everything under analysis/robustness/sdg_projection_explore/
-#
-# HOW TO RUN (Docker spharm_analysis):
-#   /opt/conda/envs/spharm/bin/python \
-#       analysis/robustness/sdg_projection_explore/mesh_resolution_check.py
-#   Rscript analysis/robustness/sdg_projection_explore/sdg_projection_explore.R
-# =============================================================================
 
 suppressPackageStartupMessages({
   library(here)
@@ -80,25 +24,16 @@ dir.create(FIG_DIR, recursive = TRUE, showWarnings = FALSE)
 POWER_COLS_DIR   <- paste0("power_l", 1:6)
 POWER_COLS_MORPH <- paste0("power_l", 1:8)
 
-# Degree range over which the Step 0(c) spectra are compared. The descriptors are
-# truncated at l = 6 / l = 8 for statistics, but the batch check deliberately
-# looks further out, because that is where a resolution difference would show.
 SPEC_LMAX <- 12
 
-MESH_TARGET_FACES <- 20000   # SPHARM_main.py:27
+MESH_TARGET_FACES <- 20000
 
-# Step 0(a) decision rule: if the two assemblages' scars-per-specimen or scar
-# length distributions differ by more than these factors, the >10 mm control is
-# required. Declared before the numbers are looked at.
-COUNT_RATIO_TRIGGER  <- 1.5   # ratio of median scars per specimen
-LENGTH_RATIO_TRIGGER <- 1.25  # ratio of median scar length
+COUNT_RATIO_TRIGGER  <- 1.5
+LENGTH_RATIO_TRIGGER <- 1.25
 
 # =============================================================================
 # Helper import — verbatim from the joint-MFA scripts, without running them
 # =============================================================================
-# Same selective-evaluation pattern as joint_mfa_discrimination_SDG.R:169-183:
-# parse the source and evaluate ONLY the top-level `name <- function(...)`
-# bindings we need. Zero computation, zero side effects, byte-identical bodies.
 import_helpers <- function(path, wanted) {
   if (!file.exists(path))
     stop("helper source not found: ", path,
@@ -164,9 +99,6 @@ cat("STEP 0 — BATCH-EFFECT CHECK (equipment and recorder differ between groups
 cat(strrep("=", 78), "\n", sep = "")
 
 # ---- 0(a) scars per specimen and scar length --------------------------------
-# Scar lengths come from the raw endpoint workbook, computed exactly as
-# scar_attrition.py:125-129 does (Euclidean distance between the recorded start
-# and end points). Sheets 1-3 are IM / SDG / EXP.
 scar_xlsx <- here("analysis/data/raw_data/Scar_orientation_data.xlsx")
 scar_raw  <- map_dfr(1:3, function(i)
   read_excel(scar_xlsx, sheet = i) %>% mutate(across(everything(), as.character)))
@@ -201,8 +133,6 @@ gv <- function(tab, g, col) tab[[col]][tab$group == g]
 count_ratio  <- gv(tab_counts,  "EXP", "median") / gv(tab_counts,  "SDG", "median")
 length_ratio <- gv(tab_lengths, "SDG", "median") / gv(tab_lengths, "EXP", "median")
 
-# Distributional tests, reported as descriptive evidence of separation rather
-# than as hypothesis tests about a population.
 ks_counts  <- suppressWarnings(stats::ks.test(
   counts_per_spec$n_scars[counts_per_spec$group == "EXP"],
   counts_per_spec$n_scars[counts_per_spec$group == "SDG"]))
@@ -289,8 +219,6 @@ print(as.data.frame(spec_summary %>%
          across(c(EXP, SDG), ~ signif(.x, 4)),
          ratio_SDG_EXP = round(ratio_SDG_EXP, 3))))
 
-# A one-number summary of high-degree separation per descriptor: the mean
-# log2 ratio of the group means over the upper half of the plotted range.
 hi <- spec_summary %>%
   filter(l > SPEC_LMAX / 2) %>%
   select(descriptor, group, l, mean_power) %>%
@@ -300,9 +228,6 @@ hi <- spec_summary %>%
 cat("\n  high-degree (l > ", SPEC_LMAX / 2, ") mean log2(SDG/EXP) power ratio:\n", sep = "")
 print(as.data.frame(hi %>% mutate(mean_log2_ratio_hi = round(mean_log2_ratio_hi, 3))))
 
-# The high-degree summary above is about degrees the statistics DISCARD. What
-# decides whether the projection is interpretable is whether the groups separate
-# inside the degrees each descriptor actually retains, so report that separately.
 inrange <- spec_summary %>%
   mutate(lmax_used = if_else(descriptor == "M-SPHARM", 8L, 6L)) %>%
   filter(l <= lmax_used) %>%
@@ -315,10 +240,6 @@ inrange <- spec_summary %>%
 cat("\n  WITHIN the retained truncation (M l=1-8, SP l=1-6):\n")
 print(as.data.frame(inrange %>% mutate(across(where(is.numeric), ~ round(.x, 3)))))
 
-# Does the spectral difference track scar count rather than assemblage? Tested
-# WITHIN EXP alone, where equipment and recorder are held constant: if scar count
-# predicts the spectrum there, the EXP-SDG spectral gap has a recording-density
-# explanation that does not require any technological difference.
 sp_by_spec <- SPHARM_direction %>%
   mutate(group = assemblage_of(ID)) %>%
   filter(group %in% c("EXP", "SDG")) %>%
@@ -374,26 +295,6 @@ cat(sprintf("  scar length median (mm) EXP %.2f vs SDG %.2f  (ratio %.2f)\n",
 cat(sprintf("  >10 mm control required : %s\n", ifelse(NEED_T10, "YES", "no")))
 cat("\nSteps 1-3 are gated on this verdict; see the console report.\n")
 
-# -----------------------------------------------------------------------------
-# STEP 0 OUTCOME AS APPLIED TO STEPS 1-3
-# -----------------------------------------------------------------------------
-# Step 0(a) found SDG carries 2.71x fewer scars per specimen than EXP, with the
-# two distributions almost disjoint. Two readings were possible: a recording
-# protocol difference between the two recorders, or a real property of the two
-# assemblages. That ambiguity is NOT resolvable from these data — batch and
-# assemblage are perfectly confounded, no specimen having been recorded twice.
-#
-# It was resolved by the authors on material grounds: the SDG cores genuinely
-# carry only that many scars. The scar count difference is therefore signal, not
-# a recording artifact, and the projection below is read as a real structural
-# comparison. This is an author determination about the material, recorded here
-# because nothing in the data establishes it.
-#
-# Step 0(b) and 0(c) support comparability independently: all 114 meshes decimate
-# to exactly 20,000 faces, and M-SPHARM shows no systematic spectral separation
-# (in-range mean |log2(SDG/EXP)| = 0.14; high-degree ratio 1.03x).
-# =============================================================================
-
 # =============================================================================
 # STEP 1 — EXP REFERENCE SPACE, SDG PROJECTED AS SUPPLEMENTARY INDIVIDUALS
 # =============================================================================
@@ -401,8 +302,6 @@ cat("\n", strrep("=", 78), "\n", sep = "")
 cat("STEP 1 — EXP REFERENCE SPACE + SDG SUPPLEMENTARY PROJECTION\n")
 cat(strrep("=", 78), "\n", sep = "")
 
-# Constants the imported builders resolve from the global environment. Values are
-# copied verbatim from the two source scripts so the recipes are unchanged.
 ASSEMBLAGE         <- "EXP"
 EXCLUDE_TYPES      <- c("Biface")
 LEVALLOIS_MERGE    <- c("Levallois convergent", "Levallois laminar",
@@ -425,39 +324,28 @@ cat("Imported the two data-preparation recipes verbatim ",
     "(build_blocks, build_blocks_sdg).\n", sep = "")
 
 # ---- the projection machinery -----------------------------------------------
-# ILR with the part set FIXED BY THE REFERENCE SAMPLE. compositions::ilr uses
-# ilrBase(D), which depends only on the number of parts, and replace_zeros works
-# row by row, so once `parts` is fixed the map is identical for both assemblages
-# and is applied to the supplementary rows without re-estimating anything.
 ilr_fixed <- function(power_df, parts) {
   X <- as.matrix(power_df)[, parts, drop = FALSE]
   as.matrix(ilr(replace_zeros(X)))
 }
 
-# Build the reference space from `ref` and project `sup` into it. Every constant
-# — retained parts, block weights, centring, rotation — comes from `ref` only.
-# That is what makes this a projection rather than a joint ordination.
 make_space <- function(ref, sup, space) {
   parts_M  <- ilr_parts(ref$morph)
   parts_SP <- ilr_parts(ref$scar)
   ZM_r  <- ilr_fixed(ref$morph, parts_M);  ZSP_r <- ilr_fixed(ref$scar, parts_SP)
   ZM_s  <- ilr_fixed(sup$morph, parts_M);  ZSP_s <- ilr_fixed(sup$scar, parts_SP)
-  sM    <- mfa_s1(ZM_r)                     # MFA block weights, from the
-  sSP   <- mfa_s1(ZSP_r)                    # reference sample only
+  sM    <- mfa_s1(ZM_r)
+  sSP   <- mfa_s1(ZSP_r)
   Zr <- switch(space, M = ZM_r, SP = ZSP_r, MFA = cbind(ZM_r / sM, ZSP_r / sSP))
   Zs <- switch(space, M = ZM_s, SP = ZSP_s, MFA = cbind(ZM_s / sM, ZSP_s / sSP))
   rownames(Zr) <- ref$ids; rownames(Zs) <- sup$ids
   pca <- prcomp(Zr, center = TRUE, scale. = FALSE)
   list(pca = pca, Zr = Zr, Zs = Zs,
        scores_ref = pca$x,
-       scores_sup = stats::predict(pca, Zs),   # supplementary individuals
+       scores_sup = stats::predict(pca, Zs),
        s1 = c(M = sM, SP = sSP))
 }
 
-# Mahalanobis distance to each reference group centroid, with the pooled
-# within-group covariance of the reference sample, plus two typicality
-# probabilities: the empirical quantile within that group's own distance
-# distribution, and the chi-square equivalent.
 typicality <- function(Zr, grp, Zs) {
   G <- levels(droplevels(grp)); d <- ncol(Zr)
   cent <- lapply(G, function(g) colMeans(Zr[grp == g, , drop = FALSE]))
@@ -479,7 +367,6 @@ typicality <- function(Zr, grp, Zs) {
   D2_ref <- d2(Zr); D2_sup <- d2(Zs)
   if (is.null(dim(D2_sup))) D2_sup <- matrix(D2_sup, nrow = nrow(Zs),
                                              dimnames = list(NULL, G))
-  # Each reference specimen's distance to its OWN centroid = the null distribution.
   own <- D2_ref[cbind(seq_len(nrow(Zr)), match(as.character(grp), G))]
   p_emp <- sapply(G, function(g) {
     ref_g <- own[grp == g]
@@ -499,8 +386,6 @@ subset_blocks <- function(b, idx)
 SPACES <- c(M = "M-SPHARM only", SP = "SP-SPHARM only", MFA = "MFA merged")
 
 run_projection <- function(dir_frame, morph_frame, tag) {
-  # Rebind the frames the imported builders read, so the same recipes can be run
-  # on the >10 mm scar subset without editing them.
   SPHARM_direction  <<- dir_frame
   SPHARM_morphology <<- morph_frame
   b_exp <- build_blocks("EXP")
@@ -544,7 +429,7 @@ sdg_meta <- tibble(ID = res$MFA$b_sdg$ids,
   left_join(core_meta %>% select(ID, raw_material), by = "ID") %>%
   left_join(metric_data %>% transmute(ID, layer = as.character(Layer)), by = "ID")
 
-TYP_ALPHA <- 0.05   # a core is "typical of" an EXP type when p_emp > this
+TYP_ALPHA <- 0.05
 
 tidy_typ <- function(r, space) {
   G <- r$ty$groups
@@ -569,10 +454,6 @@ nearest <- typ_long %>% group_by(space, ID) %>%
   select(space, ID, sdg_type, raw_material, layer,
          nearest_exp_type = exp_type, nearest_p_emp = p_emp, nearest_D2 = D2)
 
-# How SELECTIVE a typicality hit is. A core sitting near the middle of the space
-# can be inside several type envelopes at once, in which case "typical of
-# Levallois" carries no type information. Reporting the count of types each core
-# is typical of is what keeps the headline numbers below honest.
 sel <- typ_long %>% group_by(space, ID) %>%
   summarise(k = sum(p_emp > TYP_ALPHA),
             best = as.character(exp_type[which.max(p_emp)]), .groups = "drop")
@@ -666,7 +547,7 @@ if (any(is.na(dir_t10$ID)))
 dir_main   <- SPHARM_direction
 morph_main <- SPHARM_morphology
 res10 <- run_projection(dir_t10, morph_main, "t>10mm")
-SPHARM_direction <<- dir_main            # restore
+SPHARM_direction <<- dir_main
 
 for (sp in names(SPACES)) {
   n_sdg <- length(res10[[sp]]$b_sdg$ids)

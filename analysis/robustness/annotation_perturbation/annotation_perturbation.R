@@ -1,91 +1,4 @@
 # annotation_perturbation.R
-# =============================================================================
-# ANNOTATION-ERROR PERTURBATION ANALYSIS for SP-SPHARM — SI add-on.
-#
-# Responds to reviewer 2: manual placement of direction landmarks is itself
-# error-prone (Liu et al. 2026). This converts that limitation statement into
-# quantitative evidence by asking how much annotation error SP-SPHARM tolerates
-# before its pairwise discriminative power degrades.
-#
-# NEW, self-contained. Does NOT modify the main pipeline, the _targets store, the
-# derived_data cache, or the manuscript. Reads the committed main outputs and the
-# replicate descriptors produced by perturb_spharm.py (same folder), writes only
-# under analysis/robustness/annotation_perturbation/.
-#
-# WHERE THE NOISE IS INJECTED. Perturbation is applied to the UPSTREAM UNIT
-# VECTORS in directions_aligned_svd.csv, then the ENTIRE production chain is
-# re-run per replicate — vMF-sKDE (h = 0.35, kappa = 8.16, 72x36 grid) -> DH 64x128
-# grid -> spherical-harmonic expansion (lmax = 20) -> normalised power spectrum ->
-# ILR -> PERMANOVA. Noise is never added to the power spectra directly. See
-# perturb_spharm.py, which reuses the production functions verbatim and whose
-# --verify mode reproduces the committed SPHARM_direction.csv to < 1e-8.
-#
-# TWO PERTURBATIONS, both with the SP-SPHARM / fabric / SPI three-method contrast
-#   P1 polarity : flip a fraction f of scar vectors, f in {0.02 .. 0.20}. The
-#                 manuscript's case for SP-SPHARM over fabric rests on SP-SPHARM
-#                 retaining polarity (a fabric orientation tensor is invariant to
-#                 u -> -u, Mark 1973), so polarity is its most exposed assumption.
-#                 NOTE what this contrast is and is not: fabric's immunity here is a
-#                 mathematical identity, not an empirical finding — sum(u u') is
-#                 literally unchanged by a sign flip, so E and I come out bit-
-#                 identical. It is worth reporting as a check, but it discovers
-#                 nothing.
-#   P2 angle    : isotropic random rotation per vector, s.d. sigma in {5..20} deg.
-#                 THIS is the real experiment. No method has analytic immunity to
-#                 small rotations, so the ordering of degradation rates is not known
-#                 in advance and is determined purely by how each method encodes
-#                 direction. It therefore tests a concrete mechanistic claim
-#                 (see PREDICTION below).
-#
-# A scar-dropout perturbation (P3) was tried and REMOVED: the sparsest EXP specimen
-# carries 10 scars, so even 20% dropout leaves 8 and the 3-scar floor never once
-# triggered. It only ever probed the data-rich regime — "what if a specimen with
-# plenty of scars loses a few?" — whose answer is necessarily "little". The question
-# that matters, how few scars suffice, is a downsampling analysis (k = 3/5/8/10/15)
-# and belongs in its own script.
-#
-# PREDICTION (declared before the angle contrast was run, and adjudicated at the end)
-#   SP-SPHARM truncates the power spectrum at l = 1-6. Spherical-harmonic angular
-#   resolution is roughly 180/l degrees, so l = 6 corresponds to about 30 deg:
-#   jitter below that scale falls under the truncation and is filtered out by the
-#   descriptor itself. The other two methods have no such explicit low-pass stage —
-#   SPI is the resultant-length ratio of the raw unit vectors, with no angular
-#   smoothing at all, and fabric's second-moment eigenvalues average somewhat but
-#   impose no cutoff. Predicted degradation rate (by retention relative to each
-#   method's own baseline):  SPI fastest > fabric > SP-SPHARM slowest.
-#
-# WHY RETENTION RATIOS. Baseline resolved-pair counts differ by method (SP-SPHARM
-# 8/10, fabric 5/10, SPI 4/10 — the main text's Figure 6d counts, anchored below),
-# so absolute counts cannot rank degradation rates —
-# a drop of one pair means something different at each baseline. Every three-method
-# panel therefore reports (i) the absolute count, (ii) the continuous median
-# -log10(p), and (iii) retention = value / that method's own baseline. Verdicts are
-# adjudicated on (iii), using the continuous statistic, which is free of both the
-# baseline mismatch and the integer-threshold steps.
-#
-# EACH METHOD KEEPS ITS OWN TEST, as in the main analysis: SP-SPHARM and fabric are
-# tested by PERMANOVA (adonis2; spharm_analysis.R:352, 407), SPI by Kruskal-Wallis
-# with Dunn post-hoc (spharm_analysis.R:282). No test type was changed to make the
-# three comparable; the test used is stated in every table and figure caption.
-#
-# Statistical helpers are imported verbatim from the joint-MFA scripts by
-# selective evaluation (the pattern established in joint_mfa_discrimination_SDG.R),
-# so every number here is byte-comparable with the existing analyses.
-#
-# Outputs:
-#   annotation_perturbation_polarity.csv / _angle.csv / _summary.csv
-#   annotation_perturbation_angle_three_methods.csv
-#   annotation_perturbation_polarity_three_methods.csv
-#   annotation_perturbation_pairfailure.csv
-#   figures/fig_S_perturbation_combined.png
-#     — the single SI figure, assembled by annotation_perturbation_figure.R from
-#       the CSVs above. That script is source()d here and can also be run on its
-#       own to redraw the figure without repeating the replicate sweep.
-#
-# HOW TO RUN (Docker spharm_analysis):
-#   /opt/conda/envs/spharm/bin/python analysis/robustness/annotation_perturbation/perturb_spharm.py --run --reps 100
-#   Rscript analysis/robustness/annotation_perturbation/annotation_perturbation.R
-# =============================================================================
 
 suppressPackageStartupMessages({
   library(here); library(tidyverse); library(vegan); library(compositions)
@@ -101,23 +14,15 @@ set.seed(42)
 # =============================================================================
 # PARAMETERS
 # =============================================================================
-ASSEMBLAGE <- "EXP"     # SDG interface kept below; this run is EXP only
+ASSEMBLAGE <- "EXP" 
 SEED       <- 42
-# Matches the main analysis (spharm_analysis.R:330). This sweep is anchored on the
-# main-text EXP result, so it has to randomise exactly as the main text does: two
-# of the ten typology pairs sit on the Holm 0.05 boundary (fabric
-# Bidirectional-Unidirectional, raw p ~= 0.012 x 4 = 0.046; SP-SPHARM
-# Unidirectional-Levallois, raw p ~= 0.016 x 3 = 0.049), so a different permutation
-# count moves the resolved-pair count without anything about the data changing.
-# Running this sweep at 9999 while the main text ran at 999 is what put fabric at
-# 6/10 here against 5/10 in Figure 6d.
 N_PERM     <- 999
 ALPHA_1    <- 0.05
 ALPHA_2    <- 0.01
 QLO        <- 0.025
 QHI        <- 0.975
 
-OUT_DIR <- here("analysis/robustness/annotation_perturbation")   # figures/ is created by the plotting script
+OUT_DIR <- here("analysis/robustness/annotation_perturbation")
 
 DESC_CSV <- file.path(OUT_DIR, "perturbed_descriptors.csv")
 
@@ -129,33 +34,18 @@ LEVALLOIS_MERGE  <- c("Levallois convergent", "Levallois laminar",
 TYPOLOGY_ORDER   <- c("Unidirectional", "Bidirectional", "Levallois",
                       "Discoid", "Multiplatform")
 
-# METHOD_COLORS (which also fixes the method ordering) and the figure builder come
-# from the plotting script, so the two entry points cannot drift apart.
 source(file.path(OUT_DIR, "annotation_perturbation_figure.R"))
 
-# Perturbations that get the SP-SPHARM / fabric / SPI contrast. Both, now: the same
-# seeds, the same call path, the same per-replicate vector array for all three
-# methods (perturb_spharm.py Engine.run perturbs U once per specimen and derives the
-# KDE, SPI and E/I from that one array), so the polarity and angle contrasts are
-# structurally identical and can be read side by side.
 THREE_METHOD_KINDS <- c("polarity", "angle")
 
-# Spherical-harmonic angular resolution at the truncation degree, for the mechanism
-# claim: l = 6 resolves features no finer than about 180/6 = 30 degrees.
 LMAX_KEEP    <- 6
 SH_RES_DEG   <- 180 / LMAX_KEEP
-# Committed bandwidth-sensitivity trend for the R2 cross-check
-# (bandwidth_sensitivity_metrics.csv: h = 0.35 -> 0.50).
+
 BW_REF <- list(h_lo = 0.35, h_hi = 0.50, R2_lo = 0.30174, R2_hi = 0.32879,
                nsig_lo = 8L, nsig_hi = 8L)
 
-# Committed baseline (EXP SP-SPHARM core-type PERMANOVA), same anchor the joint-MFA
-# scripts use. R2 / pseudo-F are deterministic and CHECKED; p is permutation noise.
 REF <- list(R2 = 0.30174, F = 5.72568, n_sig = 8L, n = 58L, n_pairs = 10L)
 
-# Resolved-pair counts of the other two methods in the main text, read off Figure 6d
-# (spharm_analysis.R:451-464). These were never anchored before, which is how this
-# sweep came to report fabric 6/10 against the main text's 5/10. Checked now.
 REF_FAB_N_SIG <- 5L
 REF_SPI_N_SIG <- 4L
 
@@ -188,25 +78,6 @@ h2 <- import_helpers(
 cat(sprintf("Imported helpers verbatim: %s | %s\n",
             paste(sort(h1), collapse = ", "), paste(sort(h2), collapse = ", ")))
 
-# Pairwise contrasts, drawn from the SAME random stream as the main analysis.
-#
-# permanova_pairwise (imported above) and spharm_analysis.R:351 run the identical
-# test -- RVAideMemoire::pairwise.perm.manova on a dist input just loops the pairs
-# through vegan::adonis2 on the two-group subset -- but they seed it differently:
-# the helper calls set.seed(SEED + k) once per pair, the main analysis calls
-# set.seed(SEED) once for the whole family and lets pairwise.table walk the pairs
-# through one stream. At 9999 permutations that difference is invisible; at 999 it
-# is not, because the two boundary pairs noted at N_PERM above are decided by a
-# handful of permutations either way. Since the baseline anchor of this sweep IS
-# the main-text result, the p values have to come from the main text's stream.
-#
-# Two further details are load-bearing for that:
-#   - the pair iteration order, hence the RNG consumption order, follows the factor
-#     level order, so the call has to use the main analysis's alphabetical levels
-#     (droplevels(as.factor(Typology)), spharm_analysis.R:266) and not TYPOLOGY_ORDER;
-#   - p.method = "none" leaves the raw p values untouched (it changes nothing about
-#     the permutations) so Holm is applied here over the same ten-pair family.
-# R2 and pseudo-F are deterministic and still come from the imported helper.
 permanova_pairwise_main <- function(Z, group, seed = SEED, nperm = N_PERM) {
   pw_det <- permanova_pairwise(Z, group, seed = seed, nperm = nperm)
   d      <- stats::dist(as.matrix(Z), method = "euclidean")
@@ -229,9 +100,6 @@ permanova_pairwise_main <- function(Z, group, seed = SEED, nperm = N_PERM) {
   out
 }
 
-# Mantel statistic = Spearman correlation of the two distance vectors. Identical to
-# vegan::mantel()$statistic but without the permutation cost, which we do not need
-# here (only the coefficient is reported, per replicate).
 mantel_stat <- function(A, B)
   stats::cor(as.vector(stats::dist(A)), as.vector(stats::dist(B)), method = "spearman")
 
@@ -260,7 +128,6 @@ n_pairs <- choose(nlevels(grp), 2)
 cat(sprintf("\nEXP specimens: %d | groups: %d | pairs: %d\n", n_spec, nlevels(grp), n_pairs))
 print(table(grp))
 
-# Fixed morphology block (never perturbed) for the decoupling check.
 morph_raw <- read_csv(here("analysis/data/derived_data/SPHARM_morphology.csv"),
                       show_col_types = FALSE) %>%
   filter(ID %in% ids) %>% arrange(ID)
@@ -278,7 +145,6 @@ ilr_of <- function(df) {
 Z_base <- ilr_of(base_df)
 D_base <- stats::dist(Z_base)
 
-# SP-SPHARM statistics for one replicate's descriptor frame.
 eval_spharm <- function(df) {
   Z  <- ilr_of(df)
   gl <- permanova_global(Z, grp, nperm = N_PERM)
@@ -294,8 +160,6 @@ eval_spharm <- function(df) {
        pw = pw)
 }
 
-# Fabric (E, I): same PERMANOVA machinery, on the 2-column fabric descriptor
-# (spharm_analysis.R:351-352 uses Euclidean distance on raw E, I).
 eval_fabric <- function(df) {
   df <- df %>% arrange(ID)
   X  <- df %>% select(E, I) %>% as.matrix()
@@ -310,12 +174,6 @@ eval_fabric <- function(df) {
        med_neglog10 = stats::median(-log10(pw$p)))
 }
 
-# SPI: univariate, so the main analysis's Dunn test with Holm (spharm_analysis.R:282).
-# SPI is univariate, so it keeps the main analysis's test: Kruskal-Wallis for the
-# global effect, Dunn with Holm for the pairwise comparisons. Deliberately NOT
-# converted to a PERMANOVA — the point is to compare each method as the paper
-# actually uses it. The "global" columns therefore hold the KW chi-squared, not a
-# pseudo-F, and R2 is undefined for it.
 eval_spi <- function(df) {
   df <- df %>% arrange(ID)
   d  <- data.frame(SPI = df$SPI, g = grp)
@@ -323,8 +181,6 @@ eval_spi <- function(df) {
     return(list(R2 = NA_real_, F = NA_real_, p = NA_real_,
                 n_sig_05 = NA_integer_, n_sig_01 = NA_integer_, med_neglog10 = NA_real_))
   kw <- stats::kruskal.test(SPI ~ g, data = d)
-  # dunnTest prints the KW test and the comparison table to stderr as a side effect;
-  # with one call per replicate that would bury the report, so both streams are sunk.
   dt <- NULL
   invisible(utils::capture.output(
     invisible(utils::capture.output(
@@ -356,9 +212,6 @@ chk("n specimens",      n_spec,     REF$n,     0)
 chk("PERMANOVA R2",     b$R2,       REF$R2,    1e-3)
 chk("PERMANOVA pseudo-F", b$F,      REF$F,     1e-3)
 chk("resolved pairs",   b$n_sig_05, REF$n_sig, 0)
-# The other two methods are anchored on Figure 6d as well, so a permutation-count or
-# seeding change can never again leave this sweep reporting a different number of
-# resolved pairs from the main text without stopping here.
 chk("fabric resolved pairs", bf$n_sig_05, REF_FAB_N_SIG, 0)
 chk("SPI resolved pairs",    bs$n_sig_05, REF_SPI_N_SIG, 0)
 if (!anchor_ok)
@@ -402,9 +255,6 @@ for (ci in seq_len(nrow(conds))) {
                   med_neglog10_p = s$med_neglog10,
                   ilr_shift = s$ilr_shift, mantel_vs_base = s$mantel_vs_base,
                   decoup_mantel = s$decoup_mantel, decoup_rv = s$decoup_rv)
-    # Three-method contrast, for BOTH perturbations. fabric and SPI are evaluated on
-    # `dfr` — the very same replicate rows, hence the very same perturbed vectors —
-    # so no additional sampling noise enters the comparison.
     if (kind %in% THREE_METHOD_KINDS) {
       f <- eval_fabric(dfr); sp <- eval_spi(dfr)
       row <- row %>% mutate(fabric_R2 = f$R2, fabric_F = f$F, fabric_p = f$p,
@@ -456,7 +306,6 @@ summarise_cond <- function(d) {
 summary_df <- rep_df %>% group_split(perturbation, level) %>%
   map_dfr(summarise_cond) %>% arrange(perturbation, level)
 
-# Baseline row, so every table carries its own reference point.
 base_row <- tibble(perturbation = "baseline", level = 0, R = 1L,
                    R2_med = b$R2, R2_lo = b$R2, R2_hi = b$R2,
                    pseudo_F_med = b$F, pseudo_F_lo = b$F, pseudo_F_hi = b$F,
@@ -594,14 +443,10 @@ cat(sprintf("  => the decoupling conclusion %s across every perturbation level\n
 # =============================================================================
 # Three-method tables, then the figure
 # =============================================================================
-# ---- shared three-method assembly (identical for P1 and P2) ------------------
-# Baselines, one per method, used both as the level-0 point and as the denominator
-# of the retention ratio.
 BASE_MET <- tibble(method = c("SP-SPHARM", "Fabric (E, I)", "SPI"),
                    base_count   = c(b$n_sig_05, bf$n_sig_05, bs$n_sig_05),
                    base_neglog  = c(b$med_neglog10, bf$med_neglog10, bs$med_neglog10))
 
-# quantity = "count" (resolved pairs) or "neglog" (median -log10 raw p).
 three_method_tbl <- function(kind, quantity = c("count", "neglog")) {
   quantity <- match.arg(quantity)
   d <- summary_df %>% filter(perturbation == kind)
@@ -633,9 +478,6 @@ three_method_tbl <- function(kind, quantity = c("count", "neglog")) {
     arrange(method, level)
 }
 
-# P2 angle three-method table. The polarity twin of this table, and the figure
-# that draws both, are built by annotation_perturbation_figure.R (called below);
-# this one stays here because sections (1)-(2) adjudicate the prediction on it.
 ang_cnt <- three_method_tbl("angle", "count")
 ang_nlg <- three_method_tbl("angle", "neglog")
 
@@ -659,11 +501,6 @@ cat("Wrote annotation_perturbation_angle_three_methods.csv\n")
 # =============================================================================
 # The figure
 # =============================================================================
-# One 2 x 2 panel — polarity | angle across the columns, resolved pairs | median
-# -log10(p) down the rows — replacing the four separate PNGs this script used to
-# write. Built entirely from the CSVs just written, by the script source()d at
-# the top, which also deletes the four superseded files. See its header for why
-# both metric rows are kept and why both are drawn as retention ratios.
 make_perturbation_figure(OUT_DIR, n_pairs = n_pairs)
 
 # =============================================================================
@@ -703,10 +540,8 @@ SIG_MAX <- max(angle_three_csv$level)
 ret_at_max <- angle_three_csv %>% filter(level == SIG_MAX) %>%
   select(method, retention_cont = med_neglog10_retention,
          retention_count = n_sig_05_retention)
-# Ranking is adjudicated on the CONTINUOUS retention: free of both the differing
-# baselines and the integer-threshold steps.
 ord_obs <- ret_at_max %>% arrange(retention_cont) %>% pull(method) %>% as.character()
-ord_pred <- c("SPI", "Fabric (E, I)", "SP-SPHARM")   # fastest -> slowest decay
+ord_pred <- c("SPI", "Fabric (E, I)", "SP-SPHARM") 
 pred_ok  <- identical(ord_obs, ord_pred)
 
 cat(sprintf("\n  Retention at sigma = %.0f deg (continuous statistic):\n", SIG_MAX))
@@ -719,7 +554,6 @@ cat(sprintf("\n  observed decay order (fastest -> slowest): %s\n",
 cat(sprintf("  predicted decay order                    : %s\n",
             paste(ord_pred, collapse = " > ")))
 
-# First sigma at which each method falls below its own baseline (continuous stat).
 first_below <- angle_three_csv %>% group_by(method) %>%
   summarise(first_sigma = {
     idx <- which(med_neglog10_retention < 1)

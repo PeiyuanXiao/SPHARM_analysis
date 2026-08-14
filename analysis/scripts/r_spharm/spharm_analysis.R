@@ -316,18 +316,7 @@ p_SPI_box <- ggplot(results_typed,
     legend.position = "none"
   ) +
   labs(x = NULL, y = "SPI")
-
-# Permutation count for every randomisation test in this script -- global
-# PERMANOVA, PERMDISP and the Holm-corrected pairwise contrasts alike. Declared
-# once so the three cannot drift apart: the pairwise p values reported inline in
-# the manuscript and the p values drawn in Figure 7d must come from the same
-# randomisation, and they did not while this was written out three times.
-# NOTE ON THE VALUE: at N_PERM = 999 the smallest attainable raw p is 1/1000, so
-# the smallest Holm-adjusted p across the 10 typology pairs is 0.01 -- several
-# pairs sit exactly on that floor and their true separation is stronger than the
-# printed value. The floor censors the low end only; it does not affect which
-# pairs fall on either side of 0.05.
-N_PERM <- 999
+  N_PERM <- 999
 
 # --- PERMANOVA + PERMDISP helper ---
 run_permanova <- function(X, group_vec, label) {
@@ -532,10 +521,7 @@ cat("Saved: SPHARM_morphology_filter.rds\n")
 # 7. Combined panel: three left plots + bubble plot
 # ==============================================================================
 benn_grob <- ggplotGrob(p_benn)
-# wrap_elements() holds a raw grob, so unset tag properties fall back to the
-# ggtern-modified default theme (which made tag "b" oversized and picked up a
-# stray font family). Pin them here; the `&` on the composite below repeats the
-# size and face for every panel.
+
 p_benn_wrap <- wrap_elements(full = benn_grob) +
   theme(plot.tag = element_text(size = 9, face = "bold", family = ""))
 
@@ -573,8 +559,4 @@ left_col <- (p_SPI_box / p_benn_wrap / p_dir_plot) +
 exp_method_compare_combined <- (left_col | p_bubble) +
   plot_layout(ncol = 2, widths = c(1, 0.5)) +
   plot_annotation(tag_levels = "a") &
-  # patchwork attaches the tags to the subplots with labs(tag = ), so plot.tag
-  # has to be set on the subplots with `&`; the plot_annotation() theme only
-  # styles the tag of the composite itself and never reaches the panels. This is
-  # why only "b", which sets plot.tag on its own, used to come out bold.
   theme(plot.tag = element_text(face = "bold", size = 9))

@@ -1,81 +1,16 @@
 # joint_mfa_discrimination_stats.R
-# =============================================================================
-# JOINT (M-SPHARM + SP-SPHARM) DISCRIMINANT ANALYSIS via MFA block normalisation
-# — SI add-on. NEW, self-contained file. Does NOT modify the main pipeline, the
-# cached _targets store, the derived_data cache, or the manuscript. It only READS
-# the committed main outputs (SPHARM_direction.csv / SPHARM_morphology.csv +
-# raw metadata) and WRITES new outputs under
-# analysis/robustness/joint_mfa_discrimination/.
-#
-# The main analysis tests morphology (M-SPHARM, l = 1-8) and scar patterning
-# (SP-SPHARM, l = 1-6) as two SEPARATE descriptor blocks. This script asks the
-# obvious follow-up: does merging the two blocks into a single MFA-balanced
-# feature space buy any discriminant power that neither block has alone —
-# specifically for the two core-type pairs the scar block fails to separate
-# (discoid-bidirectional, discoid-multiplatform)?
-#
-# It re-uses the project's statistical machinery (the same package functions the
-# main pipeline calls — vegan::adonis2 / betadisper / permutest,
-# compositions::ilr) and replicates, verbatim, the data-prep from:
-#   - r_spharm/spharm_analysis.R           (EXP PERMANOVA `perm_dir` / `perm_morph`)
-#   - r_statistics/SDG_cores_statistics.R  (SDG core-type PERMANOVA; parameterised
-#                                           branch, not exercised by this run)
-# Source line numbers are cited next to each replicated block.
-#
-# Steps:
-#   (1) ILR each power spectrum separately  -> Z_M (n x 7), Z_SP (n x 5).
-#   (2) MFA block normalisation: divide each centred block by its own first
-#       singular value -> Z_comb = cbind(Z_M / s_M, Z_SP / s_SP).
-#   (3) PERMANOVA (global + all pairwise, Holm) for M alone / SP alone / combined,
-#       always on the FULL Z distance matrix, never on truncated MFA axes: with
-#       all axes retained the MFA is an orthogonal rotation and distances are
-#       unchanged, so the three models are directly comparable; truncating would
-#       silently change the test.
-#   (4) PERMDISP (betadisper + permutest) on the combined distance matrix.
-#   (5) MFA biplot: global PCA of Z_comb, one point per core, 95% ellipses, and
-#       variable arrows mapped back from ILR to CLR (clr_loading = V %*% ilr_loading,
-#       V = the ILR contrast basis) so each arrow corresponds to one harmonic
-#       degree instead of an uninterpretable between-degree contrast.
-#   (6) Weight scan: w = 0 (pure SP) .. 1 (pure M) in steps of 0.05 under TOTAL-
-#       INERTIA (Frobenius) normalisation, so w is exactly the morphology share of
-#       squared distance; coordinates carry sqrt(w) because PERMANOVA partitions
-#       squared distances. The curve reports the number of Holm-significant pairs,
-#       NOT R^2: under Euclidean geometry squared distances are additive, so R^2(w)
-#       is a linear-fractional function of w, strictly monotone on [0, 1] and pinned
-#       at both ends by the two single-block values — the whole curve is determined
-#       analytically by two numbers already in the table. For the same reason the
-#       combined R^2 can never exceed max(R2_M, R2_SP); a drop is arithmetic, not
-#       evidence that merging failed.
-#
-# No LOOCV / classification accuracy is attempted here, so the scan reports
-# resolved pairs only.
-#
-# Outputs (all NEW):
-#   joint_mfa_permanova_comparison.csv   global + pairwise results, 3 models
-#   joint_mfa_weight_scan.csv            one row per w
-#   figures/fig_joint_mfa_main.png       MAIN TEXT composite (a biplot | b scan / c curve)
-#   figures/fig_S_joint_mfa_biplot.png                    source panel a
-#   figures/fig_S_joint_mfa_weight_scan.png               source panel b
-#   figures/fig_S_joint_mfa_weight_resolution_continuous.png  source panel c
-#
-# HOW TO RUN (canonical environment, Docker spharm_analysis, R 4.4 + renv):
-#   Rscript analysis/robustness/joint_mfa_discrimination/joint_mfa_discrimination_stats.R
-#   # or in RStudio: source(here::here("analysis/robustness/joint_mfa_discrimination/joint_mfa_discrimination_stats.R"))
-# =============================================================================
 
 suppressPackageStartupMessages({
   library(here)
   library(tidyverse)
   library(readxl)
-  library(vegan)          # adonis2, betadisper, permutest
-  library(compositions)   # ilr, ilrBase, clr
+  library(vegan)          
+  library(compositions)   
   library(ggrepel)
-  library(patchwork)      # main-text composite
+  library(patchwork)     
   library(conflicted)
 })
 
-# Resolve namespace clashes exactly as the main pipeline does (_targets.R).
-# compositions masks several base/stats generics (var, cor, dist, scale, ...).
 suppressMessages({
   conflicts_prefer(dplyr::filter, dplyr::select, dplyr::lag,
                    stats::sd, stats::var, stats::dist, stats::cor, stats::cov,
@@ -87,28 +22,20 @@ set.seed(42)
 # =============================================================================
 # PARAMETERS
 # =============================================================================
-ASSEMBLAGE <- "EXP"        # "EXP" (this run) or "SDG"; see build_blocks()
+ASSEMBLAGE <- "EXP"       
 SEED       <- 42
-N_PERM     <- 9999         # global + pairwise PERMANOVA, PERMDISP
-W_GRID     <- seq(0, 1, by = 0.05)   # weight scan; w = 1 pure M, w = 0 pure SP
-# Dense grid for diagnostic D3: 0.01 resolution across 0.61-0.84, where the coarse
-# scan drops 4 pairs in a single 0.05 step. A superset of W_GRID, so the coarse
-# rows are reproduced exactly (results at a given w do not depend on the grid).
+N_PERM     <- 9999         
+W_GRID     <- seq(0, 1, by = 0.05)
 W_GRID_DENSE <- sort(unique(round(c(seq(0, 0.60, by = 0.05),
                                     seq(0.61, 0.84, by = 0.01),
                                     seq(0.85, 1.00, by = 0.05)), 10)))
-DOMINANCE_THR <- 0.65   # D2: block share at which an axis counts as block-dominated
-DEGENERACY_THR <- 0.10  # D2: relative inertia gap below which axes 1-2 are degenerate
-
+DOMINANCE_THR <- 0.65   
+DEGENERACY_THR <- 0.10  
 OUT_DIR <- here("analysis/robustness/joint_mfa_discrimination")
 FIG_DIR <- file.path(OUT_DIR, "figures")
 dir.create(FIG_DIR, recursive = TRUE, showWarnings = FALSE)
-
-# Power-column conventions (identical to the main analysis).
-POWER_COLS_DIR   <- paste0("power_l", 1:6)   # scar       (SP-SPHARM) l = 1-6
-POWER_COLS_MORPH <- paste0("power_l", 1:8)   # morphology (M-SPHARM)  l = 1-8
-
-# Typology handling (spharm_analysis.R:53-67)
+POWER_COLS_DIR   <- paste0("power_l", 1:6)  
+POWER_COLS_MORPH <- paste0("power_l", 1:8)  
 EXCLUDE_TYPES   <- c("Biface")
 LEVALLOIS_MERGE <- c("Levallois convergent", "Levallois laminar",
                      "Levallois preferential", "Levallois recurrent")
@@ -121,20 +48,9 @@ TYPOLOGY_COLORS <- c(
   "Multiplatform"  = "#8A7A68",
   "Bidirectional"  = "#788C4A"
 )
-
-# SDG metadata handling (SDG_cores_statistics.R:38-49), for the parameterised branch.
 EXCLUDE_CORE_TYPES <- c("Handaxe", "Pick")
-
-# The two pairs the scar block alone fails to separate (manuscript.qmd:319) — the
-# reason this analysis exists. Matched on membership, order-insensitive.
 FOCUS_PAIRS <- list(c("Discoid", "Bidirectional"),
                     c("Discoid", "Multiplatform"))
-
-# Committed production reference values for the EXP anchor check. R2 / pseudo-F are
-# deterministic; permutation p-values jitter by ~+/-0.005 and are reported, not
-# checked. Sources: mesh_sensitivity_metrics.csv (production row 20000/3) and
-# threshold_sensitivity_metrics.csv (threshold 0 = all scars), which are themselves
-# anchored to `perm_morph` / `perm_dir` in spharm_analysis.R.
 REF <- list(
   M_R2  = 0.12334, M_F  = 1.86418, M_p  = 0.025, M_nsig  = 0,
   SP_R2 = 0.30174, SP_F = 5.72568, SP_p = 0.001, SP_nsig = 8,
@@ -144,8 +60,6 @@ REF <- list(
 # =============================================================================
 # Helpers — copied VERBATIM from the source scripts (attribution in comments)
 # =============================================================================
-
-# spharm_analysis.R:119-133 / exp_cores_statistics.R:65-79
 replace_zeros <- function(X, delta = NULL) {
   X <- as.matrix(X)
   for (i in seq_len(nrow(X))) {
@@ -162,27 +76,22 @@ replace_zeros <- function(X, delta = NULL) {
   X
 }
 
-# spharm_analysis.R:134-138 — drop zero-variance parts, multiplicative zero
-# replacement, then ilr into Euclidean space.
 make_ilr <- function(power_df) {
   X    <- as.matrix(power_df)
   keep <- apply(X, 2, function(v) sd(v, na.rm = TRUE) > 0)
   as.matrix(ilr(replace_zeros(X[, keep, drop = FALSE])))
 }
 
-# spharm_analysis.R:87-92
 filter_spharm <- function(df, power_cols, meta = NULL) {
   result <- df %>% select(ID, Typology, all_of(power_cols))
   if (!is.null(meta)) result <- left_join(result, meta, by = "ID")
   result
 }
 
-# spharm_analysis.R:97-102
 split_by_group <- function(df) list(
   exp_im = df %>% filter(str_starts(ID, "EXP") | str_starts(ID, "IM_")),
   sdg_im = df %>% filter(str_starts(ID, "SDG") | str_starts(ID, "IM_")))
 
-# SDG_cores_statistics.R:96-110
 safe_filter_groups <- function(meta_df, group_col, min_n = 3) {
   counts <- table(meta_df[[group_col]], useNA = "no")
   valid  <- names(counts[counts >= min_n])
@@ -193,18 +102,12 @@ safe_filter_groups <- function(meta_df, group_col, min_n = 3) {
 # =============================================================================
 # New helpers (no existing equivalent in the repo)
 # =============================================================================
-
-# Which parts survive make_ilr()'s zero-variance drop — needed to build the
-# matching ILR contrast basis for the CLR back-mapping.
 ilr_parts <- function(power_df) {
   X <- as.matrix(power_df)
   colnames(X)[apply(X, 2, function(v) sd(v, na.rm = TRUE) > 0)]
 }
 
-# MFA block weight: first singular value of the centred block.
 mfa_s1 <- function(Z) svd(base::scale(as.matrix(Z), scale = FALSE))$d[1]
-
-# Total inertia of a centred block = squared Frobenius norm.
 block_inertia <- function(Z) sum(base::scale(as.matrix(Z), scale = FALSE)^2)
 
 # =============================================================================
@@ -216,24 +119,21 @@ SPHARM_direction  <- read_csv(
   here("analysis/data/derived_data/SPHARM_direction.csv"),  show_col_types = FALSE)
 SPHARM_morphology <- read_csv(
   here("analysis/data/derived_data/SPHARM_morphology.csv"), show_col_types = FALSE)
-SPHARM_morphology <- SPHARM_morphology %>%                     # spharm_analysis.R:80-81
+SPHARM_morphology <- SPHARM_morphology %>%                     
   left_join(SPHARM_direction %>% select(ID, Typology), by = "ID")
 
 metric_data <- read_xlsx(here("analysis/data/raw_data/SDG_core_metric.xlsx")) %>%
-  select(ID, Layer, Core_type_Li_merged, Raw_mat) %>%          # spharm_analysis.R:76-78
+  select(ID, Layer, Core_type_Li_merged, Raw_mat) %>%          
   mutate(Layer = as.factor(Layer), Raw_mat = as.factor(Raw_mat))
 core_meta <- read_excel(here("analysis/data/raw_data/SDG_core_metric.xlsx")) %>%
   select(ID = ID, raw_material = Raw_mat, core_type = Core_type_Li_merged) %>%
-  mutate(across(everything(), ~ str_trim(as.character(.))))    # SDG_cores_statistics.R:171-177
+  mutate(across(everything(), ~ str_trim(as.character(.))))   
 
-# Returns: morph / scar POWER matrices (rows = specimens, aligned), the grouping
-# factor, and the specimen IDs. Everything downstream is assemblage-agnostic.
 build_blocks <- function(assemblage = ASSEMBLAGE) {
   dir_f   <- filter_spharm(SPHARM_direction,  POWER_COLS_DIR,   metric_data)
   morph_f <- filter_spharm(SPHARM_morphology, POWER_COLS_MORPH, metric_data)
 
   if (assemblage == "EXP") {
-    # spharm_analysis.R:113-157 — EXP+IM split, drop IM_ and Biface, merge Levallois.
     df_dir   <- split_by_group(dir_f)$exp_im
     df_morph <- split_by_group(morph_f)$exp_im
     if (!identical(df_dir$ID, df_morph$ID))
@@ -256,10 +156,6 @@ build_blocks <- function(assemblage = ASSEMBLAGE) {
                                                   unique(as.character(df_only$Typology))]))
 
   } else if (assemblage == "SDG") {
-    # SDG_cores_statistics.R:148-230 — the UN-split filtered frames (full
-    # EXP+SDG+IM set), then restrict to archaeological specimens and drop the
-    # excluded core types. NOTE: parameterised for a future run; not exercised
-    # by this script's EXP-only execution.
     common   <- intersect(dir_f$ID, morph_f$ID)
     df_dir   <- dir_f   %>% filter(ID %in% common) %>% arrange(ID)
     df_morph <- morph_f %>% filter(ID %in% common) %>% arrange(ID)
@@ -309,8 +205,6 @@ s_SP <- mfa_s1(Z_SP)
 Z_comb <- cbind(Z_M / s_M, Z_SP / s_SP)
 cat(sprintf("MFA normalisation: s1(M) = %.5f, s1(SP) = %.5f\n", s_M, s_SP))
 
-# Morphology share of total inertia under the s1 normalisation — where the MFA
-# setting sits on the weight axis of step (6).
 I_M    <- block_inertia(Z_M  / s_M)
 I_SP   <- block_inertia(Z_SP / s_SP)
 w_mfa  <- I_M / (I_M + I_SP)
@@ -320,7 +214,6 @@ cat(sprintf("Inertia after s1 normalisation: I_M = %.4f, I_SP = %.4f  =>  w_MFA 
 # =============================================================================
 # PERMANOVA machinery
 # =============================================================================
-# Global test on the FULL coordinate matrix (Euclidean distances, all axes kept).
 permanova_global <- function(Z, group, seed = SEED, nperm = N_PERM) {
   d <- stats::dist(as.matrix(Z), method = "euclidean")
   set.seed(seed)
@@ -328,9 +221,6 @@ permanova_global <- function(Z, group, seed = SEED, nperm = N_PERM) {
   list(R2 = res$R2[1], F = res$`F`[1], p = res$`Pr(>F)`[1])
 }
 
-# All pairwise comparisons: each pair is re-tested on its own subset, then the
-# whole family of p-values is Holm-corrected once (p.adjust), matching the
-# main analysis's correction strategy (exp_cores_statistics.R:268).
 permanova_pairwise <- function(Z, group, seed = SEED, nperm = N_PERM) {
   Z    <- as.matrix(Z)
   lev  <- levels(droplevels(group))
@@ -350,7 +240,6 @@ permanova_pairwise <- function(Z, group, seed = SEED, nperm = N_PERM) {
                  significant_holm = p_holm < 0.05)
 }
 
-# PERMDISP: homogeneity of multivariate dispersions (spharm_analysis.R:330-333).
 permdisp <- function(Z, group, seed = SEED, nperm = N_PERM) {
   d <- stats::dist(as.matrix(Z), method = "euclidean")
   set.seed(seed)
@@ -361,9 +250,6 @@ permdisp <- function(Z, group, seed = SEED, nperm = N_PERM) {
        F = pt$tab$`F`[1], p = pt$tab$`Pr(>F)`[1])
 }
 
-# p for a pair identified by membership (order-insensitive). `col` selects which
-# column to read: "p_holm" (default, used throughout the main analysis) or "p" for
-# the raw uncorrected value that diagnostic D1 needs.
 pair_p <- function(pw, members, col = "p_holm") {
   hit <- pw %>% filter((group1 == members[1] & group2 == members[2]) |
                          (group1 == members[2] & group2 == members[1]))
@@ -475,19 +361,11 @@ if (ASSEMBLAGE == "EXP") {
 # =============================================================================
 # (5) MFA biplot — global PCA of Z_comb
 # =============================================================================
-# The MFA global analysis IS a PCA of the block-normalised concatenation, so this
-# is computed directly on the same Z_comb the PERMANOVA used (guaranteeing the
-# figure and the test describe one geometry). Only centring is applied: scaling
-# each ILR coordinate to unit variance (FactoMineR's type = "s") would inflate the
-# high-order, low-energy coordinates to the same weight as the low-order signal
-# and destroy the l = 1-8 / 1-6 truncation design.
 pca_comb  <- stats::prcomp(Z_comb, center = TRUE, scale. = FALSE)
 inertia   <- pca_comb$sdev^2 / sum(pca_comb$sdev^2) * 100
 cat(sprintf("\nMFA global PCA: axis 1 = %.1f%%, axis 2 = %.1f%% of inertia\n",
             inertia[1], inertia[2]))
 
-# Cross-check against FactoMineR::MFA(type = "c"): same normalisation, so the
-# eigenvalue percentages must agree (non-critical, skipped if unavailable).
 if (requireNamespace("FactoMineR", quietly = TRUE)) {
   mfa_df  <- as.data.frame(cbind(Z_M, Z_SP))
   mfa_fit <- try(FactoMineR::MFA(mfa_df,
@@ -503,15 +381,9 @@ if (requireNamespace("FactoMineR", quietly = TRUE)) {
 }
 
 # ---- ILR loadings -> CLR loadings -------------------------------------------
-# ILR coordinates are contrasts BETWEEN degrees, so an arrow on an ILR axis has no
-# reading. The CLR representation has one coordinate per harmonic degree. With V
-# the ILR contrast basis (D x (D-1), orthonormal columns; compositions::ilr uses
-# clr(x) %*% V), the CLR image of an ILR loading vector a is V %*% a — and because
-# V'V = I the arrow lengths are preserved, so M and SP arrows stay comparable.
 V_M  <- ilrBase(D = length(parts_M))
 V_SP <- ilrBase(D = length(parts_SP))
 
-# Verify V is the basis compositions::ilr actually used: clr = ilr %*% t(V).
 chk_clr <- function(power_df, parts, Z, V) {
   X   <- replace_zeros(as.matrix(power_df)[, parts, drop = FALSE])
   ref <- unclass(clr(X))
@@ -523,8 +395,6 @@ cat(sprintf("  ILR basis check (max |Z %%*%% t(V) - clr|) = %.3e\n", clr_err))
 if (clr_err > 1e-8)
   stop("ilrBase() does not reproduce the basis used by ilr(); CLR arrows would be wrong.")
 
-# Loadings are read in the analysed (MFA-weighted) space, i.e. they are
-# contributions to the plotted axes, not raw-ILR direction cosines.
 idx_M  <- seq_len(ncol(Z_M))
 idx_SP <- ncol(Z_M) + seq_len(ncol(Z_SP))
 clr_M  <- V_M  %*% pca_comb$rotation[idx_M,  1:2]
@@ -543,8 +413,6 @@ load_df <- bind_rows(
 scores_df <- as_tibble(pca_comb$x[, 1:2], .name_repair = ~ c("Axis1", "Axis2")) %>%
   mutate(ID = blocks$ids, group = blocks$group)
 
-# Common arrow scaling: one factor for both blocks, so relative lengths within and
-# between blocks survive the rescale to score units.
 arrow_scale <- 0.80 * max(abs(as.matrix(scores_df[, c("Axis1", "Axis2")]))) /
   max(sqrt(load_df$Axis1^2 + load_df$Axis2^2))
 load_df <- load_df %>% mutate(x = Axis1 * arrow_scale, y = Axis2 * arrow_scale)
@@ -557,20 +425,6 @@ group_pal <- if (ASSEMBLAGE == "EXP")
 # -----------------------------------------------------------------------------
 # MAIN-TEXT FIGURE SPECIFICATION -- taken verbatim, not invented here
 # -----------------------------------------------------------------------------
-# This figure goes in the main text, so its typography follows the manuscript's
-# existing main-text panels rather than the looser SI settings this script used
-# while it was an SI-only analysis.
-#   theme / legend / zero-line    <- SDG_cores_statistics.R make_coia_biplot()
-#                                    (manuscript Fig. 9, fig-coia-composite)
-#   point size                    <- spharm_analysis.R p_dir_plot (Fig. 7c), the
-#                                    closest analogue: one point per core inside
-#                                    convex hulls, in a panel of similar width.
-#                                    NOT Fig. 8a's 2.0 -- that is a 5.14 in panel,
-#                                    this one is 3.71 in (widths 1.18 : 1), so a
-#                                    2.0 dot reads nearly twice the area of the
-#                                    dots in the equally sized Fig. 9 panels.
-#   export geometry               <- manuscript.qmd fig-width 6.85 / out-width
-#                                    174mm / fig-dpi 800
 MT <- list(base_size = 8, axis_text = 5, legend_text = 6.5, legend_title = 7,
            legend_key_cm = 0.30, tag_size = 9, tag_face = "bold",
            pt_shape = 16, pt_size = 1.4, pt_stroke = 0.25, pt_alpha = 0.90,
@@ -588,25 +442,9 @@ mt_theme <- function() {
           plot.tag     = element_text(size = MT$tag_size, face = MT$tag_face))
 }
 
-# Reference line on the two weight panels. Placed at exactly 0.5 (equal
-# weighting) rather than at the data-derived w_mfa. The s1 normalisation lands
-# within a hundredth of 0.5 here, so the two are indistinguishable at this
-# scale, and a round 0.5 is the honest position for an UNANNOTATED line. The
-# realised gap is printed to the console below; what the line marks must be
-# stated in the caption, since the panel no longer says so.
 W_REF <- 0.5
-
-# Horizontal reference on panel (c): the conventional alpha, on the panel's
-# -log10 scale. Computed, not hard-coded at 1.3, so the drawn line and the value
-# printed to the console cannot drift apart from the caption.
 ALPHA_REF  <- 0.05
 ALPHA_LINE <- -log10(ALPHA_REF)
-
-# Convex hulls, not normal ellipses: the main-text ordination panels
-# (spharm_analysis.R run_lda_plot(), Figure 7c) draw group extents as filled
-# chull polygons. An ellipse is a parametric summary that extends well beyond
-# the observed points for the small, non-elliptical groups here (Discoid n = 6),
-# so the hull is both the honest extent and the house style.
 hull_df <- scores_df %>%
   dplyr::group_by(group) %>%
   dplyr::slice(chull(Axis1, Axis2)) %>%
@@ -624,9 +462,6 @@ p_biplot <- ggplot() +
   geom_point(data = scores_df, aes(Axis1, Axis2, color = group),
              shape = MT$pt_shape, size = MT$pt_size, stroke = MT$pt_stroke,
              alpha = MT$pt_alpha) +
-  # Thin shafts with small open heads: at main-text scale a 0.4 linewidth with a
-  # filled 0.16 cm head reads as a blob and competes with the hulls for
-  # attention. The arrows are a secondary layer here.
   geom_segment(data = load_df,
                aes(x = 0, y = 0, xend = x, yend = y, linetype = block),
                arrow = grid::arrow(length = grid::unit(0.075, "cm"),
@@ -639,14 +474,9 @@ p_biplot <- ggplot() +
   scale_color_manual(values = group_pal, name = NULL) +
   scale_fill_manual(values  = group_pal, name = NULL) +
   scale_linetype_manual(values = c("M-SPHARM" = "solid", "SP-SPHARM" = "22"),
-                        # Untitled: what the arrows are (CLR loadings, back-mapped
-                        # from the ILR coordinates used in the analysis) is stated
-                        # in the caption instead.
                         name = NULL) +
   labs(x = sprintf("MFA axis 1 (%.1f%%)", inertia[1]),
        y = sprintf("MFA axis 2 (%.1f%%)", inertia[2])) +
-  # Equal aspect: the analysis is distance-based and the two axes carry nearly the
-  # same inertia, so an unequal scale would misrepresent between-group proximity.
   coord_fixed() +
   guides(color = guide_legend(order = 1, override.aes = list(shape = 16, size = 1.6,
                                                              linetype = 0)),
@@ -654,12 +484,6 @@ p_biplot <- ggplot() +
          linetype = guide_legend(order = 2, title = NULL,
                                  override.aes = list(color = "grey30"))) +
   mt_theme() +
-  # Inset legend, boxed on a 75% white ground with a grey80 hairline border --
-  # the main-text ordination convention (Fig. 8a, Fig. 9). The translucent fill
-  # is what lets the hull polygon underneath still read. Anchored bottom RIGHT.
-  # The M-SPHARM l1 arrow points into the lower-right quadrant, but its head and
-  # repel label sit above the legend box, not inside it -- check the rendered
-  # panel if the loadings ever change.
   theme(legend.position       = c(0.99, 0.01),
         legend.justification  = c(1, 0),
         legend.background     = element_rect(fill = scales::alpha("white", 0.75),
@@ -667,8 +491,6 @@ p_biplot <- ggplot() +
         legend.box.background = element_rect(fill = "transparent", colour = NA),
         legend.key            = element_rect(fill = "transparent", colour = NA),
         legend.margin         = margin(2, 4, 2, 4),
-        # 0.02 cm was fine while the two legends were unboxed; now that each
-        # carries a border they need a visible hairline gap between them.
         legend.spacing.y      = grid::unit(0.10, "cm"))
 
 ggsave(file.path(FIG_DIR, "fig_S_joint_mfa_biplot.png"), p_biplot,
@@ -678,11 +500,6 @@ cat("Wrote figures/fig_S_joint_mfa_biplot.png\n")
 # =============================================================================
 # (6) Weight scan — pairwise resolution as a function of the morphology share
 # =============================================================================
-# TOTAL-INERTIA (Frobenius) normalisation here, not s1: after dividing each block
-# by its own Frobenius norm both blocks contribute inertia 1, so multiplying the
-# coordinates by sqrt(w) / sqrt(1 - w) makes w exactly the morphology share of the
-# squared distances that PERMANOVA partitions. Under the s1 normalisation the
-# x-axis would not have that reading.
 cat("\n", strrep("=", 70), "\n", sep = "")
 cat(sprintf("WEIGHT SCAN: w = %.2f .. %.2f, %d steps (w = 1 pure M, w = 0 pure SP)\n",
             min(W_GRID), max(W_GRID), length(W_GRID)))
@@ -709,8 +526,6 @@ scan_res <- map_dfr(seq_along(W_GRID), function(i) {
   rename(!!paste0("p_holm_", paste(FOCUS_PAIRS[[1]], collapse = "_")) := p_holm_focus1,
          !!paste0("p_holm_", paste(FOCUS_PAIRS[[2]], collapse = "_")) := p_holm_focus2)
 
-# Endpoint identity check: a global rescale of one block cannot change R2, so the
-# w = 0 / w = 1 rows must reproduce the single-block models exactly.
 end_ok <- isTRUE(all.equal(scan_res$R2[scan_res$w == 0],
                            model_res[["SP-SPHARM"]]$global$R2, tolerance = 1e-6)) &&
   isTRUE(all.equal(scan_res$R2[scan_res$w == 1],
@@ -718,11 +533,6 @@ end_ok <- isTRUE(all.equal(scan_res$R2[scan_res$w == 0],
 cat(sprintf("\n  Endpoint identity (R2 at w = 0 / 1 vs SP / M alone): %s\n",
             ifelse(end_ok, "OK", "<-- CHECK")))
 
-# The reference line carries an in-panel label, set in the line's own colour and
-# at the panel-a repel-label size (1.9). It is parked at the very top of the
-# panel: the resolved-pair step never reaches n_pairs, so that band is the only
-# strip of the panel guaranteed to be empty whatever the scan does. Axis titles
-# stay short -- the Holm correction and the alpha level belong in the caption.
 ANN_SIZE <- 1.9
 p_scan <- ggplot(scan_res, aes(w, n_sig_pairs)) +
   geom_vline(xintercept = W_REF, linetype = "dashed",
@@ -731,8 +541,6 @@ p_scan <- ggplot(scan_res, aes(w, n_sig_pairs)) +
            label = sprintf("w = %.1f", W_REF),
            size = ANN_SIZE, color = "#802520") +
   geom_line(linewidth = 0.6, color = "#4A6E8A") +
-  # Same marker size as panel c: the two sit stacked at identical physical size,
-  # so unequal dots read as an inconsistency rather than as denser sampling.
   geom_point(size = 1.1, color = "#4A6E8A") +
   scale_x_continuous(breaks = seq(0, 1, 0.2), limits = c(0, 1)) +
   scale_y_continuous(breaks = seq(0, n_pairs, 2), limits = c(0, n_pairs)) +
@@ -746,9 +554,6 @@ cat("Wrote figures/fig_S_joint_mfa_weight_scan.png\n")
 # =============================================================================
 # Outputs: tidy CSVs
 # =============================================================================
-# One tidy table: `scope = "global"` rows carry the model-level statistics
-# (R2 / pseudo-F / p / resolved pairs / PERMDISP), `scope = "pairwise"` rows carry
-# every pair with its raw and Holm-corrected p.
 permanova_csv <- bind_rows(
   comparison_tbl %>%
     transmute(model, scope = "global", comparison = "type (all groups)",
@@ -797,26 +602,11 @@ cat("geometry — a drop is arithmetic, not evidence about discriminant power.\n
 # SUPPLEMENTARY DIAGNOSTICS (D1-D4)
 # =============================================================================
 # =============================================================================
-# Four add-on diagnostics. None changes the analysis above — they add outputs and
-# refine the weight grid only. Each reuses the helpers defined earlier
-# (make_ilr / permanova_global / permanova_pairwise / block_inertia / pair_p /
-# permdisp) rather than re-implementing them, and writes to new filenames.
-
-# The permutation floor: with N_PERM permutations adonis2 cannot return anything
-# below 1/(N_PERM + 1). Several pairs sit exactly on that floor, so their p-ratios
-# are censored, not measured. D1 and D3 both flag this rather than reading a ratio
-# of 1.00 as "no change".
 P_FLOOR <- 1 / (N_PERM + 1)
 
 # =============================================================================
 # D1. Raw (uncorrected) p-values — three models and the weight scan
 # =============================================================================
-# Holm is a step-down procedure: its output is forced monotone in the raw ranking,
-# so neighbouring pairs are routinely pushed onto the SAME adjusted value — both
-# focus pairs land on exactly 0.3662, which tells us nothing about whether merging
-# moved them. The "morphology helps where morphology has signal" reading also has
-# to be tested on RAW p: Holm-adjusted values are mutually dependent, so one pair
-# moving drags its neighbours along.
 cat("\n", strrep("=", 70), "\n", sep = "")
 cat("D1. RAW vs HOLM-CORRECTED PAIRWISE p\n")
 cat(strrep("=", 70), "\n", sep = "")
@@ -824,7 +614,6 @@ cat(strrep("=", 70), "\n", sep = "")
 pairwise_all <- map_dfr(names(model_res),
                         ~ model_res[[.x]]$pairwise %>% mutate(model = .x))
 
-# Long table with a p_type column, models as wide columns.
 pairwise_raw_holm <- bind_rows(
   pairwise_all %>% transmute(comparison, model, p_type = "raw",  value = p),
   pairwise_all %>% transmute(comparison, model, p_type = "holm", value = p_holm)
@@ -844,7 +633,7 @@ d1_tbl <- pairwise_all %>%
             p_holm_comb = `MFA-combined_p_holm`,
             improve_x   = p_SP / p_comb,
             censored    = p_SP <= P_FLOOR | p_comb <= P_FLOOR) %>%
-  arrange(p_M)          # ascending in M-alone raw p — the ordering that matters
+  arrange(p_M)       
 
 cat(sprintf("  (raw p floor = %.4f at %d permutations; ratios marked * are censored)\n\n",
             P_FLOOR, N_PERM))
@@ -858,9 +647,6 @@ for (i in seq_len(nrow(d1_tbl))) {
               r$improve_x, ifelse(r$censored, "*", " ")))
 }
 
-# Does the improvement factor track morphological signal? If morphology helps
-# where morphology has signal, improve_x should be LARGE where p_M is SMALL, i.e.
-# a NEGATIVE rank correlation. Censored rows carry no information and are dropped.
 d1_free <- d1_tbl %>% filter(!censored)
 rho_improve <- if (nrow(d1_free) >= 3)
   suppressWarnings(stats::cor(d1_free$p_M, d1_free$improve_x, method = "spearman")) else NA_real_
@@ -894,20 +680,12 @@ cat("\n  Wrote joint_mfa_pairwise_raw_and_holm.csv\n")
 # =============================================================================
 # D2. Loading block structure of the leading axes
 # =============================================================================
-# Axis 1 and axis 2 carry almost the same inertia. If axis 1 is driven by M and
-# axis 2 by SP, that is the main text's decoupling result (RV ~ 0.10, Mantel ~ 0)
-# showing up directly in the ordination: a global PCA of two equally weighted,
-# mutually uninformative blocks should produce exactly that — one axis per block,
-# with near-equal eigenvalues.
 cat("\n", strrep("=", 70), "\n", sep = "")
 cat("D2. BLOCK STRUCTURE OF THE LEADING MFA AXES\n")
 cat(strrep("=", 70), "\n", sep = "")
 
 n_axes_diag <- min(4, ncol(pca_comb$rotation))
 axis_block_tbl <- map_dfr(seq_len(n_axes_diag), function(k) {
-  # rotation columns are unit vectors, so the two block shares sum to 1 by
-  # construction. idx_M / idx_SP index the MFA-normalised coordinates, i.e. the
-  # same space the PERMANOVA ran in.
   sM <- sum(pca_comb$rotation[idx_M,  k]^2)
   sS <- sum(pca_comb$rotation[idx_SP, k]^2)
   tibble(axis = k, inertia_pct = inertia[k], share_M = sM, share_SP = sS,
@@ -945,12 +723,6 @@ cat("\n  Wrote joint_mfa_axis_block_contributions.csv\n")
 # =============================================================================
 # D3. Dense weight grid + continuous discrimination curve
 # =============================================================================
-# Two problems with the coarse scan: (a) it loses 4 pairs between w = 0.70 and
-# 0.75, which smells like a Holm cascade — when several raw p bunch near the
-# threshold, step-down monotonicity flips them together; (b) "pairs resolved" is a
-# 0-10 integer, far too coarse to show the real margin changes visible in the
-# pairwise table. So: refine the grid where the cliff is, and add a continuous
-# statistic (median -log10 raw p) alongside counts at two alphas and on raw p.
 cat("\n", strrep("=", 70), "\n", sep = "")
 cat(sprintf("D3. DENSE WEIGHT SCAN: %d steps (0.01 resolution over 0.61-0.84)\n",
             length(W_GRID_DENSE)))
@@ -972,7 +744,6 @@ dense_res <- map_dfr(seq_along(W_GRID_DENSE), function(i) {
            n_sig_pairs_raw_05  = n05r,
            median_neglog10_p_raw = stats::median(-log10(pw$p)),
            n_pairs_at_p_floor  = sum(pw$p <= P_FLOOR)),
-    # all pairwise RAW p as wide columns (pair order is fixed by combn(levels))
     as_tibble_row(setNames(pw$p,
                            paste0("p_raw_", str_replace_all(pw$comparison, "-", "_")))))
 })
@@ -1009,17 +780,6 @@ cat(sprintf("  => the drop across that interval is %s.\n",
                    "amplified by the Holm cascade (raw p keep several pairs that Holm rejects)")))
 
 # ---- figures ----------------------------------------------------------------
-# The three-criterion dense step plot (fig_S_joint_mfa_weight_scan_dense.png)
-# was dropped: the composite main-text figure carries the coarse scan and the
-# continuous curve, and the criterion comparison it showed is reported
-# numerically in the D3 console block and in joint_mfa_weight_scan_dense.csv.
-# `dense_long` existed only to feed that plot and is gone with it.
-
-# Interior peak of the continuous curve. Taken from the data, not hard-coded, so
-# it cannot silently drift out of step with the CSV.
-# CAVEAT: the dense 0.01 refinement covers only w = 0.61-0.84 (W_GRID_DENSE); around
-# the peak the grid is still 0.05, so this locates the maximum to +/- 0.05 and is
-# not a resolved optimum.
 i_peak <- which.max(dense_res$median_neglog10_p_raw)
 W_PEAK <- dense_res$w[i_peak]
 cat(sprintf("\n  Continuous-curve peak: w = %.2f (median -log10 p = %.4f) vs %.4f at w = 0\n",
@@ -1028,18 +788,10 @@ cat(sprintf("\n  Continuous-curve peak: w = %.2f (median -log10 p = %.4f) vs %.4
 cat(sprintf("    grid spacing at the peak = %.2f, so the maximum is located to +/- that.\n",
             min(diff(sort(dense_res$w[dense_res$w >= 0.15 & dense_res$w <= 0.40])))))
 
-# Label anchors, derived from the curve rather than hard-coded so they follow the
-# data if the scan changes. The curve descends monotonically from the left, so the
-# lower-left / lower-middle of the panel is dead space: the two weight labels sit
-# there at 45% of the plotted range, which is clear of the curve on the left and
-# comfortably above the alpha line (whose own label sits just on top of it).
 C_RNG   <- range(dense_res$median_neglog10_p_raw)
 ANN_Y_W <- C_RNG[1] + 0.45 * diff(C_RNG)
 
 p_cont <- ggplot(dense_res, aes(w, median_neglog10_p_raw)) +
-  # Two markers, deliberately different colours: dark red = equal weighting
-  # (as in panel b), olive = the interior peak. Each is labelled in its own
-  # colour; the caption still explains what they mean.
   geom_vline(xintercept = W_REF, linetype = "dashed",
              color = "#802520", linewidth = 0.4) +
   geom_vline(xintercept = W_PEAK, linetype = "dashed",
@@ -1047,17 +799,9 @@ p_cont <- ggplot(dense_res, aes(w, median_neglog10_p_raw)) +
   annotate("text", x = W_REF + 0.02, y = ANN_Y_W, hjust = 0, vjust = 0.5,
            label = sprintf("w = %.1f", W_REF),
            size = ANN_SIZE, color = "#802520") +
-  # W_PEAK is data-derived, so the label text is formatted from it -- a hard-coded
-  # "w = 0.25" would silently go stale if the peak moved.
   annotate("text", x = W_PEAK - 0.02, y = ANN_Y_W, hjust = 1, vjust = 0.5,
            label = sprintf("w = %.2f", W_PEAK),
            size = ANN_SIZE, color = "#788C4A") +
-  # Horizontal alpha reference at -log10(0.05) = 1.30. Black, so it reads as a
-  # threshold rather than as a third weight marker. Labelled on the p scale
-  # ("p = 0.05"), not on the -log10 scale, since that is the quantity the reader
-  # is being pointed at; italic p matches the y-axis title. Note this is a
-  # reference for the MEDIAN of the RAW pairwise p, so crossing it is not a
-  # Holm-corrected significance claim about any individual pair.
   geom_hline(yintercept = ALPHA_LINE, linetype = "dashed",
              color = "black", linewidth = 0.35) +
   annotate("text", x = 0.02, y = ALPHA_LINE, hjust = 0, vjust = -0.6,
@@ -1076,12 +820,6 @@ cat("  Wrote figures/fig_S_joint_mfa_weight_resolution_continuous.png\n")
 # =============================================================================
 # MAIN-TEXT COMPOSITE -- biplot left, the two weight panels stacked right
 # =============================================================================
-# Assembled from the ggplot objects, NOT by stitching the exported PNGs: that
-# keeps one typographic definition across all three panels and avoids resampling
-# raster panels that were each rendered at a different physical size.
-#
-# Layout: (a) MFA biplot on the left, (b) coarse weight scan top right,
-# (c) continuous resolution curve bottom right -- b above c as requested.
 p_composite <- (
   (p_biplot + labs(tag = "a")) |
     ((p_scan + labs(tag = "b")) / (p_cont + labs(tag = "c")))
@@ -1120,13 +858,6 @@ cat("  All three lines are annotated in-panel; the caption still states what the
 # =============================================================================
 # D4. PERMDISP group dispersions
 # =============================================================================
-# Combined-space PERMDISP is non-significant (p = 0.393) where SP alone is
-# significant, which would seem to retire the main text's "interpret the PERMANOVA
-# cautiously" caveat. But appending 7 dimensions whose between-group dispersions
-# are similar mechanically pulls any dispersion RATIO toward 1. So: did discoid's
-# dispersion actually come down, or was it just diluted? Absolute distances are
-# not comparable across the three spaces (different overall scale), so everything
-# is reported as a ratio to the least-dispersed group of the same model.
 cat("\n", strrep("=", 70), "\n", sep = "")
 cat("D4. PERMDISP GROUP DISPERSIONS (M alone / SP alone / combined)\n")
 cat(strrep("=", 70), "\n", sep = "")
@@ -1162,26 +893,11 @@ r_M    <- d4_ratio$max_min_ratio[d4_ratio$model == "M-SPHARM"]
 r_sp   <- d4_ratio$max_min_ratio[d4_ratio$model == "SP-SPHARM"]
 r_comb <- d4_ratio$max_min_ratio[d4_ratio$model == "MFA-combined"]
 
-# Deciding between "discoid really got less variable" and "the imbalance was spread
-# thinner" cannot be done with a drop threshold: mechanical dilution produces a
-# large drop too. The discriminating question is whether the combined ratio is a
-# BLEND of the two single-block ratios or an active CANCELLATION.
-#   - Group centroids in the concatenated space are the concatenated block
-#     centroids, so combined dispersion is built from the same per-specimen block
-#     dispersions — it carries no new information about any group.
-#   - Hence a combined ratio lying between the two block ratios is exactly what
-#     adding a more evenly dispersed block must produce: dilution.
-#   - Only a combined ratio BELOW both block ratios would mean the blocks actively
-#     cancel each other's heterogeneity, which no amount of dilution can achieve.
 tol <- 0.02
 d4_bracketed <- is.finite(r_M) && is.finite(r_sp) && is.finite(r_comb) &&
   r_comb >= min(r_M, r_sp) - tol && r_comb <= max(r_M, r_sp) + tol
 d4_substantive <- is.finite(r_comb) && r_comb < min(r_M, r_sp) - tol
 d4_same_top <- length(unique(d4_ratio$most_dispersed)) == 1
-
-# Mechanism behind whatever the verdict turns out to be: do the two blocks rank the
-# groups' dispersion the same way? Anti-correlated orderings let the blocks cancel;
-# similar orderings mean the combined space can only interpolate (dilute).
 disp_wide <- permdisp_by_group %>%
   select(model, group, mean_dist_to_centroid) %>%
   pivot_wider(names_from = model, values_from = mean_dist_to_centroid)
@@ -1196,8 +912,7 @@ cat(sprintf("  Spearman between the two blocks' group dispersion orderings = %.3
                              rho_disp <= -0.5      ~ "reversed orderings",
                              rho_disp <   0.3      ~ "essentially unrelated orderings",
                              TRUE                  ~ "similar orderings")))
-# A whole-ordering rank correlation is a blunt summary: cancellation is driven by
-# the EXTREMES, so also report whether the top/bottom groups swap ends.
+
 top_M   <- disp_wide$group[which.max(disp_wide$`M-SPHARM`)]
 bot_M   <- disp_wide$group[which.min(disp_wide$`M-SPHARM`)]
 top_SP  <- disp_wide$group[which.max(disp_wide$`SP-SPHARM`)]

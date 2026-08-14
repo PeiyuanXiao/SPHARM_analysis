@@ -1,80 +1,15 @@
 # joint_mfa_discrimination_SDG.R
-# =============================================================================
-# JOINT (M-SPHARM + SP-SPHARM) DISCRIMINANT ANALYSIS for the SANDINGGAI (SDG)
-# ARCHAEOLOGICAL assemblage — SI add-on, companion to
-# joint_mfa_discrimination_stats.R (EXP). NEW, self-contained file. Does NOT
-# modify the EXP script, the main pipeline, the cached _targets store, the
-# derived_data cache, or the manuscript. It only READS the committed main outputs
-# and WRITES new outputs under analysis/robustness/joint_mfa_discrimination/SDG/.
-#
-# Every statistical helper is IMPORTED from the EXP script by selective evaluation
-# (see "Helper import" below) rather than copy-pasted, so the two assemblages are
-# guaranteed to run byte-identical code and their results are directly comparable.
-#
-# WHY THIS RUN EXISTS — a pre-registered mechanism test.
-#   In EXP, morphology is the WEAKER block (R2 = 0.123 vs 0.302 for scars), and the
-#   D1 diagnostic found that merging helps most on the pairs where morphology has
-#   signal: Spearman(p_M, improvement factor) = -0.845.
-#   In SDG the ordering is REVERSED: morphology R2 = 0.188 > scars R2 = 0.168.
-#   If that mechanism is real, SDG should show
-#     (a) the continuous curve peaking at a HIGHER w than EXP's 0.25,
-#     (b) the resolved-pairs plateau (if any) extending past EXP's right edge 0.50,
-#     (c) Spearman(p_M, improvement factor) still clearly negative.
-#   The script prints a verdict on (a), (b), (c) at the end. A failed prediction is
-#   just as informative as a confirmed one and is reported as-is.
-#
-# -----------------------------------------------------------------------------
-# SAMPLE DEFINITION — read this before comparing anything to the manuscript
-# -----------------------------------------------------------------------------
-# The committed Table 2 core-type PERMANOVA (L3_permanova.csv: morphology
-# R2 = 0.18770 / F = 2.03346; scars R2 = 0.16785 / F = 1.77504) is produced by
-# SDG_cores_statistics.R:1547-1573 as:
-#     all archaeological specimens (drop IM_, EXP)                 -> 51
-#     drop the excluded core types (Handaxe, Pick)                 -> 51
-#     safe_filter_groups(min_n = 3) on core type                   -> 50, 6 groups
-# There is NO layer restriction on the core-type test: the layer filter in that
-# script is applied only to `meta_layer`, the LAYER grouping. `meta_layer` is what
-# yields 49 specimens (Layer 2 has n = 2 and is dropped by safe_filter_groups,
-# leaving Layers 3 + 4 = 18 + 31 = 49).
-#
-# So the three counts in play are distinct and must not be conflated:
-#     50  core-type test  (this script's default; reproduces the published anchors)
-#     49  layer test      (Layers 3+4; a DIFFERENT row of Table 2)
-#     48  core-type test IF a Layer 3/4 filter were applied (R2 would become
-#         0.17851 / 0.17435 — it does NOT reproduce the published anchors)
-# Note for the record: the Table 2 caption in manuscript.qmd says "Layers 3 and 4
-# only", which is accurate for the layer row but not for the core-type and raw
-# material rows — those retain the two Layer 2 specimens. Flagged, not acted on.
-#
-# RESTRICT_LAYERS below makes the alternative one flag away; the default (NULL) is
-# the recipe that reproduces the published numbers, because reproducing them is
-# what makes this analysis comparable to the main text at all.
-#
-# Outputs (all NEW, all _SDG-suffixed, none overwriting any EXP output):
-#   SDG/permanova_comparison_SDG.csv
-#   SDG/pairwise_raw_and_holm_SDG.csv
-#   SDG/axis_block_contributions_SDG.csv
-#   SDG/weight_scan_dense_SDG.csv
-#   SDG/permdisp_by_group_SDG.csv
-#   SDG/figures/fig_S_joint_mfa_biplot_SDG.png
-#   SDG/figures/fig_S_joint_mfa_weight_scan_dense_SDG.png
-#   SDG/figures/fig_S_joint_mfa_weight_resolution_continuous_SDG.png
-#
-# HOW TO RUN (canonical environment, Docker spharm_analysis, R 4.4 + renv):
-#   Rscript analysis/robustness/joint_mfa_discrimination/joint_mfa_discrimination_SDG.R
-# =============================================================================
 
 suppressPackageStartupMessages({
   library(here)
   library(tidyverse)
   library(readxl)
-  library(vegan)          # adonis2, betadisper, permutest
-  library(compositions)   # ilr, ilrBase, clr
+  library(vegan)         
+  library(compositions)   
   library(ggrepel)
   library(conflicted)
 })
 
-# Identical conflict resolution to the EXP script.
 suppressMessages({
   conflicts_prefer(dplyr::filter, dplyr::select, dplyr::lag,
                    stats::sd, stats::var, stats::dist, stats::cor, stats::cov,
@@ -89,31 +24,18 @@ set.seed(42)
 ASSEMBLAGE <- "SDG"
 SEED       <- 42
 N_PERM     <- 9999
-
-# D3 weight grid: a coarse pass, then the densified window is located AUTOMATICALLY
-# from the coarse result (see D3) instead of hard-coding EXP's 0.61-0.84.
 W_GRID_COARSE   <- seq(0, 1, by = 0.05)
 DENSE_STEP      <- 0.01
-DENSE_HALFWIDTH <- 0.05   # densify [drop_lo - 0.05, drop_hi + 0.05]
-
-DOMINANCE_THR  <- 0.65    # D2: block share at which an axis counts as block-dominated
-DEGENERACY_THR <- 0.10    # D2: relative inertia gap below which axes 1-2 are degenerate
-
-# NULL = the published core-type recipe (n = 50). Set to c("3", "4") for the
-# layer-restricted variant (n = 48); that variant does NOT reproduce the anchors.
+DENSE_HALFWIDTH <- 0.05   
+DOMINANCE_THR  <- 0.65    
+DEGENERACY_THR <- 0.10    
 RESTRICT_LAYERS <- NULL
-
 OUT_DIR <- here("analysis/robustness/joint_mfa_discrimination/SDG")
 FIG_DIR <- file.path(OUT_DIR, "figures")
 dir.create(FIG_DIR, recursive = TRUE, showWarnings = FALSE)
-
-POWER_COLS_DIR   <- paste0("power_l", 1:6)   # scar       (SP-SPHARM) l = 1-6
-POWER_COLS_MORPH <- paste0("power_l", 1:8)   # morphology (M-SPHARM)  l = 1-8
-
-EXCLUDE_CORE_TYPES <- c("Handaxe", "Pick")   # SDG_cores_statistics.R:38-49
-
-# Same palette source as EXP; SDG has 6 groups, so the EXP script's
-# colorRampPalette branch is used to extend the 5 base colours.
+POWER_COLS_DIR   <- paste0("power_l", 1:6)   
+POWER_COLS_MORPH <- paste0("power_l", 1:8)   
+EXCLUDE_CORE_TYPES <- c("Handaxe", "Pick")   
 TYPOLOGY_COLORS <- c(
   "Levallois"      = "#4A6E8A",
   "Discoid"        = "#802520",
@@ -121,22 +43,13 @@ TYPOLOGY_COLORS <- c(
   "Multiplatform"  = "#8A7A68",
   "Bidirectional"  = "#788C4A"
 )
-
-# Committed SDG reference values (L3_permanova.csv, core-type rows) — full
-# precision; the manuscript quotes these to 3 dp as 0.188/2.030 and 0.168/1.780.
-# R2 and pseudo-F are deterministic and CHECKED; p is permutation-dependent and
-# only reported.
 REF <- list(
   M_R2  = 0.18770190528243877, M_F  = 2.0334613330095146, M_p  = 0.0104,
   SP_R2 = 0.16785198589124128, SP_F = 1.7750417603590793, SP_p = 0.0405,
   n = 50, n_groups = 6
 )
-REF_TOL <- 1e-3    # brief allows up to 5e-3; full-precision refs let us be tighter
+REF_TOL <- 1e-3   
 
-# EXP results, hard-coded for the final comparison table. Source: this repo's
-# analysis/robustness/joint_mfa_discrimination/ outputs
-# (joint_mfa_permanova_comparison.csv, joint_mfa_weight_scan_dense.csv and the
-# D1/D3 console report of joint_mfa_discrimination_stats.R). EXP is NOT re-run.
 EXP_REF <- list(
   n = 58L, n_groups = 5L, n_pairs = 10L,
   M_R2 = 0.12334, SP_R2 = 0.30174,
@@ -146,15 +59,6 @@ EXP_REF <- list(
 # =============================================================================
 # Helper import — the EXP script's helpers, verbatim, WITHOUT running EXP
 # =============================================================================
-# The EXP script is a top-to-bottom analysis: source()ing it would re-run ~35 min
-# of PERMANOVA and rewrite the EXP outputs. Instead we parse it and evaluate ONLY
-# the top-level `name <- function(...)` expressions for the helpers we need. That
-# gives byte-identical helper bodies with zero computation and zero side effects,
-# which is what makes the EXP and SDG numbers directly comparable.
-#
-# NOTE: permanova_global / permanova_pairwise / permdisp take `seed = SEED` and
-# `nperm = N_PERM` as DEFAULTS resolved from the global environment at call time,
-# so SEED and N_PERM must be defined above (they are, and match EXP).
 EXP_SCRIPT <- here("analysis/robustness/joint_mfa_discrimination",
                    "joint_mfa_discrimination_stats.R")
 if (!file.exists(EXP_SCRIPT))
@@ -210,10 +114,6 @@ core_meta <- read_excel(here("analysis/data/raw_data/SDG_core_metric.xlsx")) %>%
 # =============================================================================
 # Data preparation — SDG branch, rewritten to match SDG_cores_statistics.R exactly
 # =============================================================================
-# Replicates SDG_cores_statistics.R:148-230 + 1547-1573 (the Level-3 core-type
-# PERMANOVA): un-split filtered frames -> archaeological subset -> drop excluded
-# core types -> safe_filter_groups(min_n = 3). Optional layer restriction added as
-# a parameter (off by default; see the header).
 build_blocks_sdg <- function(restrict_layers = RESTRICT_LAYERS) {
   dir_f   <- filter_spharm(SPHARM_direction,  POWER_COLS_DIR,   metric_data)
   morph_f <- filter_spharm(SPHARM_morphology, POWER_COLS_MORPH, metric_data)
@@ -605,8 +505,6 @@ if (length(step_change) > 0 && min(step_change) < 0) {
                           coarse_res$n_sig_pairs_holm_05[i_drop],
                           coarse_res$n_sig_pairs_holm_05[i_drop + 1], drop_lo, drop_hi)
 } else {
-  # No drop at all (e.g. 0 resolved pairs everywhere): densify around the peak of
-  # the continuous curve, which is the only informative feature left.
   i_pk <- which.max(coarse_res$median_neglog10_p_raw)
   dense_lo <- max(0, coarse_res$w[i_pk] - DENSE_HALFWIDTH)
   dense_hi <- min(1, coarse_res$w[i_pk] + DENSE_HALFWIDTH)
@@ -749,8 +647,6 @@ r_M    <- d4_ratio$max_min_ratio[d4_ratio$model == "M-SPHARM"]
 r_sp   <- d4_ratio$max_min_ratio[d4_ratio$model == "SP-SPHARM"]
 r_comb <- d4_ratio$max_min_ratio[d4_ratio$model == "MFA-combined"]
 
-# Same bracketed / substantive criterion as EXP: a combined ratio BETWEEN the two
-# block ratios is dilution; only a ratio BELOW both is real cancellation.
 tol <- 0.02
 d4_bracketed <- is.finite(r_M) && is.finite(r_sp) && is.finite(r_comb) &&
   r_comb >= min(r_M, r_sp) - tol && r_comb <= max(r_M, r_sp) + tol

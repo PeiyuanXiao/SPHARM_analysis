@@ -1,64 +1,4 @@
-"""
-sweep_spharm_threshold.py
-============================
-Scar minimum-SIZE-THRESHOLD sensitivity sweep for the SP-SPHARM (scar-patterning)
-pipeline. NEW, self-contained add-on for the paper's Supplementary Information.
-
-It does NOT modify the main pipeline, the cached results, or the manuscript, and it
-RE-USES the existing KDE / spherical-harmonic functions unchanged
-(`batch_spherical_kde`, `kde_vector_to_dh_grid`, `compute_spharm_features`). The
-only thing that changes across the sweep is which scars are included in the KDE,
-controlled by a minimum-size cutoff on scar length.
-
-WHAT IT DOES, for each threshold T in THRESHOLDS:
-    directions_aligned_svd.csv  (production aligned unit vectors)
-        + scar length (mm) re-attached from Scar_orientation_data.xlsx
-        -> drop scars with length <= T  (EXP & SDG only; IM held — see below)
-        -> batch_spherical_kde(bandwidth = 0.35)        (72 x 36 sphere grid)
-        -> kde_vector_to_dh_grid(dh_size = 64)          (64 x 128 Driscoll-Healy)
-        -> compute_spharm_features(lmax = 20)           (pyshtools expand + power)
-        -> spectra/SPHARM_direction_t{T}.csv            (ID, Typology, n_scars,
-                                                         power_l0 .. power_l20)
-
-DESIGN DECISIONS (documented; see README.md for the full pipeline map)
-----------------------------------------------------------------------
-* Scar size = the 3D Euclidean Start->End length (mm). This is exactly the `len`
-  align_svd.R already computes, and it is rotation-invariant, so the size of a scar
-  is unchanged by the SVD alignment. We attach it back to the *production* aligned
-  vectors so the ALIGNMENT IS HELD FIXED at the published solution: the sweep
-  isolates the effect of dropping small scars from the KDE, not a re-fitted
-  alignment. (We do not re-run the SVD plane fit on the reduced scar sets.)
-
-* The cutoff uses strict ">" (keep length > T), matching the manuscript's wording
-  ("only scars larger than 5 mm"). With continuous lengths, >= vs > differs only
-  for exact-boundary scars (none occur here).
-
-* The production pipeline applies NO size filter (align_svd.R keeps len > 1e-10), so
-  the committed spectra correspond to T = 0 (all recorded scars, realised min
-  ~2 mm). T = 0 is therefore the REPRODUCIBILITY ANCHOR; 5 and 10 mm are the
-  reviewer-facing perturbations. The manuscript's stated ">5 mm" is an acquisition
-  guideline that is NOT enforced downstream — flagged here so it is not mistaken
-  for the anchor.
-
-* IDEAL (IM) cores are held at production values and are never re-filtered: their
-  scar lengths are synthetic (IM_discoid / IM_discoid_unifacial are uniformly
-  ~2.1 mm and would be erased by any >=5 mm cut). Their SP-SPHARM is unchanged by
-  construction. The keep-rule is therefore: keep a scar if its ID is an IM_ core OR
-  its length > T.
-
-SANITY CHECK: at T = 0 the recomputed power spectrum must reproduce the cached
-production file `derived_data/SPHARM_direction.csv`. The maximum absolute per-degree
-difference is recorded in `sweep_manifest.csv` and printed; > 1e-6 is flagged (e.g.
-a BLAS/library mismatch — the numerical core is pinned in
-analysis/scripts/environment.yml).
-
-HOW TO RUN (canonical environment — conda `spharm`, same as the main pipeline):
-    python analysis/scar_threshold_sensitivity/sweep_spharm_threshold.py
-    # or, mirroring _targets.R: PYTHONPATH=analysis/scripts python .../sweep_spharm_threshold.py
-
-Then run scar_threshold_sensitivity_stats.R to evaluate stability of the
-downstream conclusions across thresholds.
-"""
+"""sweep_spharm_threshold.py"""
 
 import platform
 import sys
@@ -67,21 +7,17 @@ from pathlib import Path
 # ---------------------------------------------------------------------------
 # PARAMETERS  (keep in sync with scar_attrition.py and 02_*.R)
 # ---------------------------------------------------------------------------
-# Minimum-size cutoffs in mm. MUST include T_REF (0.0) for the sanity check.
-# Keep scars with length > T. T = 0 reproduces the production (all-scar) spectra.
 THRESHOLDS = [0.0, 5.0, 10.0]
-T_REF      = 0.0                    # production anchor (no size filter in the main pipeline)
+T_REF      = 0.0
 
-# Fixed pipeline settings — kept IDENTICAL to kde_to_spharm_main.py so the only
-# thing that changes across the sweep is the scar inclusion set.
-BANDWIDTH = 0.35                    # vMF bandwidth used in the main analysis
-N_BEARING = 72                      # KDE sphere-grid azimuth divisions
-N_PLUNGE  = 36                      # KDE sphere-grid elevation divisions
-LMAX      = 20                      # max spherical-harmonic degree
-DH_SIZE   = 64                      # Driscoll-Healy latitude points (longitude = 2*DH_SIZE)
-ALIGN_SRC = "svd"                   # production alignment (matches the main pipeline)
+BANDWIDTH = 0.35
+N_BEARING = 72
+N_PLUNGE  = 36
+LMAX      = 20
+DH_SIZE   = 64
+ALIGN_SRC = "svd"
 
-ROUND_DECIMALS = 8                  # match run_spharm() rounding in kde_to_spharm_main.py
+ROUND_DECIMALS = 8
 
 
 # ---------------------------------------------------------------------------
@@ -104,11 +40,11 @@ DERIVED_DIR = PROJ_ROOT / "analysis" / "data" / "derived_data"
 OUT_DIR     = THIS_DIR
 SPECTRA_DIR = OUT_DIR / "spectra"
 
-INPUT_CSV = DERIVED_DIR / f"directions_aligned_{ALIGN_SRC}.csv"     # production aligned vectors
-RAW_XLSX  = RAW_DIR / "Scar_orientation_data.xlsx"                  # source of scar lengths
-CACHE_CSV = DERIVED_DIR / "SPHARM_direction.csv"                    # cached T=0 production file
+INPUT_CSV = DERIVED_DIR / f"directions_aligned_{ALIGN_SRC}.csv"
+RAW_XLSX  = RAW_DIR / "Scar_orientation_data.xlsx"
+CACHE_CSV = DERIVED_DIR / "SPHARM_direction.csv"
 
-sys.path.insert(0, str(SCRIPTS_DIR))     # make SPHARM_modules importable (mirrors _targets.R)
+sys.path.insert(0, str(SCRIPTS_DIR))
 
 import numpy as np
 import pandas as pd
@@ -119,8 +55,6 @@ from SPHARM_modules.kde_to_spharm import (
     compute_spharm_features,
 )
 
-# Determinism: the KDE -> SH -> power path is deterministic, but seed anyway so the
-# sweep is bit-for-bit identical to a single main-pipeline run.
 np.random.seed(42)
 
 POWER_COLS = [f"power_l{l}" for l in range(LMAX + 1)]
@@ -133,13 +67,7 @@ def load_aligned_with_length() -> pd.DataFrame:
     """
     Return the production aligned direction vectors (ID, Typology, ux, uy, uz) with a
     `length_mm` column attached from the raw workbook, matched per specimen and
-    per within-specimen scar order. Alignment is a pure rotation/translation, so the
-    scar length is identical before and after alignment; we therefore re-attach the
-    raw length to each production row by (ID, within-ID position).
-
-    Robustness: IDs are stripped of stray whitespace (the workbook contains e.g.
-    "IM_Multiplatform "), and we assert that every specimen has the same scar count
-    in both files before merging.
+    per within-specimen scar order.
     """
     if not INPUT_CSV.exists():
         raise FileNotFoundError(
@@ -156,7 +84,6 @@ def load_aligned_with_length() -> pd.DataFrame:
     if "Typology" not in aligned.columns:
         aligned["Typology"] = "unknown"
 
-    # Raw scars (sheets 1-3, in the same order align_svd.R binds them).
     xl = pd.ExcelFile(RAW_XLSX)
     frames = [xl.parse(xl.sheet_names[i]) for i in (0, 1, 2)]
     raw = pd.concat([f for f in frames if not f.empty], ignore_index=True)
@@ -166,7 +93,6 @@ def load_aligned_with_length() -> pd.DataFrame:
         + (raw["End_Y"] - raw["Start_Y"]) ** 2
         + (raw["End_Z"] - raw["Start_Z"]) ** 2)
 
-    # Per-specimen count check (after stripping IDs).
     ca = aligned.groupby("ID").size()
     cr = raw.groupby("ID").size()
     bad = sorted(i for i in set(ca.index) | set(cr.index)
@@ -177,8 +103,6 @@ def load_aligned_with_length() -> pd.DataFrame:
             f"workbook for: {bad[:10]}{'...' if len(bad) > 10 else ''}. "
             "Cannot re-attach scar lengths by position.")
 
-    # Within-ID running index in each file's natural order (preserved by align_svd.R's
-    # group_modify), then merge on (ID, seq).
     aligned = aligned.copy()
     aligned["seq"] = aligned.groupby("ID").cumcount()
     raw = raw.copy()
@@ -237,7 +161,7 @@ def spectra_for_threshold(df: pd.DataFrame) -> pd.DataFrame:
             for l, p in enumerate(feats["norm_power"]):
                 row[f"power_l{l}"] = round(float(p), ROUND_DECIMALS)
             rows.append(row)
-        except Exception as e:                        # match run_spharm() robustness
+        except Exception as e:
             print(f"    [warn] {specimen_id}: {e}")
             rows.append({"ID": specimen_id, "Typology": typology, "n_scars": n_scars})
 
@@ -283,7 +207,6 @@ def main() -> None:
     manifest = []
     for T in THRESHOLDS:
         df_t = filter_for_threshold(df, T)
-        # per-group retained scar counts (cross-check against scar_attrition.py)
         g = df_t["ID"].map(assemblage_of)
         n_exp, n_sdg, n_im = int((g == "EXP").sum()), int((g == "SDG").sum()), int((g == "IM").sum())
         print(f"[T = {T:>4.1f} mm]  scars kept: EXP={n_exp}, SDG={n_sdg}, IM={n_im} (held), "
@@ -322,7 +245,6 @@ def main() -> None:
     pd.DataFrame(manifest).to_csv(OUT_DIR / "sweep_manifest.csv", index=False)
     print(f"Wrote {(OUT_DIR / 'sweep_manifest.csv').relative_to(PROJ_ROOT)}")
 
-    # Record exact versions used (reproducibility).
     try:
         import scipy
         scipy_v = scipy.__version__

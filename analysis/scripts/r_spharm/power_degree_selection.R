@@ -226,9 +226,7 @@ p_degree_selection <- (
 ) +
   plot_layout(guides = "collect") +
   plot_annotation(tag_levels = "a")
-# patchwork attaches the tags to the subplots with labs(tag = ), so plot.tag has
-# to be set on the subplots with `&`; the plot_annotation() theme only styles the
-# tag of the composite itself and never reaches the panels.
+
 p_degree_selection <- p_degree_selection &
   theme(legend.position = "bottom",
         plot.tag = element_text(face = "bold", size = 14))

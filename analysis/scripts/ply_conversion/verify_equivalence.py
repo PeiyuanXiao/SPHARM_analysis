@@ -1,32 +1,3 @@
-"""Two independent checks that the .stl -> .ply conversion is lossless.
-
-A. Geometric equivalence. For every pair, realise the actual triangle corner
-   coordinates (vertices[faces]) and compare bitwise. This tests coordinates
-   and connectivity together, so it is a complete geometric identity proof.
-   Expected result: bit-exact for every pair.
-
-B. Full M-SPHARM re-run on a few specimens, from the .stl and from the .ply,
-   each compared against the published SPHARM_morphology.csv. This mirrors
-   SPHARM_main.process_single_mesh for the sub-threshold branch.
-
-   ⚠ Check B is EXPECTED TO DIFFER, and the difference is not a conversion
-   defect. Open3D's STL reader silently merges a handful of vertices while its
-   PLY reader merges none (e.g. SDG_L2_489: 153,276 vs 153,282), and
-   simplify_quadric_decimation is greedy and topology-sensitive, so the tiny
-   input difference cascades into a slightly different 20,000-face mesh.
-   Measured shift: ~1e-4 absolute / ~1e-3 relative in normalised power.
-
-   The two control columns are what make this readable: the chain is exactly
-   deterministic (0.0 across repeat runs) and reproduces the published CSV
-   from the .stl to ~1e-16, so the .ply-vs-.stl gap is attributable to the
-   reader difference alone and to nothing in this code.
-
-   Conclusion: the .ply is a verified lossless re-encoding of the analysed
-   .stl (check A), but must not be substituted as pipeline input (check B).
-
-Run inside the project container:
-    /opt/conda/envs/spharm/bin/python analysis/scripts/ply_conversion/verify_equivalence.py
-"""
 import os
 import sys
 import glob
@@ -158,8 +129,7 @@ def main():
     print(f"  pyshtools {pysh.__version__}")
     print(f"  pandas    {pd.__version__}")
 
-    # Only check A is a pass/fail gate; see the module docstring for why B is
-    # expected to differ.
+
     return 0 if worst == 0.0 else 1
 
 

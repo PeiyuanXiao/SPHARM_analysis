@@ -1,28 +1,4 @@
-#!/usr/bin/env python
-"""
-mesh_resolution_check.py — Step 0(b) companion for sdg_projection_explore.R.
-
-EXPLORATORY. Measures, per specimen, the raw STL face count and the vertex/face
-counts AFTER the production decimation step, so that the EXP and SDG mesh
-resolutions can be compared on the footing M-SPHARM actually sees.
-
-It reproduces SPHARM_main.py's decimation verbatim for the sub-threshold case
-(every specimen here is far below PRE_DECIMATE_THRESHOLD = 3e6 faces):
-
-    o3d.io.read_triangle_mesh(path).simplify_quadric_decimation(TARGET_FACES)
-
-then applies the same trimesh cleaning + Laplacian smoothing, because the
-smoothing step drops unreferenced vertices and therefore changes the vertex
-count that reaches the spherical harmonic expansion.
-
-Reads  : analysis/data/3D_models_cores/*.stl   (EXP + SDG only; IM_ excluded)
-Writes : analysis/robustness/sdg_projection_explore/mesh_resolution.csv
-Touches nothing else. No pipeline output is overwritten.
-
-Run (Docker spharm_analysis):
-  /opt/conda/envs/spharm/bin/python \
-      analysis/robustness/sdg_projection_explore/mesh_resolution_check.py
-"""
+"""mesh_resolution_check.py"""
 import os
 import struct
 import sys
@@ -36,7 +12,6 @@ from trimesh.smoothing import filter_laplacian
 MESH_DIR = "/project/analysis/data/3D_models_cores"
 OUT_CSV = "/project/analysis/robustness/sdg_projection_explore/mesh_resolution.csv"
 
-# SPHARM_main.py:27, 137 — the production settings this check must mirror.
 TARGET_FACES = 20000
 SMOOTH_ITERS = 3
 
@@ -71,7 +46,6 @@ def main():
         v_dec = np.asarray(m.vertices)
         f_dec = np.asarray(m.triangles)
 
-        # Same cleaning + smoothing as SPHARM_main.py:129-138.
         f_dec = f_dec[np.all(f_dec < len(v_dec), axis=1)]
         tm = trimesh.Trimesh(vertices=v_dec, faces=f_dec, process=True)
         tm.remove_unreferenced_vertices()

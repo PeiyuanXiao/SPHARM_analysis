@@ -1,32 +1,3 @@
-"""Convert the archived core models from .stl to .ply.
-
-Produced in response to reviewer 1, who asked for .ply rather than .stl as the
-archival format.
-
-WHY process=False
------------------
-trimesh's default load path merges duplicate vertices and drops degenerate
-faces. That would make the exported .ply a *cleaned* mesh rather than a
-faithful re-encoding of the file the analysis actually consumed. Archival
-copies must not be silently modified, so geometry processing is disabled.
-
-Note that with process=False the vertex count does NOT fall. An STL has no
-shared vertex table (V = 3F, each triangle storing its three corners
-independently); disabling the merge preserves that layout, so the .ply keeps
-all 3F vertices. A faithful re-encoding and a smaller vertex count are
-mutually exclusive here.
-
-⚠ The .ply are an archival copy, NOT a drop-in pipeline input. Open3D's STL
-reader silently merges a small number of vertices while its PLY reader does
-not, and simplify_quadric_decimation is greedy and topology-sensitive, so
-running the pipeline off the .ply shifts normalised power by ~1e-4 absolute
-relative to the published values. SPHARM_main.py also filters on '.stl' and
-parses binary STL headers directly. Archive the .ply alongside the .stl; do
-not substitute it. See verify_equivalence.py for the measurements behind this.
-
-Run inside the project container:
-    /opt/conda/envs/spharm/bin/python analysis/scripts/ply_conversion/convert_stl_to_ply.py
-"""
 import os
 import sys
 import glob

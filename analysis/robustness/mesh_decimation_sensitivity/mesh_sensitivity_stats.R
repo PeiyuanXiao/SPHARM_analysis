@@ -1,42 +1,4 @@
 # mesh_sensitivity_stats.R
-# =============================================================================
-# Mesh-PREPROCESSING sensitivity analysis for the M-SPHARM (morphology) pipeline —
-# SI add-on. NEW, self-contained file. Does NOT modify the main pipeline, the cached
-# _targets store, the derived_data cache, or the manuscript. It only READS the
-# committed production outputs (for the anchor check) + the fixed SP-SPHARM spectra,
-# and the per-setting M-SPHARM spectra produced by sweep_mesh_spharm.py, and
-# WRITES new outputs under analysis/robustness/mesh_decimation_sensitivity/.
-#
-# It re-uses the project's statistical machinery (the same package functions the
-# main pipeline calls — vegan::adonis2 / mantel, ade4::coinertia / randtest,
-# compositions::ilr) and replicates, verbatim, the data-prep from:
-#   - r_spharm/power_degree_selection.R     (morphology degree selection)
-#   - r_spharm/spharm_analysis.R           (EXP morphology PERMANOVA `perm_morph`)
-#   - r_statistics/exp_cores_statistics.R  (EXP Mantel + RV decoupling)
-#   - r_statistics/SDG_cores_statistics.R  (SDG morph PERMANOVA: core type / raw
-#                                           material / layer; SDG Mantel + RV)
-#
-# Only the MORPHOLOGY (M-SPHARM) side is perturbed; the scar (SP-SPHARM) side is the
-# FIXED committed SPHARM_direction.csv (scar vectors are digitised endpoint
-# coordinates, not derived from these meshes). For every (face_target, smooth_iters)
-# it evaluates whether the paper's morphology conclusions hold:
-#   (a) order selection : M-SPHARM cumulative power (% at l=8) and whether cross-
-#                         specimen CV stays < 90% through l=8 (the l=1-8 criterion).
-#   (c) experimental    : EXP morphology PERMANOVA core-type R2/F/p + resolution profile.
-#   (d) archaeological  : SDG morphology PERMANOVA by core type (should dominate),
-#                         raw material and layer (should stay small / non-significant).
-#   (e) decoupling      : global Mantel r and RV (EXP and SDG), NEW morphology x FIXED
-#                         scar — does the no-covariation conclusion hold?
-#
-# Outputs (all NEW):
-#   mesh_sensitivity_metrics.csv             tidy: one row per setting
-#   mesh_orderselection_by_degree.csv        per-degree cumulative power & CV per setting
-#   figures/fig_S_mesh_orderselection.png
-#
-# HOW TO RUN (canonical environment, R 4.4 + renv):
-#   Rscript analysis/robustness/mesh_decimation_sensitivity/mesh_sensitivity_stats.R
-#   # prerequisite: run sweep_mesh_spharm.py first.
-# =============================================================================
 
 suppressPackageStartupMessages({
   library(here); library(tidyverse); library(readxl)
@@ -59,8 +21,6 @@ PROD_FACES   <- 20000
 PROD_SMOOTH  <- 3
 FULL_CROSS   <- FALSE
 
-# Two 1-D sweeps through production; de-duplicated by an explicit key (the shared
-# production setting otherwise appears in both sweeps).
 build_settings <- function() {
   s <- c(map(FACE_TARGETS, ~ list(face = .x, smooth = PROD_SMOOTH)),
          map(SMOOTH_ITERS, ~ list(face = PROD_FACES, smooth = .x)))
@@ -80,20 +40,15 @@ dir.create(FIG_DIR, recursive = TRUE, showWarnings = FALSE)
 spectra_path <- function(face, smooth)
   file.path(SPECTRA_DIR, sprintf("SPHARM_morphology_f%d_s%d.csv", face, smooth))
 
-# Power-column conventions (identical to the main analysis).
 POWER_COLS_ALL   <- paste0("power_l", 1:20)
-POWER_COLS_DIR   <- paste0("power_l", 1:6)   # scar descriptor (FIXED side)
-POWER_COLS_MORPH <- paste0("power_l", 1:8)   # morphology descriptor (perturbed side)
+POWER_COLS_DIR   <- paste0("power_l", 1:6)
+POWER_COLS_MORPH <- paste0("power_l", 1:8)
 
 EXCLUDE_TYPES      <- c("Biface")
 LEVALLOIS_MERGE    <- c("Levallois convergent", "Levallois laminar",
                         "Levallois preferential", "Levallois recurrent")
 EXCLUDE_CORE_TYPES <- c("Handaxe", "Pick")
 
-# Committed production reference values for the anchor check at (20000, 3). All are
-# deterministic; permutation p-values jitter ~+/-0.005 and are excluded. Sources:
-# DegreeSelection_stats_morphology_{EXP,SDG}.csv, L3_permanova.csv, EXP_L1_results.csv,
-# L1_results.csv.
 REF <- list(
   exp_morph_cumpower_l8 = 98.371, exp_morph_maxcv_l8 = 83.05,
   sdg_morph_cumpower_l8 = 98.291, sdg_morph_maxcv_l8 = 54.64,
@@ -107,7 +62,7 @@ REF <- list(
 # Helpers — copied VERBATIM from the source scripts (same as the bandwidth/scar
 # sensitivity add-ons; attribution in comments).
 # =============================================================================
-replace_zeros <- function(X, delta = NULL) {            # exp/SDG_cores_statistics.R
+replace_zeros <- function(X, delta = NULL) {
   X <- as.matrix(X)
   for (i in seq_len(nrow(X))) {
     row_i <- X[i, ]; zero_idx <- row_i == 0
@@ -121,8 +76,6 @@ replace_zeros <- function(X, delta = NULL) {            # exp/SDG_cores_statisti
   X
 }
 extract_subdist <- function(D_full, ids) as.dist(as.matrix(D_full)[ids, ids])
-# ILR / Aitchison helper (exp/SDG_cores_statistics.R convention): drop zero-variance
-# columns, multiplicative zero replacement, then ilr into Euclidean space.
 make_ilr <- function(power_df) {
   X    <- as.matrix(power_df)
   keep <- apply(X, 2, function(v) sd(v, na.rm = TRUE) > 0)
@@ -142,21 +95,21 @@ filter_spharm <- function(df, power_cols, meta = NULL) {
 split_by_group <- function(df) list(
   exp_im = df %>% filter(str_starts(ID, "EXP") | str_starts(ID, "IM_")),
   sdg_im = df %>% filter(str_starts(ID, "SDG") | str_starts(ID, "IM_")))
-scale_features <- function(df_target, cols) {           # spharm_analysis.R:109-118
+scale_features <- function(df_target, cols) {
   ref_mat  <- df_target %>% filter(!str_starts(ID, "IM_")) %>%
     select(all_of(cols)) %>% as.matrix()
   col_mean <- colMeans(ref_mat); col_sd <- apply(ref_mat, 2, sd)
   mat <- df_target %>% select(all_of(cols)) %>% as.matrix()
   base::scale(mat, center = col_mean, scale = col_sd)
 }
-compute_order_stats <- function(df, cols) {             # power_degree_selection.R:74-124
+compute_order_stats <- function(df, cols) {
   mat <- df %>% select(all_of(cols)) %>% as.matrix()
   col_means <- colMeans(mat, na.rm = TRUE)
   col_sds   <- apply(mat, 2, sd, na.rm = TRUE)
   cumul_pct <- cumsum(col_means) / mean(rowSums(mat, na.rm = TRUE)) * 100
   tibble(order = seq_along(cols), cv_pct = col_sds / col_means * 100, cumul_pct = cumul_pct)
 }
-run_permanova_dir <- function(X, group_vec) {           # spharm_analysis.R:302-329
+run_permanova_dir <- function(X, group_vec) {
   d <- stats::dist(X, method = "euclidean")
   set.seed(42)
   perm_global <- adonis2(X ~ Typology, data = data.frame(Typology = group_vec),
@@ -166,7 +119,6 @@ run_permanova_dir <- function(X, group_vec) {           # spharm_analysis.R:302-
   list(R2 = perm_global$R2[1], F = perm_global$`F`[1], p = perm_global$`Pr(>F)`[1],
        pairwise = pairwise_res$p.value)
 }
-# SDG_cores_statistics.R:1515-1534 — distance-matrix PERMANOVA (ILR, lingoes).
 run_permanova_dist <- function(dist_mat, group_vec) {
   group_vec <- as.character(group_vec)
   if (length(unique(group_vec)) < 2) return(list(R2 = NA_real_, F = NA_real_, p = NA_real_))
@@ -215,7 +167,7 @@ exp_permanova_block <- function(morph_df, power_cols = POWER_COLS_MORPH) {
     mutate(Typology = case_when(Typology %in% LEVALLOIS_MERGE ~ "Levallois", TRUE ~ Typology),
            Typology = droplevels(as.factor(Typology)))
   non_im_idx <- !str_starts(df_exp$ID, "IM_") & !df_exp$Typology %in% EXCLUDE_TYPES
-  ilr_morph <- make_ilr(df_exp[non_im_idx, power_cols])   # ILR / Aitchison (was z-score)
+  ilr_morph <- make_ilr(df_exp[non_im_idx, power_cols])
   pm <- run_permanova_dir(ilr_morph, df_exp_only$Typology)
   pv  <- pm$pairwise; sig <- which(pv < 0.05, arr.ind = TRUE)
   sig_pairs <- if (nrow(sig) == 0) character(0) else
@@ -224,13 +176,7 @@ exp_permanova_block <- function(morph_df, power_cols = POWER_COLS_MORPH) {
        n_pairs = sum(!is.na(pv)), sig_pairs = paste(sort(sig_pairs), collapse = "; "))
 }
 
-# ---- Build ILR morph/scar distances. `restrict` selects the per-endpoint specimen
-# ---- set BEFORE the zero-variance column drop + ILR, exactly as the main pipeline:
-# ---- EXP decoupling uses the exp_im split (exp_cores_statistics.R:162-206); SDG uses
-# ---- the full EXP+SDG+IM set (SDG_cores_statistics.R). Sharing one full-set ILR for
-# ---- both endpoints changes the EXP column drop and breaks the EXP Mantel/RV anchor.
 build_ilr_dists <- function(morph_df, restrict = NULL) {
-  # morph_df already carries Typology (joined once in the sweep loop).
   morph_f <- filter_spharm(morph_df,         POWER_COLS_MORPH, metric_data)
   scar_f  <- filter_spharm(SPHARM_direction,  POWER_COLS_DIR,   metric_data)
   if (!is.null(restrict)) {
@@ -255,8 +201,6 @@ build_ilr_dists <- function(morph_df, restrict = NULL) {
 
 mantel_rv <- function(morph_ilr, scar_ilr, D_morph, D_scar, ids) {
   Dm <- extract_subdist(D_morph, ids); Ds <- extract_subdist(D_scar, ids)
-  # SI-wide convention (truncation_sensitivity.R:538): seed immediately before
-  # mantel() so every SI table reports the same permutation draw at the anchor.
   set.seed(42)
   mg <- mantel(Dm, Ds, method = "spearman", permutations = 9999)
   mi <- morph_ilr[ids, ]; si <- scar_ilr[ids, ]
@@ -317,14 +261,12 @@ for (st in SETTINGS) {
   }
   cat(sprintf("\n=== faces=%d, smooth=%d ===\n", face, smooth))
   morph_df <- read_csv(csv, show_col_types = FALSE); morph_df$ID <- str_trim(morph_df$ID)
-  # Attach Typology (a fixed attribute) from the committed scar file once, so the
-  # blocks that need it (filter_spharm) work; the spectra CSV has no Typology column.
   morph_df <- morph_df %>% left_join(TYPOLOGY_MAP, by = "ID")
 
   os  <- order_block(morph_df)
   ep  <- exp_permanova_block(morph_df)
-  ilr_exp <- build_ilr_dists(morph_df, restrict = "exp_im")  # EXP set (exp_cores_statistics.R)
-  ilr_all <- build_ilr_dists(morph_df)                       # SDG set (full EXP+SDG+IM)
+  ilr_exp <- build_ilr_dists(morph_df, restrict = "exp_im")
+  ilr_all <- build_ilr_dists(morph_df)
   ed  <- exp_decoupling_block(ilr_exp)
   sb  <- sdg_block(ilr_all)
 
@@ -406,7 +348,6 @@ tryCatch({
   pal <- setNames(colorRampPalette(c("#4A6E8A", "#5C7F71", "#BA8530", "#802520"))(
                     length(unique(order_long_df$lab))), sort(unique(order_long_df$lab)))
 
-  # Figure 1: order selection (cumulative power & CV by degree), EXP & SDG.
   p_cum <- ggplot(order_long_df %>% filter(order <= 12),
                   aes(order, cumul_pct, color = lab, group = lab)) +
     geom_hline(yintercept = c(95, 98), linetype = "dashed", color = "grey75", linewidth = 0.3) +

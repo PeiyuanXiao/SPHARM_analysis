@@ -1,59 +1,17 @@
 # scar_threshold_sensitivity_stats.R
-# =============================================================================
-# Scar minimum-SIZE-THRESHOLD sensitivity analysis for the SP-SPHARM pipeline —
-# SI add-on. NEW, self-contained file. Does NOT modify the main pipeline, the
-# cached _targets store, the derived_data cache, or the manuscript. It only READS
-# the committed production outputs (for a sanity check) and the per-threshold
-# SP-SPHARM power spectra produced by sweep_spharm_threshold.py, plus the
-# attrition tables from scar_attrition.py, and WRITES new outputs under
-# analysis/robustness/scar_threshold_sensitivity/.
-#
-# It re-uses the project's existing statistical machinery (the same package
-# functions the main pipeline calls — vegan::adonis2 / mantel, ade4::coinertia /
-# randtest, compositions::ilr) and replicates, verbatim, the data-prep steps from
-# the main scripts (same source-line attributions as bandwidth_sensitivity_stats.R):
-#   - r_spharm/power_degree_selection.R     (degree selection)
-#   - r_spharm/spharm_analysis.R           (EXP PERMANOVA `perm_dir`)
-#   - r_statistics/exp_cores_statistics.R  (EXP Mantel + RV)
-#   - r_statistics/SDG_cores_statistics.R  (SDG Mantel + RV + scar~core-type PERMANOVA)
-#
-# For every threshold T it evaluates whether the paper's conclusions hold:
-#   (a) order selection : SP-SPHARM cumulative power (% at l=6) and the degree at
-#                         which cross-specimen CV first exceeds 100% (EXP & SDG).
-#   (c) experimental    : PERMANOVA core-type R2 / pseudo-F / p and the set of
-#                         significant pairwise distinctions (resolution profile).
-#   (d) decoupling      : global Mantel r and RV (EXP and SDG); plus the SDG
-#                         scar~core-type PERMANOVA.
-# Part (b) — ideal-core discriminability — is UNCHANGED BY CONSTRUCTION: the size
-# threshold is not applied to the synthetic ideal cores (their scar lengths are
-# fixed, non-physical values; see scar_attrition.py / README.md), so the ideal
-# cores are held at production values and the ideal-core distance structure is
-# identical at every threshold. It is reported once, as the production reference.
-#
-# Outputs (all NEW):
-#   threshold_sensitivity_metrics.csv         tidy: one row per threshold
-#   threshold_orderselection_by_degree.csv    per-degree cumulative power & CV per T
-#   figures/fig_S_threshold_orderselection.png
-#   figures/fig_S_threshold_scarcounts.png
-#
-# HOW TO RUN (canonical environment, R 4.4 + renv):
-#   Rscript analysis/robustness/scar_threshold_sensitivity/scar_threshold_sensitivity_stats.R
-#   # prerequisite: run scar_attrition.py and sweep_spharm_threshold.py first.
-# =============================================================================
 
 suppressPackageStartupMessages({
   library(here)
   library(tidyverse)
   library(readxl)
-  library(vegan)          # adonis2, betadisper, mantel
-  library(ade4)           # dudi.pca, coinertia, randtest (RV)
-  library(compositions)   # ilr
-  library(RVAideMemoire)  # pairwise.perm.manova
+  library(vegan)
+  library(ade4)
+  library(compositions)
+  library(RVAideMemoire)
   library(patchwork)
   library(conflicted)
 })
 
-# Resolve namespace clashes exactly as the main pipeline does (_targets.R).
 suppressMessages({
   conflicts_prefer(dplyr::filter, dplyr::select, dplyr::lag,
                    stats::sd, stats::var, stats::dist, stats::cor, stats::cov,
@@ -65,7 +23,6 @@ set.seed(42)
 # =============================================================================
 # PARAMETERS  (edit here; must match the Python sweep sweep_spharm_threshold.py)
 # =============================================================================
-# Minimum-size cutoffs in mm. T = 0 is the production anchor (all recorded scars).
 THRESHOLDS <- c(0.0, 5.0, 10.0)
 T_REF      <- 0.0
 
@@ -76,30 +33,22 @@ dir.create(FIG_DIR, recursive = TRUE, showWarnings = FALSE)
 
 spectra_path <- function(T) file.path(SPECTRA_DIR, sprintf("SPHARM_direction_t%04.1f.csv", T))
 
-# Power-column conventions (identical to the main analysis).
-POWER_COLS_ALL   <- paste0("power_l", 1:20)  # order selection
-POWER_COLS_DIR   <- paste0("power_l", 1:6)   # scar (SP-SPHARM) descriptor
-POWER_COLS_MORPH <- paste0("power_l", 1:8)   # morphology (M-SPHARM) descriptor
-POWER_COLS_IM    <- paste0("power_l", 1:4)   # ideal-core discriminability (methods_comparison_IM.R:254)
+POWER_COLS_ALL   <- paste0("power_l", 1:20)
+POWER_COLS_DIR   <- paste0("power_l", 1:6)
+POWER_COLS_MORPH <- paste0("power_l", 1:8)
+POWER_COLS_IM    <- paste0("power_l", 1:4)
 
-# Typology handling (spharm_analysis.R:46-62)
 EXCLUDE_TYPES   <- c("Biface")
 LEVALLOIS_MERGE <- c("Levallois convergent", "Levallois laminar",
                      "Levallois preferential", "Levallois recurrent")
 TYPOLOGY_ORDER  <- c("Unidirectional", "Bidirectional", "Levallois",
                      "Discoid", "Multiplatform")
 
-# SDG metadata handling (SDG_cores_statistics.R:38-49)
 EXCLUDE_CORE_TYPES <- c("Handaxe", "Pick")
 
-# Committed production reference values used for the sanity check at T = 0 (which is
-# identical to the published h = 0.35, all-scar pipeline). Deterministic statistics
-# must reproduce these; permutation p-values carry ~+/-0.005 Monte-Carlo jitter and
-# are excluded from the check. Values from bandwidth_sensitivity_metrics.csv (h=0.35)
-# / the cached derived_data CSVs.
 REF <- list(
   exp_cumpower_l6 = 99.92, exp_cv_cross_l = 9,
-  exp_perm_R2 = 0.30174, exp_perm_F = 5.72570,  # ILR / Aitchison anchor (was z-score 0.32624 / 6.41589)
+  exp_perm_R2 = 0.30174, exp_perm_F = 5.72570,
   exp_mantel_r = -0.06126, exp_RV = 0.10095,
   sdg_mantel_r = 0.01189,  sdg_RV = 0.09066,
   sdg_perm_scar_coretype_R2 = 0.16785, sdg_perm_scar_coretype_F = 1.77504
@@ -109,7 +58,6 @@ REF <- list(
 # Helpers — copied VERBATIM from the source scripts (attribution in comments)
 # =============================================================================
 
-# exp_cores_statistics.R:65-79 / SDG_cores_statistics.R:76-90
 replace_zeros <- function(X, delta = NULL) {
   X <- as.matrix(X)
   for (i in seq_len(nrow(X))) {
@@ -126,18 +74,14 @@ replace_zeros <- function(X, delta = NULL) {
   X
 }
 
-# ILR / Aitchison helper (exp/SDG_cores_statistics.R convention): drop zero-variance
-# columns, multiplicative zero replacement, then ilr into Euclidean space.
 make_ilr <- function(power_df) {
   X    <- as.matrix(power_df)
   keep <- apply(X, 2, function(v) sd(v, na.rm = TRUE) > 0)
   as.matrix(ilr(replace_zeros(X[, keep, drop = FALSE])))
 }
 
-# exp_cores_statistics.R:81-83
 extract_subdist <- function(D_full, ids) as.dist(as.matrix(D_full)[ids, ids])
 
-# SDG_cores_statistics.R:96-110
 safe_filter_groups <- function(meta_df, group_col, min_n = 3) {
   counts <- table(meta_df[[group_col]], useNA = "no")
   valid  <- names(counts[counts >= min_n])
@@ -145,7 +89,6 @@ safe_filter_groups <- function(meta_df, group_col, min_n = 3) {
   meta_df %>% filter(!is.na(.data[[group_col]]), .data[[group_col]] %in% valid)
 }
 
-# spharm_analysis.R:82-100
 filter_spharm <- function(df, power_cols, meta = NULL) {
   result <- df %>% select(ID, Typology, all_of(power_cols))
   if (!is.null(meta)) result <- left_join(result, meta, by = "ID")
@@ -158,7 +101,6 @@ split_by_group <- function(df) {
   )
 }
 
-# spharm_analysis.R:109-118 — z-score using the non-IM EXP reference mean/sd
 scale_features <- function(df_target, cols) {
   ref_mat  <- df_target %>% filter(!str_starts(ID, "IM_")) %>%
     select(all_of(cols)) %>% as.matrix()
@@ -168,7 +110,6 @@ scale_features <- function(df_target, cols) {
   base::scale(mat, center = col_mean, scale = col_sd)
 }
 
-# power_degree_selection.R:74-124 (trimmed to the quantities used here)
 compute_order_stats <- function(df, cols) {
   mat       <- df %>% select(all_of(cols)) %>% as.matrix()
   n_orders  <- length(cols)
@@ -181,7 +122,6 @@ compute_order_stats <- function(df, cols) {
   tibble(order = seq_len(n_orders), cv_pct = col_cvs, cumul_pct = cumul_pct)
 }
 
-# spharm_analysis.R:302-329 — EXP PERMANOVA on z-scored power (global + Holm pairwise)
 run_permanova_dir <- function(X, group_vec) {
   df_grp <- data.frame(Typology = group_vec)
   d      <- stats::dist(X, method = "euclidean")
@@ -196,11 +136,6 @@ run_permanova_dir <- function(X, group_vec) {
   )
 }
 
-# =============================================================================
-# Static (threshold-INDEPENDENT) inputs — loaded once
-# Morphology (M-SPHARM) is mesh-derived and does not involve scars, so it is reused
-# unchanged at every threshold.
-# =============================================================================
 cat("Loading threshold-independent inputs (morphology, metadata)...\n")
 
 SPHARM_morphology <- read_csv(
@@ -253,7 +188,7 @@ exp_permanova_block <- function(dir_df) {
   non_im_idx <- !str_starts(df_exp_dir$ID, "IM_") &
     !df_exp_dir$Typology %in% EXCLUDE_TYPES
   y_typology <- df_exp_only$Typology
-  ilr_dir <- make_ilr(df_exp_dir[non_im_idx, POWER_COLS_DIR])   # ILR / Aitchison (was z-score)
+  ilr_dir <- make_ilr(df_exp_dir[non_im_idx, POWER_COLS_DIR])
   pm <- run_permanova_dir(ilr_dir, y_typology)
 
   pv  <- pm$pairwise
@@ -266,7 +201,6 @@ exp_permanova_block <- function(dir_df) {
        sig_pairs = paste(sort(sig_pairs), collapse = "; "))
 }
 
-# ---- (d) EXP decoupling: global Mantel + RV (exp_cores_statistics.R:157-403) -
 exp_decoupling_block <- function(dir_df) {
   morph_typ <- SPHARM_morphology %>%
     left_join(dir_df %>% select(ID, Typology), by = "ID")
@@ -300,8 +234,6 @@ exp_decoupling_block <- function(dir_df) {
   D_morph_exp <- extract_subdist(D_morph_all, exp_ids)
   D_scar_exp  <- extract_subdist(D_scar_all,  exp_ids)
 
-  # SI-wide convention (truncation_sensitivity.R:538): seed immediately before
-  # mantel() so every SI table reports the same permutation draw at the anchor.
   set.seed(42)
   mantel_global <- mantel(D_morph_exp, D_scar_exp, method = "spearman",
                           permutations = 9999)
@@ -359,8 +291,6 @@ sdg_block <- function(dir_df) {
   D_morph_arch <- extract_subdist(D_morph_all, arch_ids)
   D_scar_arch  <- extract_subdist(D_scar_all,  arch_ids)
 
-  # SI-wide convention (truncation_sensitivity.R:538): seed immediately before
-  # mantel() so every SI table reports the same permutation draw at the anchor.
   set.seed(42)
   mantel_global <- mantel(D_morph_arch, D_scar_arch, method = "spearman",
                           permutations = 9999)
@@ -396,7 +326,7 @@ sdg_block <- function(dir_df) {
 # =============================================================================
 metrics    <- list()
 order_long <- list()
-im_ref     <- NULL          # ideal-core distance matrix (threshold-invariant)
+im_ref     <- NULL
 
 for (T in THRESHOLDS) {
   csv <- spectra_path(T)
@@ -415,7 +345,6 @@ for (T in THRESHOLDS) {
   sd_ <- sdg_block(dir_df)
   if (abs(T - T_REF) < 1e-9) im_ref <- im_distance_matrix(dir_df)
 
-  # retained scar counts from the spectra n_scars column (cross-check w/ attrition)
   ns <- if ("n_scars" %in% names(dir_df)) dir_df %>% mutate(
           grp = case_when(str_starts(ID, "EXP") ~ "EXP",
                           str_starts(ID, "SDG") ~ "SDG",
@@ -452,7 +381,6 @@ metrics_df <- bind_rows(metrics)
 if (nrow(metrics_df) == 0) stop("No spectra found. Run sweep_spharm_threshold.py first.")
 order_long_df <- bind_rows(order_long)
 
-# Ideal-core reference separations (threshold-invariant; reported once).
 im_summary <- NULL
 if (!is.null(im_ref)) {
   pick <- function(a, b) if (all(c(a, b) %in% rownames(im_ref))) im_ref[a, b] else NA_real_
@@ -590,7 +518,6 @@ rv_all_ns        <- all(metrics_df$exp_RV_p >= 0.05, na.rm = TRUE) &&
                     all(metrics_df$sdg_RV_p >= 0.05, na.rm = TRUE)
 cv_cross_stable  <- length(unique(na.omit(metrics_df$exp_cv_cross_l))) == 1
 
-# ---- flag any metric that is sensitive to the threshold (printed for the analyst)
 cat("\n", strrep("=", 70), "\n", sep = "")
 cat("SENSITIVITY FLAGS (metrics whose conclusion changes across thresholds)\n")
 cat(strrep("=", 70), "\n", sep = "")

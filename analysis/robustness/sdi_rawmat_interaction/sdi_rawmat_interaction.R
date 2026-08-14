@@ -1,86 +1,15 @@
 # sdi_rawmat_interaction.R
-# =============================================================================
-# DOES THE REDUCTION-INTENSITY (SDI) GRADIENT RUN DIFFERENTLY IN CHERT AND
-# SANDSTONE? — SI add-on, companion to sdi_gradient/sdi_gradient.R.
-#
-# NEW, self-contained. Does NOT modify the main pipeline, the cached _targets
-# store, derived_data, the manuscript, or sdi_gradient.R. It only READS the
-# committed main outputs and WRITES under analysis/robustness/sdi_rawmat_interaction/.
-#
-# WHAT THIS ASKS, AND HOW IT DIFFERS FROM sdi_gradient.R
-#   sdi_gradient.R established that SDI has NO main effect once raw material and
-#   core type are removed (R2 = 0.017-0.027, p = 0.19-0.41 across the three
-#   spaces). A null main effect has two readings, and they are not equivalent:
-#     (1) reduction intensity genuinely does not structure the descriptors, or
-#     (2) it does, but in OPPOSITE directions in the two raw materials, so the
-#         pooled effect cancels.
-#   Reading (2) is a substantive claim — that chert and sandstone cores arrive at
-#   similar final forms by different reduction paths — and it is testable as the
-#   Raw_mat:SDI interaction. This script tests it. It is a direct attempt at
-#   reviewer 4's question of what continuous quantification buys.
-#
-# THE TERM ORDER IS FIXED AND IS NOT A FREE PARAMETER
-#   adonis2(D ~ Raw_mat + core_type + SDI + Raw_mat:SDI, by = "terms")
-#   Raw material is removed first (it is strongly confounded with SDI), then core
-#   type, then the SDI main effect, and the interaction is evaluated as the
-#   increment over all three. Sequential SS is the whole point: the question is
-#   what the interaction adds, not what it would explain on its own.
-#
-# TWO PERMUTATION SCHEMES, BECAUSE THEY TEST DIFFERENT NULLS
-#   (i)  free permutation (vegan's default)
-#   (ii) permutation RESTRICTED WITHIN raw material, how(blocks = Raw_mat)
-#   Free permutation breaks the SDI / raw-material confounding that exists in the
-#   data, which narrows the null distribution artificially and can understate p.
-#   This project has already been bitten by exactly that: the removed centroid-
-#   distance analysis returned p = 0.049 under free permutation, part of which
-#   came from the confounding being dissolved in the null rather than from any
-#   effect. Restricted permutation holds the raw-material structure fixed and so
-#   tests "given raw material, does the SDI effect differ", which is the question
-#   actually being asked. BOTH are reported; where they disagree the RESTRICTED
-#   result is the headline, for the reason just given.
-#   NOTE: under blocking, Raw_mat is constant within blocks and its own p value
-#   is therefore not interpretable. That is expected, not a failure.
-#
-# FOUR VERSIONS, BECAUSE THE TWO GROUPS BARELY SHARE AN SDI RANGE
-#   A  raw SDI,     full sample
-#   B  log(SDI),    full sample
-#   C  raw SDI,     restricted to the common support of the two materials
-#   D  log(SDI),    restricted to the common support
-#   Sandstone sits at the low end of SDI and chert extends far above it, so two
-#   slopes fitted on the full range are compared partly by linear extrapolation
-#   into territory where one group has no data. C and D remove that extrapolation.
-#   All four are reported and their agreement is assessed. If only one is
-#   significant, that instability is the finding and is reported as such.
-#
-# EXPECTATION MANAGEMENT, DECLARED BEFORE THE RESULTS WERE SEEN
-#   Interactions need roughly four times the sample of a main effect of the same
-#   size to be detected. Here the SDI main effect is R2 = 0.017-0.027, sandstone
-#   has ~12 cores, and the common-support restriction shrinks the sample further.
-#   A null is the high-probability outcome, and it is informative: it removes the
-#   cancelling-slopes explanation and thereby strengthens the existing null. No
-#   term is reordered, no marginal-SS result is promoted to headline, no specimen
-#   is dropped and no transform is chosen to manufacture significance.
-#
-# Reads : the committed SPHARM outputs + SDG_core_metric.xlsx, all via the
-#         imported sample definition (see the import block below)
-# Writes: sdi_rawmat_interaction.csv
-#         figures/fig_sdi_rawmat_interaction.png
-#
-# HOW TO RUN (Docker spharm_analysis):
-#   Rscript analysis/robustness/sdi_rawmat_interaction/sdi_rawmat_interaction.R
-# =============================================================================
 
 suppressPackageStartupMessages({
   library(here)
   library(tidyverse)
   library(readxl)
-  library(vegan)          # adonis2, how()
-  library(compositions)   # ilr
+  library(vegan)         
+  library(compositions)   
   library(patchwork)
   library(conflicted)
 })
 
-# Identical conflict resolution to the companion scripts.
 suppressMessages({
   conflicts_prefer(dplyr::filter, dplyr::select, dplyr::lag,
                    stats::sd, stats::var, stats::dist, stats::cor, stats::cov,
@@ -103,23 +32,16 @@ OUT_DIR <- here("analysis/robustness/sdi_rawmat_interaction")
 FIG_DIR <- file.path(OUT_DIR, "figures")
 dir.create(FIG_DIR, recursive = TRUE, showWarnings = FALSE)
 
-# Committed SDG core-type anchors (L3_permanova.csv), used only to prove the
-# sample is the published one. Same values sdi_gradient.R checks against.
 REF <- list(M_R2  = 0.18770190528243877, M_F  = 2.0334613330095146,
             SP_R2 = 0.16785198589124128, SP_F = 1.7750417603590793,
             n = 50L, n_groups = 6L)
 REF_TOL <- 1e-3
 
-# Raw-material colours, from the repo's earthy palette: chert cool, sandstone
-# warm sand. Two levels only, so hue is sufficient and lightness also differs.
 RAWMAT_COLORS <- c("chert" = "#4A6E8A", "sandstone" = "#BA8530")
 
 # =============================================================================
 # Helper + data-preparation import — verbatim, WITHOUT running either script
 # =============================================================================
-# Same selective-evaluation device as sdi_gradient.R:186-200: parse the companion
-# scripts and evaluate ONLY the named top-level bindings needed here. Zero side
-# effects, and — the point of the exercise — a byte-identical SAMPLE DEFINITION.
 selective_eval <- function(path, wanted, functions_only) {
   got <- character(0)
   for (e in parse(path)) {
@@ -183,8 +105,6 @@ sdi_tbl <- tibble(ID  = str_trim(as.character(sdi_xl$ID)),
 if (anyDuplicated(sdi_tbl$ID))
   stop("Duplicate IDs in ", basename(SDI_XLSX), ".")
 
-# Raw material from the IMPORTED, trimmed core_meta: the raw column holds both
-# "chert" and "chert " and would otherwise split into three levels.
 meta_all <- tibble(ID = blocks$ids, core_type = blocks$group, layer = blocks$layer) %>%
   left_join(core_meta %>% select(ID, raw_material), by = "ID") %>%
   left_join(sdi_tbl, by = "ID")
@@ -199,10 +119,6 @@ if (any(meta0$SDI <= 0))
        "Stopping rather than shifting the variable silently.")
 
 # ---- build the three distance matrices for an arbitrary row subset ----------
-# The ILR transform (zero-variance part dropping, multiplicative zero
-# replacement) and the MFA constants both depend on the sample SET, so they are
-# rebuilt on whatever subset is analysed rather than subset out of the n = 50
-# coordinates. This matters for versions C and D.
 build_spaces <- function(row_idx_in_blocks) {
   morph_sub <- blocks$morph[row_idx_in_blocks, , drop = FALSE]
   scar_sub  <- blocks$scar[ row_idx_in_blocks, , drop = FALSE]
@@ -259,9 +175,6 @@ print(tab_rc)
 cat("\n  raw-material composition within each core type (%):\n")
 print(round(100 * prop.table(tab_rc, margin = 2), 1))
 
-# Cramer's V on the contingency table: 0 = independent, 1 = one determines the
-# other. Reported with the per-type concentration, because it is the types that
-# sit entirely in one material that pre-empt the interaction's information.
 chi <- suppressWarnings(stats::chisq.test(tab_rc))
 cramers_v <- sqrt(as.numeric(chi$statistic) /
                   (sum(tab_rc) * (min(dim(tab_rc)) - 1)))
@@ -453,13 +366,6 @@ if (n_sig > 0 && n_sig < nrow(head_tbl))
 # =============================================================================
 # FIGURE — presentation only, NOT the basis of any inference
 # =============================================================================
-# PC1 of each space is NOT known to be the SDI-related direction. The removed
-# candidate search in sdi_gradient.R established that no generalisable linear SDI
-# direction exists in any of the three spaces (29 non-circular candidates, all
-# |rho| < 0.30, leave-one-out rho all <= 0). A flat panel is therefore the
-# expected picture and does NOT contradict the PERMANOVA above.
-# Fits are per raw material, so geom_smooth spans only each group's own SDI
-# range — sandstone's line is not extrapolated into chert's territory.
 pc1_tbl <- map_dfr(names(SPACE_LABELS), function(spn) {
   Z <- switch(spn, scar = sp_full$Z_SP, morph = sp_full$Z_M, combined = sp_full$Z_comb)
   pc <- stats::prcomp(Z, center = TRUE, scale. = FALSE)

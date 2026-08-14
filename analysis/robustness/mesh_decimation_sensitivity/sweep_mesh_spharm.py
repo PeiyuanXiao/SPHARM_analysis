@@ -1,50 +1,4 @@
-"""
-sweep_mesh_spharm.py
-=======================
-Mesh-PREPROCESSING sensitivity sweep for the M-SPHARM (morphology) pipeline.
-NEW, self-contained add-on for the paper's Supplementary Information. It does NOT
-modify the main pipeline, the cached results, or the manuscript, and it RE-USES the
-existing mesh / spherical-harmonic functions unchanged (open3d quadric decimation,
-trimesh Laplacian smoothing, and the project's `mesh_processing`, `pca_align`,
-`spherical_harmonics`, `power_spectrum` modules). The orchestration below mirrors
-`SPHARM_main.process_single_mesh` verbatim; the ONLY things that vary across the
-sweep are the two preprocessing parameters under test:
-
-    (1) the decimation TARGET FACE COUNT  (production = 20000)
-    (2) the Laplacian SMOOTHING iterations (production = 3)
-
-The decimation ALGORITHM is held fixed at quadric edge collapse
-(`open3d.simplify_quadric_decimation`); every other step — pre-decimation policy,
-trimesh cleaning, `mesh_processing.normalize_mesh`, `pca_align.robust_pca_alignment`
-(deterministic, area-weighted PCA + sign convention), the GRID_SIZE = 256 spherical
-interpolation, the l_max = 20 expansion, 4pi/csphase normalisation, and all seeds —
-is identical to the main pipeline. The scar (SP-SPHARM) side does not derive from
-these meshes (scar vectors come from digitised endpoint coordinates), so it is
-unaffected and is reused unchanged downstream.
-
-WHAT IT DOES, for each (face_target, smooth_iters) in SETTINGS:
-    each core mesh .stl  ->  process_mesh(target_faces, smooth_iters)
-        -> spectra/SPHARM_morphology_f{face}_s{smooth}.csv
-           (ID, n_faces_original, n_faces_decimated, power_l0 .. power_l20)
-
-TWO BUILT-IN CHECKS at the production setting (20000, 3):
-  * ANCHOR — the recomputed M-SPHARM power spectra must reproduce the cached
-    production file derived_data/SPHARM_morphology.csv (max|diff| recorded in
-    sweep_manifest.csv; flagged if > 1e-6, e.g. a BLAS / open3d / library mismatch,
-    pinned in analysis/scripts/environment.yml).
-  * DETERMINISM — re-running the same input through the fixed decimation twice must
-    return an identical mesh AND identical spectra. Historically, manual/inconsistent
-    decimation was the source of non-reproducible morphology; this check confirms the
-    fixed-algorithm pipeline is now deterministic. Result in determinism_check.csv.
-    A mismatch here is itself an important finding (decimation still not deterministic).
-
-HOW TO RUN (canonical environment — conda `spharm`, same as the main pipeline):
-    python analysis/mesh_decimation_sensitivity/sweep_mesh_spharm.py
-    # or, mirroring _targets.R: PYTHONPATH=analysis/scripts python .../sweep_mesh_spharm.py
-
-Then run mesh_sensitivity_stats.R to evaluate stability of the downstream
-conclusions across settings.
-"""
+"""sweep_mesh_spharm.py"""
 
 import gc
 import os
@@ -58,23 +12,18 @@ from pathlib import Path
 # ---------------------------------------------------------------------------
 # PARAMETERS  (keep in sync with 02_*.R)
 # ---------------------------------------------------------------------------
-FACE_TARGETS = [10000, 20000, 50000]   # decimation target face counts (production = 20000)
-SMOOTH_ITERS = [0, 3, 6]               # Laplacian smoothing iterations (production = 3)
+FACE_TARGETS = [10000, 20000, 50000]
+SMOOTH_ITERS = [0, 3, 6]
 PROD_FACES   = 20000
 PROD_SMOOTH  = 3
 
-# Two 1-D sweeps through the production setting (vary faces at production smoothing;
-# vary smoothing at production faces). Set FULL_CROSS=True to also run the full grid.
 FULL_CROSS = False
 
-# Fixed pipeline settings — IDENTICAL to SPHARM_main.py.
-GRID_SIZE = 256                        # spherical-interpolation grid (MUST equal 256 to match production)
+GRID_SIZE = 256
 LMAX      = 20
-PRE_DECIMATE_THRESHOLD = 3_000_000     # pre-decimate above this face count
+PRE_DECIMATE_THRESHOLD = 3_000_000
 PRE_DECIMATE_TARGET    = 500_000
 
-# Cost controls. SPECIMEN_LIMIT=None processes all meshes; set an int for a smoke test.
-# N_DETERMINISM=None checks determinism on every specimen at the production setting.
 SPECIMEN_LIMIT = None
 N_DETERMINISM  = None
 
@@ -107,7 +56,7 @@ MESH_DIR    = PROJ_ROOT / "analysis" / "data" / "3D_models_cores"
 DERIVED_DIR = PROJ_ROOT / "analysis" / "data" / "derived_data"
 OUT_DIR     = THIS_DIR
 SPECTRA_DIR = OUT_DIR / "spectra"
-CACHE_CSV   = DERIVED_DIR / "SPHARM_morphology.csv"   # cached production (20000,3) file
+CACHE_CSV   = DERIVED_DIR / "SPHARM_morphology.csv"
 
 sys.path.insert(0, str(SCRIPTS_DIR))
 
@@ -124,12 +73,6 @@ np.random.seed(42)
 POWER_COLS = [f"power_l{l}" for l in range(LMAX + 1)]
 
 
-# ---------------------------------------------------------------------------
-# Core: one mesh -> M-SPHARM, parameterised by (target_faces, smooth_iters).
-# This mirrors SPHARM_main.process_single_mesh exactly; only TARGET_FACES and the
-# Laplacian iteration count are turned into parameters, and the decimated mesh is
-# returned alongside the feature row for the determinism check.
-# ---------------------------------------------------------------------------
 def process_mesh(stl_path, target_faces: int, smooth_iters: int):
     import open3d as o3d
 
@@ -181,14 +124,12 @@ def process_mesh(stl_path, target_faces: int, smooth_iters: int):
         else:
             o3d_mesh_final = o3d.io.read_triangle_mesh(load_path)
 
-        # (1) Decimation — quadric edge collapse to the swept target face count.
         o3d_mesh_final = o3d_mesh_final.simplify_quadric_decimation(target_faces)
         decimated_vertices = np.asarray(o3d_mesh_final.vertices)
         decimated_faces    = np.asarray(o3d_mesh_final.triangles)
         if len(decimated_faces) == 0:
             raise ValueError("open3d.simplify_quadric_decimation returned empty mesh")
 
-        # (2) Clean + Laplacian smoothing (iterations swept; 0 = no smoothing).
         valid_mask = np.all(decimated_faces < len(decimated_vertices), axis=1)
         decimated_faces = decimated_faces[valid_mask]
         mesh = trimesh.Trimesh(vertices=decimated_vertices,
@@ -201,12 +142,10 @@ def process_mesh(stl_path, target_faces: int, smooth_iters: int):
         decimated_vertices = mesh.vertices
         decimated_faces    = mesh.faces
 
-        # (3) Normalise + PCA alignment (deterministic).
         normalized_vertices = mesh_processing.normalize_mesh(decimated_vertices, decimated_faces)
         aligned_vertices, _ = pca_align.robust_pca_alignment(
             normalized_vertices, faces=decimated_faces, enforce_direction=True)
 
-        # (4) Spherical interpolation + SH expansion + power spectrum.
         spherical_coords = spherical_harmonics.cartesian_to_spherical(aligned_vertices)
         R, theta, phi    = spherical_coords.T
         grid_r           = spherical_harmonics.spherical_interpolate(R, theta, phi, GRID_SIZE)
@@ -227,7 +166,6 @@ def process_mesh(stl_path, target_faces: int, smooth_iters: int):
             os.remove(tmp_path)
 
 
-# ---------------------------------------------------------------------------
 def list_meshes():
     files = sorted({p for p in MESH_DIR.iterdir()
                     if p.is_file() and p.suffix.lower() == ".stl"}, key=lambda p: p.name)
@@ -243,7 +181,7 @@ def spectra_for_setting(stl_files, target_faces, smooth_iters):
         try:
             row, _, _ = process_mesh(str(stl), target_faces, smooth_iters)
             rows.append(row)
-        except Exception as e:                       # match batch_process robustness
+        except Exception as e:
             print(f"    [warn] {sid}: {e}")
             rows.append({"ID": sid})
         if (i + 1) % 20 == 0:
@@ -297,7 +235,6 @@ def determinism_check(stl_files):
             "max_power_diff": max_pdiff, "deterministic": bool(deterministic)}
 
 
-# ---------------------------------------------------------------------------
 def main() -> None:
     settings = build_settings()
     print("=" * 70)
@@ -351,7 +288,6 @@ def main() -> None:
         })
         print(f"    wrote {out_csv.relative_to(PROJ_ROOT)}  ({elapsed:.1f}s)\n")
 
-    # Determinism check at the production setting.
     det = determinism_check(stl_files)
 
     man_df = pd.DataFrame(manifest)
@@ -359,7 +295,6 @@ def main() -> None:
     pd.DataFrame([det]).to_csv(OUT_DIR / "determinism_summary.csv", index=False)
     print(f"\nWrote sweep_manifest.csv and determinism_summary.csv")
 
-    # Versions.
     def ver(mod):
         try:
             return __import__(mod).__version__
