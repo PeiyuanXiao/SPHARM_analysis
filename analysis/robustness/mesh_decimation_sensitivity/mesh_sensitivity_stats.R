@@ -255,6 +255,9 @@ build_ilr_dists <- function(morph_df, restrict = NULL) {
 
 mantel_rv <- function(morph_ilr, scar_ilr, D_morph, D_scar, ids) {
   Dm <- extract_subdist(D_morph, ids); Ds <- extract_subdist(D_scar, ids)
+  # SI-wide convention (truncation_sensitivity.R:538): seed immediately before
+  # mantel() so every SI table reports the same permutation draw at the anchor.
+  set.seed(42)
   mg <- mantel(Dm, Ds, method = "spearman", permutations = 9999)
   mi <- morph_ilr[ids, ]; si <- scar_ilr[ids, ]
   colnames(mi) <- paste0("M_ilr", seq_len(ncol(mi))); colnames(si) <- paste0("S_ilr", seq_len(ncol(si)))

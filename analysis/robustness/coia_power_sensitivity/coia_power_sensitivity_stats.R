@@ -187,6 +187,9 @@ raw_rv_coinertia <- function(M, S) {
 
 # Reported global Mantel (exp:243 / sdg:254): Euclidean ILR distance, Spearman.
 raw_mantel <- function(M, S) {
+  # SI-wide convention (truncation_sensitivity.R:538): seed immediately before
+  # mantel() so every SI table reports the same permutation draw at the anchor.
+  set.seed(42)
   mt <- mantel(dist(M), dist(S), method = "spearman", permutations = 9999)
   list(r = mt$statistic, p = mt$signif)
 }

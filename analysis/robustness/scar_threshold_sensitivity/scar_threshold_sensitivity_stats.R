@@ -300,6 +300,9 @@ exp_decoupling_block <- function(dir_df) {
   D_morph_exp <- extract_subdist(D_morph_all, exp_ids)
   D_scar_exp  <- extract_subdist(D_scar_all,  exp_ids)
 
+  # SI-wide convention (truncation_sensitivity.R:538): seed immediately before
+  # mantel() so every SI table reports the same permutation draw at the anchor.
+  set.seed(42)
   mantel_global <- mantel(D_morph_exp, D_scar_exp, method = "spearman",
                           permutations = 9999)
 
@@ -356,6 +359,9 @@ sdg_block <- function(dir_df) {
   D_morph_arch <- extract_subdist(D_morph_all, arch_ids)
   D_scar_arch  <- extract_subdist(D_scar_all,  arch_ids)
 
+  # SI-wide convention (truncation_sensitivity.R:538): seed immediately before
+  # mantel() so every SI table reports the same permutation draw at the anchor.
+  set.seed(42)
   mantel_global <- mantel(D_morph_arch, D_scar_arch, method = "spearman",
                           permutations = 9999)
 

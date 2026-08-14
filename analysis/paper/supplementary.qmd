@@ -461,11 +461,15 @@ fabric under polarity error in @fig-si-perturbation is a direct
 consequence of this property.
 
 The sensitivity of SP-SPHARM to polarity error also demonstrates that it
-retains proximal–distal information that fabric discards. The
-performance of the two methods crossed between 5% and 10% polarity
-flips: the estimated crossing point was $f$ = `r apct(ann$cross_count)`%
-based on the number of resolved typology pairs and
-`r apct(ann$cross_med)`% based on the continuous measure. Thus, when
+retains proximal–distal information that fabric discards. On the
+continuous measure the performance of the two methods crossed between 5%
+and 10% polarity flips, at an estimated flip fraction of $f$ =
+`r apct(ann$cross_med)`%. On the number of resolved typology pairs they
+converged rather than crossed: SP-SPHARM fell from
+`r amet("polarity", "SP-SPHARM", 0, "n_sig_05_med", 0)` pairs at baseline
+to fabric's `r amet("polarity", "Fabric (E, I)", 0.2, "n_sig_05_med", 0)`
+at a flip fraction of 10%, and remained level with it at higher fractions.
+Thus, when
 proximal–distal directions are reliably annotated, SP-SPHARM can provide
 greater typological discrimination; when polarity errors become more
 frequent, fabric is more stable. This result supports combining the
@@ -481,10 +485,10 @@ for SP-SPHARM remained largely unchanged
 `r av("baseline", 0, "med_neglog10_p_med", 2)` at baseline), whereas the
 number of resolved typology pairs decreased from
 `r aint("baseline", 0, "n_sig_05_med")` to
-`r aint("angle", 20, "n_sig_05_med")`. Fabric lost only one typology
-pair (from `r amet("angle", "Fabric (E, I)", 0, "n_sig_05_med", 0)` to
-`r amet("angle", "Fabric (E, I)", 20, "n_sig_05_med", 0)`), but showed a
-larger decline in the continuous measure (from
+`r aint("angle", 20, "n_sig_05_med")`. Fabric lost no typology pair
+(`r amet("angle", "Fabric (E, I)", 0, "n_sig_05_med", 0)` at baseline and
+`r amet("angle", "Fabric (E, I)", 20, "n_sig_05_med", 0)` at $\sigma$ = 20°),
+but showed a larger decline in the continuous measure (from
 `r amet("angle", "Fabric (E, I)", 0, "med_neglog10_med", 2)` to
 `r amet("angle", "Fabric (E, I)", 20, "med_neglog10_med", 2)`).
 Moreover, the percentile intervals for all methods overlapped their
