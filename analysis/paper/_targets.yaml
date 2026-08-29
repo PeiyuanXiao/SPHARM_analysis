@@ -1,4 +1,4 @@
 main:
-  store: /project/analysis/robustness/_targets_store
+  store: /project/analysis/paper/_targets
 supplementary:
   store: /project/analysis/robustness/_targets_store
