@@ -256,7 +256,7 @@ The scar pattern PERMANOVA by experimental core type stays significant
 across $h$ ($R^2$ = 0.298–0.329; $p$ \< 0.05 throughout). The pairwise
 resolution profile is stable: 7 of 10 typology pairs are resolved at the
 three smallest bandwidths ($h$ = 0.20–0.30) and 8 of 10 from $h$ = 0.35
-to 0.50, including the chosen $h$ = 0.35), dropping to 6/10 at the two
+to 0.50, including the chosen $h$ = 0.35, dropping to 6/10 at the two
 smallest bandwidths and 7/10 at the largest. The association between
 morphology and scar patterning is negligible in magnitude at every
 bandwidth: Mantel $r$ ≈ 0 throughout (EXP -0.062 to -0.008; SDG 0.001 to
@@ -265,7 +265,7 @@ are non-significant across the entire range. For the experimental
 assemblage the Mantel test is non-significant at every $h$, and the RV
 coefficient is non-significant from $h$ = 0.20 to 0.40, becomes marginal
 at $h$ = 0.45 ($p$ = 0.078), and crosses $p$ \< 0.05 only at the most
-over smoothed setting ($h$ = 0.50: RV = 0.117, $p$ = 0.044), where the
+over-smoothed setting ($h$ = 0.50: RV = 0.117, $p$ = 0.044), where the
 association is still negligible and is not corroborated by the Mantel
 test ($r$ = -0.008, $p$ = 0.54). Read on effect size, the decoupling is
 robust across the full range, and the chosen $h$ = 0.35 sits well inside
@@ -306,7 +306,7 @@ scars, we recomputed the SP-SPHARM power spectra after dropping scars at
 or below increasing cutoffs $T$ ∈ {2, 5, 10} mm (retaining length \>
 $T$), holding everything else fixed (alignment, $h$ = 0.35, the
 evaluation and transform grids, $l_{\max}$ = 20, normalization, seeds).
-The cutoff $T$ = 2 was used as the main analysis, at which the
+The cutoff $T$ = 2 mm was used in the main analysis, at which the
 recomputed descriptors reproduced the saved descriptor values used in
 the main analysis. The \>5 mm rule retains 95.9% (EXP) and 99.2% (SDG)
 of scars and \>10 mm retains 80.7% and 88.5%. The threshold is not
@@ -323,7 +323,7 @@ scar$fig_scarcounts
 
 SP-SPHARM power saturates early at every threshold: cumulative power
 through $l$ = 6 is 99.91–99.92%, and the cross-specimen CV first exceeds
-100% at degree $l$ = 9 for all cutoff value. The $l$ = 1–6 truncation is
+100% at degree $l$ = 9 for all cutoff values. The $l$ = 1–6 truncation is
 robust to the inclusion rule.
 
 ```{r}
@@ -612,8 +612,7 @@ magnitude at every setting: Mantel $r$ ≈ 0 (EXP -0.106 to -0.048; SDG
 -0.058 to 0.102) and RV ≈ 0.10 (EXP 0.095–0.116; SDG 0.072–0.093). The
 Mantel test is non-significant throughout (EXP and SDG), and the RV is
 non-significant at every setting except the unsmoothed mesh (0 smoothing
-iterations: EXP RV = 0.116, $p$ = 0.043) — where, as for the most over
-smoothed bandwidth in @tbl-si-bandwidth, the association is still
+iterations: EXP RV = 0.116, $p$ = 0.043) — where, as for the most over-smoothed bandwidth in @tbl-si-bandwidth, the association is still
 negligible and is not corroborated by the Mantel test ($r$ = -0.069, $p$
 = 0.83). Read on effect size, the decoupling holds under perturbation of
 the morphology descriptor as well as the scar descriptor
